@@ -1,0 +1,134 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+jspm_packages/
+bower_components/
+vendor/
+
+# testing
+/coverage
+.nyc_output/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+dist/
+.nuxt/
+.vuepress/dist
+.serverless/
+.docz/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log # Ignore all log files
+
+# env files (can opt-in for committing if needed)
+.env*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.npmrc
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE and editor folders
+.vscode/
+.idea/
+*.sublime-*
+.qodo/
+*.swp
+*.swo
+.history/
+.project
+.classpath
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+/path/to/ven/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Logs and temporary files
+/logs/
+/tmp/
+/temp/
+*.tmp
+*.temp
+logs
+
+# Build and cache
+.turbo/
+.husky/
+storybook-static/
+.swc/
+
+# Browser automation
+.playwright/
+playwright-report/
+test-results/
+
+# Backup and old files
+*.bak
+*.old
+*.orig
+*.rej
+
+# Example and test files
+example.*
+
+# Compiled source
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+.qodo

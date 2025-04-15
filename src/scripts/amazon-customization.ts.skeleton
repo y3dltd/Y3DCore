@@ -1,0 +1,235 @@
+#!/usr/bin/env tsx
+/**
+ * Amazon Customization Unified Script
+ * 
+ * This script provides a unified interface for all Amazon customization-related functionality.
+ * It replaces the following scripts:
+ * - scripts/analysis/amazon-customization-sync.ts
+ * - scripts/analysis/update-order-items-from-amazon.ts
+ * - scripts/update-print-tasks-from-order-items.ts
+ * - scripts/find-amazon-orders-needing-personalization.ts
+ * 
+ * Usage:
+ *   npx tsx src/scripts/amazon-customization.ts [command] [options]
+ * 
+ * Commands:
+ *   sync     Download and process Amazon customization files
+ *   update   Update order items and ShipStation with personalization data
+ *   tasks    Update print tasks with personalization data
+ *   fix      Find and fix orders with missing personalization data
+ *   workflow Run the entire workflow (sync, update, tasks) in sequence
+ *   status   Show the status of the Amazon customization workflow
+ *   metrics  Show metrics for the Amazon customization workflow
+ * 
+ * Global Options:
+ *   --order-id=<id>     Process a specific order by ID
+ *   --days-back=<days>  Process orders from the last N days
+ *   --hours=<hours>     Process orders from the last N hours
+ *   --limit=<limit>     Limit the number of orders to process
+ *   --verbose           Show verbose output
+ *   --dry-run           Don't make any changes to the database or ShipStation
+ */
+
+import { Command } from 'commander';
+import { PrismaClient } from '@prisma/client';
+import { info, error, warning, debug } from '@/lib/logger';
+
+// Import core modules
+import { runWorkflow } from '@/lib/amazon/workflow';
+import { syncCustomizationFiles } from '@/lib/amazon/sync';
+import { updateOrderItems } from '@/lib/amazon/update';
+import { updatePrintTasks } from '@/lib/amazon/tasks';
+import { fixMissingPersonalization } from '@/lib/amazon/fix';
+import { getMetrics, displayMetrics } from '@/lib/amazon/metrics';
+
+// Initialize Prisma client
+const prisma = new PrismaClient();
+
+// Define the program
+const program = new Command();
+
+program
+  .name('amazon-customization')
+  .description('Unified script for Amazon customization workflow')
+  .version('1.0.0');
+
+// Add global options
+program
+  .option('--order-id <id>', 'Process a specific order by ID', parseInt)
+  .option('--days-back <days>', 'Process orders from the last N days', parseInt, 7)
+  .option('--hours <hours>', 'Process orders from the last N hours', parseInt)
+  .option('--limit <limit>', 'Limit the number of orders to process', parseInt, 50)
+  .option('--verbose', 'Show verbose output')
+  .option('--dry-run', 'Don\'t make any changes to the database or ShipStation');
+
+// Define the sync command
+program
+  .command('sync')
+  .description('Download and process Amazon customization files')
+  .option('--retry-failed', 'Retry previously failed downloads/processing')
+  .option('--max-retries <num>', 'Maximum number of retries for failed items', parseInt, 3)
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Starting Amazon customization sync', combinedOptions);
+      
+      const result = await syncCustomizationFiles(prisma, combinedOptions);
+      
+      info('Amazon customization sync completed', result);
+    } catch (err) {
+      error('Error in Amazon customization sync', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the update command
+program
+  .command('update')
+  .description('Update order items and ShipStation with personalization data')
+  .option('--create-print-tasks', 'Create print tasks for orders')
+  .option('--update-shipstation', 'Update ShipStation with personalization data')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Starting order items update', combinedOptions);
+      
+      const result = await updateOrderItems(prisma, combinedOptions);
+      
+      info('Order items update completed', result);
+    } catch (err) {
+      error('Error in order items update', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the tasks command
+program
+  .command('tasks')
+  .description('Update print tasks with personalization data')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Starting print tasks update', combinedOptions);
+      
+      const result = await updatePrintTasks(prisma, combinedOptions);
+      
+      info('Print tasks update completed', result);
+    } catch (err) {
+      error('Error in print tasks update', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the fix command
+program
+  .command('fix')
+  .description('Find and fix orders with missing personalization data')
+  .option('--fix-shipstation', 'Fix ShipStation orders')
+  .option('--fix-print-tasks', 'Fix print tasks')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Starting fix for missing personalization', combinedOptions);
+      
+      const result = await fixMissingPersonalization(prisma, combinedOptions);
+      
+      info('Fix for missing personalization completed', result);
+    } catch (err) {
+      error('Error in fix for missing personalization', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the workflow command
+program
+  .command('workflow')
+  .description('Run the entire workflow (sync, update, tasks) in sequence')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Starting Amazon customization workflow', combinedOptions);
+      
+      const result = await runWorkflow(prisma, combinedOptions);
+      
+      info('Amazon customization workflow completed', result);
+    } catch (err) {
+      error('Error in Amazon customization workflow', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the status command
+program
+  .command('status')
+  .description('Show the status of the Amazon customization workflow')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Getting Amazon customization workflow status', combinedOptions);
+      
+      // TODO: Implement status reporting
+      console.log('Status reporting not yet implemented');
+      
+      info('Amazon customization workflow status completed');
+    } catch (err) {
+      error('Error getting Amazon customization workflow status', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Define the metrics command
+program
+  .command('metrics')
+  .description('Show metrics for the Amazon customization workflow')
+  .option('--format <format>', 'Output format (json, table, csv)', 'table')
+  .option('--output <file>', 'Output file')
+  .action(async (options) => {
+    try {
+      const globalOptions = program.opts();
+      const combinedOptions = { ...globalOptions, ...options };
+      
+      info('Getting Amazon customization workflow metrics', combinedOptions);
+      
+      const metrics = await getMetrics(prisma, combinedOptions);
+      await displayMetrics(metrics, combinedOptions);
+      
+      info('Amazon customization workflow metrics completed');
+    } catch (err) {
+      error('Error getting Amazon customization workflow metrics', err);
+      process.exit(1);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+// Parse the command line arguments
+program.parse(process.argv);
+
+// If no command is specified, show help
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+}

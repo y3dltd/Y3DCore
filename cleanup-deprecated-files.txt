@@ -1,0 +1,17 @@
+# Files to remove after cleanup consolidation
+
+## Shell Scripts
+./clean-all.sh
+./y3dhub/clean-all.sh
+./y3dhub/scripts/utils/system/clean-all.sh
+./y3dhub/scripts/deprecated/maintenance/nightly-cleanup.sh
+./scripts/maintenance/nightly-cleanup.sh
+
+## TypeScript Scripts
+./y3dhub/scripts/deprecated/maintenance/cleanup.ts
+./y3dhub/scripts/deprecated/maintenance/cleanup-print-tasks.ts
+./y3dhub/scripts/analysis/cleanup.ts
+./scripts/maintenance/cleanup.ts
+./scripts/maintenance/cleanup-print-tasks.ts
+
+# Note: Do not remove src/lib/print-tasks/cleanup.ts as it serves a specific purpose related to database cleanup.

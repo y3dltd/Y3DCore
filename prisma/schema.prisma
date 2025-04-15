@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                     Int              @id @default(autoincrement())
+  sku                    String?          @unique
+  name                   String
+  imageUrl               String?          @db.VarChar(512)
+  weight                 Decimal?         @db.Decimal(10, 4)
+  notes                  String?          @db.Text
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  fulfillment_sku        String?          @db.VarChar(255)
+  item_weight_units      String?          @db.VarChar(20)
+  item_weight_value      Decimal?         @db.Decimal(10, 4)
+  shipstation_product_id Int?             @unique
+  upc                    String?          @db.VarChar(50)
+  warehouse_location     String?          @db.VarChar(100)
+  orderItems             OrderItem[]
+  printTasks             PrintOrderTask[]
+
+  @@index([sku])
+  @@index([name])
+  @@index([shipstation_product_id])
+}
+
+model Order {
+  id                         Int                 @id @default(autoincrement())
+  shipstation_order_id       String?             @unique @db.VarChar(50)
+  shipstation_order_number   String?             @db.VarChar(50)
+  customerId                 Int?
+  customer_name              String?             @db.VarChar(100)
+  order_status               String              @default("awaiting_shipment") @db.VarChar(50)
+  order_key                  String?             @db.VarChar(50)
+  order_date                 DateTime?           @db.DateTime(0)
+  payment_date               DateTime?           @db.DateTime(0)
+  ship_by_date               DateTime?           @db.DateTime(0)
+  shipping_price             Decimal?            @db.Decimal(10, 2)
+  tax_amount                 Decimal?            @db.Decimal(10, 2)
+  discount_amount            Decimal?            @db.Decimal(10, 2)
+  shipping_amount_paid       Decimal?            @db.Decimal(10, 2)
+  shipping_tax               Decimal?            @db.Decimal(10, 2)
+  total_price                Decimal             @default(0.00) @db.Decimal(10, 2)
+  gift                       Boolean             @default(false)
+  gift_message               String?             @db.Text
+  gift_email                 String?             @db.VarChar(100)
+  requested_shipping_service String?             @db.VarChar(100)
+  carrier_code               String?             @db.VarChar(50)
+  service_code               String?             @db.VarChar(50)
+  package_code               String?             @db.VarChar(50)
+  confirmation               String?             @db.VarChar(50)
+  tracking_number            String?             @db.VarChar(100)
+  shipped_date               DateTime?           @db.DateTime(0)
+  warehouse_id               String?             @db.VarChar(50)
+  customer_notes             String?             @db.Text
+  internal_notes             String?             @db.Text
+  last_sync_date             DateTime?           @db.DateTime(0)
+  notes                      String?             @db.Text
+  created_at                 DateTime            @default(now()) @db.Timestamp(0)
+  updated_at                 DateTime?           @updatedAt @db.Timestamp(0)
+  marketplace                String?             @db.VarChar(50)
+  amount_paid                Decimal?            @db.Decimal(10, 2)
+  order_weight_units         String?             @db.VarChar(20)
+  order_weight_value         Decimal?            @db.Decimal(10, 4)
+  payment_method             String?             @db.VarChar(50)
+  shipstation_store_id       Int?
+  tag_ids                    Json?
+  dimensions_height          Decimal?            @db.Decimal(10, 2)
+  dimensions_length          Decimal?            @db.Decimal(10, 2)
+  dimensions_units           String?             @db.VarChar(20)
+  dimensions_width           Decimal?            @db.Decimal(10, 2)
+  insurance_insure_shipment  Boolean?
+  insurance_insured_value    Decimal?            @db.Decimal(10, 2)
+  insurance_provider         String?             @db.VarChar(50)
+  internal_status            InternalOrderStatus @default(new)
+  is_voided                  Boolean?            @default(false)
+  marketplace_notified       Boolean             @default(false)
+  void_date                  DateTime?           @db.DateTime(0)
+  customer                   Customer?           @relation(fields: [customerId], references: [id])
+  items                      OrderItem[]
+  printTasks                 PrintOrderTask[]
+
+  @@index([created_at])
+  @@index([updated_at])
+  @@index([order_status])
+  @@index([customerId])
+  @@index([marketplace])
+  @@index([shipstation_store_id])
+}
+
+model Customer {
+  id                      Int              @id @default(autoincrement())
+  name                    String           @db.VarChar(100)
+  email                   String?          @unique @db.VarChar(100)
+  phone                   String?          @db.VarChar(20)
+  address                 String?          @db.Text
+  shipstation_customer_id String?          @unique @db.VarChar(50)
+  company                 String?          @db.VarChar(100)
+  street1                 String?          @db.VarChar(255)
+  street2                 String?          @db.VarChar(255)
+  street3                 String?          @db.VarChar(255)
+  city                    String?          @db.VarChar(100)
+  state                   String?          @db.VarChar(100)
+  postal_code             String?          @db.VarChar(20)
+  country                 String?          @db.VarChar(2)
+  country_code            String?          @db.VarChar(2)
+  customer_notes          String?          @db.Text
+  created_at              DateTime         @default(now()) @db.Timestamp(0)
+  updated_at              DateTime?        @updatedAt @db.Timestamp(0)
+  address_verified_status String?          @db.VarChar(50)
+  is_residential          Boolean?
+  orders                  Order[]
+  printTasks              PrintOrderTask[]
+
+  @@index([email])
+  @@index([shipstation_customer_id])
+}
+
+model OrderItem {
+  id                       Int                       @id @default(autoincrement())
+  orderId                  Int
+  quantity                 Int                       @default(1)
+  unit_price               Decimal                   @db.Decimal(10, 2)
+  print_settings           Json?
+  created_at               DateTime                  @default(now()) @db.Timestamp(0)
+  updated_at               DateTime?                 @updatedAt @db.Timestamp(0)
+  shipstationLineItemKey   String?                   @unique @db.VarChar(50)
+  productId                Int
+  order                    Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                  Product                   @relation(fields: [productId], references: [id])
+  printTasks               PrintOrderTask[]
+  amazonCustomizationFiles AmazonCustomizationFile[] // Add relation
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model PrintOrderTask {
+  id                       Int             @id @default(autoincrement())
+  orderId                  Int
+  marketplace_order_number String?         @db.VarChar(100)
+  customerId               Int?
+  custom_text              String?         @db.Text
+  quantity                 Int             @default(1)
+  color_1                  String?         @db.VarChar(50)
+  color_2                  String?         @db.VarChar(50)
+  ship_by_date             DateTime?       @db.Date
+  status                   PrintTaskStatus @default(pending)
+  needs_review             Boolean         @default(false)
+  review_reason            String?         @db.Text
+  created_at               DateTime        @default(now()) @db.Timestamp(0)
+  updated_at               DateTime?       @updatedAt @db.Timestamp(0)
+  orderItemId              Int
+  taskIndex                Int
+  productId                Int
+  shorthandProductName     String?         @db.VarChar(100)
+  customer                 Customer?       @relation(fields: [customerId], references: [id])
+  order                    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem                OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product                  Product         @relation(fields: [productId], references: [id])
+
+  @@unique([orderItemId, taskIndex])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([status])
+  @@index([ship_by_date])
+  @@index([customerId])
+  @@index([needs_review])
+}
+
+model AmazonCustomizationFile {
+  id               Int       @id @default(autoincrement())
+  orderItemId      Int       @unique // Each order item should have only one customization record
+  originalUrl      String    @db.VarChar(1024) // Store the URL from print_settings
+  localFilePath    String?   @db.VarChar(512) // Path to the downloaded JSON file
+  downloadStatus   String    @default("pending") @db.VarChar(50) // e.g., pending, downloaded, failed
+  processingStatus String    @default("pending") @db.VarChar(50) // e.g., pending, processed, failed
+  customText       String?   @db.Text
+  color1           String?   @db.VarChar(50)
+  color2           String?   @db.VarChar(50)
+  rawJsonData      Json? // Store the full parsed JSON
+  errorMessage     String?   @db.Text // Store errors during download or processing
+  retryCount       Int       @default(0)
+  lastProcessedAt  DateTime? @db.Timestamp(0)
+  createdAt        DateTime  @default(now()) @db.Timestamp(0)
+  updatedAt        DateTime  @updatedAt @db.Timestamp(0)
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([downloadStatus])
+  @@index([processingStatus])
+}
+
+// Add the system_logs table (assuming basic structure based on drift message)
+model system_logs {
+  id        Int      @id @default(autoincrement())
+  message   String?  @db.Text
+  level     String?  @db.VarChar(50)
+  timestamp DateTime @default(now())
+
+  // Add other fields if you know them
+  @@map("system_logs") // Explicitly map to the table name if needed
+}
+
+model Tag {
+  id                 Int      @id @default(autoincrement())
+  shipstation_tag_id Int      @unique
+  name               String   @db.VarChar(100)
+  color_hex          String?  @db.VarChar(7)
+  last_synced        DateTime @default(now())
+
+  @@index([name])
+}
+
+model ScriptRunLog {
+  id           Int       @id @default(autoincrement())
+  scriptName   String    @db.VarChar(100)
+  runStartedAt DateTime  @default(now())
+  runEndedAt   DateTime?
+  status       String    @db.VarChar(50)
+  errorMessage String?   @db.Text
+  errorStack   String?   @db.Text
+  details      Json?
+  createdAt    DateTime  @default(now())
+
+  @@index([scriptName])
+  @@index([status])
+  @@index([runStartedAt])
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SyncProgress {
+  id                     String    @id @default(uuid())
+  syncType               String
+  startTime              DateTime
+  endTime                DateTime?
+  status                 String
+  totalOrders            Int       @default(0)
+  processedOrders        Int       @default(0)
+  failedOrders           Int       @default(0)
+  lastProcessedOrderId   String?
+  lastProcessedTimestamp DateTime?
+  error                  String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([syncType])
+  @@index([status])
+  @@index([startTime])
+}
+
+model SyncMetrics {
+  id                        String    @id @default(uuid())
+  syncId                    String
+  totalApiCalls             Int       @default(0)
+  totalOrdersProcessed      Int       @default(0)
+  totalOrdersFailed         Int       @default(0)
+  totalItemsProcessed       Int       @default(0)
+  totalItemsFailed          Int       @default(0)
+  totalCustomersUpserted    Int       @default(0)
+  totalProductsUpserted     Int       @default(0)
+  avgProcessingTimePerOrder Int       @default(0)
+  maxProcessingTimePerOrder Int       @default(0)
+  minProcessingTimePerOrder Int       @default(0)
+  totalProcessingTime       Int       @default(0)
+  startTime                 DateTime
+  endTime                   DateTime?
+  createdAt                 DateTime  @default(now())
+}
+
+model AiCallLog {
+  id               String   @id @default(uuid())
+  scriptName       String   @db.VarChar(100)
+  orderId          Int
+  orderNumber      String?  @db.VarChar(100)
+  marketplace      String?  @db.VarChar(50)
+  aiProvider       String   @db.VarChar(50)
+  modelUsed        String   @db.VarChar(100)
+  promptSent       String   @db.LongText
+  rawResponse      String   @db.LongText
+  processingTimeMs Int
+  success          Boolean
+  errorMessage     String?  @db.Text
+  tasksGenerated   Int      @default(0)
+  needsReviewCount Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([orderId])
+  @@index([scriptName])
+  @@index([success])
+  @@index([createdAt])
+  @@index([aiProvider])
+  @@index([modelUsed])
+}
+
+// Add new model for generic metrics
+model Metric {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  value     Float // Use Float for potentially non-integer values
+  tags      Json? // Store tags as JSON
+  timestamp DateTime @default(now())
+
+  @@index([name])
+  @@index([timestamp])
+}
+
+enum InternalOrderStatus {
+  new
+  processing
+  printing
+  completed
+  cancelled
+}
+
+enum PrintTaskStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}

@@ -1,0 +1,434 @@
+/**
+ * Amazon Customization Sync
+ * 
+ * This module provides functionality for downloading and processing Amazon customization files.
+ * It replaces the functionality of scripts/analysis/amazon-customization-sync.ts.
+ */
+
+import { PrismaClient, Prisma } from '@prisma/client';
+import { info, error, warning, debug } from '@/lib/logger';
+import { fetchAndProcessAmazonCustomization } from '@/lib/amazon/customization-processor';
+import path from 'path';
+import fs from 'fs/promises';
+import { existsSync, mkdirSync } from 'fs';
+
+// Import from workflow module
+import { WorkflowOptions } from './workflow';
+
+// Define the result interface
+export interface SyncResult {
+  success: number;
+  failed: number;
+  skipped: number;
+}
+
+// Constants
+const DOWNLOAD_DIR = path.join(process.cwd(), 'data', 'amazon-customizations');
+const STATUSES = {
+  PENDING: 'pending',
+  DOWNLOADED: 'downloaded',
+  PROCESSED: 'processed',
+  FAILED: 'failed'
+};
+
+// Ensure download directory exists
+if (!existsSync(DOWNLOAD_DIR)) {
+  mkdirSync(DOWNLOAD_DIR, { recursive: true });
+}
+
+// Define type for the order item processed by this script
+type OrderItemWithDetails = Prisma.OrderItemGetPayload<{
+  include: {
+    order: {
+      select: {
+        id: true;
+        shipstation_order_number: true;
+        marketplace: true;
+      }
+    };
+    product: {
+      select: {
+        id: true;
+        name: true;
+        sku: true;
+      }
+    };
+    customizationFiles: true;
+  }
+}>;
+
+/**
+ * Download and process Amazon customization files
+ * 
+ * @param prisma Prisma client instance
+ * @param options Sync options
+ * @returns Sync result
+ */
+export async function syncCustomizationFiles(
+  prisma: PrismaClient,
+  options: WorkflowOptions
+): Promise<SyncResult> {
+  const result: SyncResult = {
+    success: 0,
+    failed: 0,
+    skipped: 0
+  };
+
+  try {
+    info('Starting Amazon customization sync', options);
+
+    // Find order items with customization URLs that need processing
+    const orderItems = await findOrderItemsToProcess(prisma, options);
+
+    if (orderItems.length === 0) {
+      info('No Amazon order items with customization URLs found for processing.');
+      return result;
+    }
+
+    info(`Found ${orderItems.length} Amazon order items with customization URLs to process.`);
+
+    // Process each order item
+    for (const item of orderItems) {
+      try {
+        const processResult = await processOrderItem(prisma, item, options);
+        if (processResult.success) {
+          result.success++;
+        } else {
+          result.failed++;
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        error('Error processing order item', {
+          error: errorMessage,
+          orderId: item.orderId,
+          itemId: item.id
+        });
+        result.failed++;
+      }
+    }
+
+    info(`Completed processing ${orderItems.length} items.`, {
+      success: result.success,
+      failed: result.failed,
+      skipped: result.skipped
+    });
+
+    return result;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    error('Error in Amazon customization sync', { error: errorMessage });
+    throw err;
+  }
+}
+
+/**
+ * Find order items with customization URLs that need processing
+ * 
+ * @param prisma Prisma client instance
+ * @param options Sync options
+ * @returns Array of order items
+ */
+async function findOrderItemsToProcess(
+  prisma: PrismaClient,
+  options: WorkflowOptions
+): Promise<OrderItemWithDetails[]> {
+  const where: Prisma.OrderItemWhereInput = {
+    order: {
+      marketplace: {
+        contains: 'Amazon',
+      },
+      // Only process orders that are awaiting shipment
+      order_status: 'awaiting_shipment',
+    },
+  };
+
+  // Add specific order ID filter if provided
+  if (options.orderId) {
+    where.orderId = options.orderId;
+  }
+
+  // Add date filter based on options
+  if (options.daysBack || options.hours) {
+    const date = new Date();
+    if (options.daysBack) {
+      date.setDate(date.getDate() - options.daysBack);
+    }
+    if (options.hours) {
+      date.setHours(date.getHours() - options.hours);
+    }
+    where.order.createdAt = {
+      gte: date
+    };
+  }
+
+  // Handle retry logic
+  if (options.retryFailed) {
+    // Include items with failed customization files that haven't exceeded max retries
+    where.OR = [
+      {
+        // Items without any customization file records
+        customizationFiles: {
+          none: {}
+        }
+      },
+      {
+        // Items with failed customization files that haven't exceeded max retries
+        customizationFiles: {
+          some: {
+            downloadStatus: STATUSES.FAILED,
+            retryCount: {
+              lt: options.maxRetries || 3
+            }
+          }
+        }
+      }
+    ];
+  } else if (options.orderId) {
+    // For specific order ID, don't filter by customization files
+    // This allows us to process items even if they already have customization files
+    debug('Processing specific order/item, not filtering by customization files');
+  } else {
+    // Only include items that don't have customization files yet
+    where.customizationFiles = {
+      none: {}
+    };
+  }
+
+  // Fetch order items
+  const items = await prisma.orderItem.findMany({
+    where,
+    include: {
+      order: {
+        select: {
+          id: true,
+          shipstation_order_number: true,
+          marketplace: true,
+        }
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+        }
+      },
+      customizationFiles: true,
+    },
+    take: options.limit || undefined,
+  });
+
+  debug(`Found ${items.length} Amazon order items before filtering for CustomizedURL`);
+
+  // Filter items to only include those with CustomizedURL in print_settings
+  const filteredItems = items.filter(item => {
+    // Check if print_settings is an array with objects containing name/value pairs
+    if (Array.isArray(item.print_settings)) {
+      // Add type check for each setting in the array
+      return item.print_settings.some(setting =>
+        setting && typeof setting === 'object' && 'name' in setting && setting.name === 'CustomizedURL' && 'value' in setting && !!setting.value
+      );
+    }
+
+    // Check if print_settings is an object with a CustomizedURL property
+    if (item.print_settings && typeof item.print_settings === 'object') {
+      return !!item.print_settings.CustomizedURL;
+    }
+
+    return false;
+  });
+
+  debug(`Filtered to ${filteredItems.length} items with CustomizedURL`);
+
+  return filteredItems;
+}
+
+/**
+ * Process a single order item
+ * 
+ * @param prisma Prisma client instance
+ * @param item Order item to process
+ * @param options Sync options
+ * @returns Processing result
+ */
+async function processOrderItem(
+  prisma: PrismaClient,
+  item: OrderItemWithDetails,
+  options: WorkflowOptions
+): Promise<{ success: boolean; error?: string }> {
+  const orderId = item.orderId;
+  const itemId = item.id;
+  const orderNumber = item.order.shipstation_order_number;
+
+  info(`Processing order item ${itemId} from order ${orderNumber} (ID: ${orderId})`);
+
+  // Extract customization URL from print_settings
+  let customizationUrl: string | undefined;
+
+  // Handle different print_settings formats
+  if (Array.isArray(item.print_settings)) {
+    // Format: [{name: 'CustomizedURL', value: 'https://...'}]
+    // Add type check for each setting when finding
+    const urlSetting = item.print_settings.find(setting =>
+        setting && typeof setting === 'object' && 'name' in setting && setting.name === 'CustomizedURL'
+    );
+    // Check if urlSetting is found and has a 'value' property
+    if (urlSetting && typeof urlSetting === 'object' && 'value' in urlSetting && typeof urlSetting.value === 'string') {
+      customizationUrl = urlSetting.value;
+    }
+  } else if (item.print_settings && typeof item.print_settings === 'object') {
+    // Format: {CustomizedURL: 'https://...'}
+    // Check if print_settings is an object and has the CustomizedURL property
+    if ('CustomizedURL' in item.print_settings && typeof item.print_settings.CustomizedURL === 'string') {
+        customizationUrl = item.print_settings.CustomizedURL;
+    }
+  }
+
+  debug(`Order item ${itemId} - CustomizedURL:`, customizationUrl);
+
+  if (!customizationUrl) {
+    warning(`No CustomizedURL found for order item ${itemId}`, {
+      orderId,
+      itemId,
+      printSettings: item.print_settings
+    });
+    return { success: false, error: 'No CustomizedURL found' };
+  }
+
+  // Create a record in the database for tracking
+  let customizationFile = await findOrCreateCustomizationFile(prisma, itemId, customizationUrl, options);
+
+  try {
+    // Download and process the customization file
+    const customizationData = await fetchAndProcessAmazonCustomization(customizationUrl);
+
+    if (!customizationData) {
+      throw new Error('Failed to process customization data');
+    }
+
+    // Generate a unique filename
+    const filename = `${orderNumber}_${itemId}_${Date.now()}.json`;
+    const filePath = path.join(DOWNLOAD_DIR, filename);
+
+    // Save the raw JSON data to a file
+    if (!options.dryRun) {
+      await fs.writeFile(filePath, JSON.stringify(customizationData, null, 2));
+    }
+
+    // Update the customization file record
+    if (!options.dryRun) {
+      // Ensure customizationFile exists and has a valid ID before updating
+      if (customizationFile && customizationFile.id !== 0) {
+        customizationFile = await prisma.amazonCustomizationFile.update({
+          where: { id: customizationFile.id },
+          data: {
+            downloadStatus: STATUSES.DOWNLOADED,
+            processingStatus: STATUSES.PROCESSED,
+            localFilePath: filePath,
+            customText: customizationData.customText,
+            color1: customizationData.color1,
+            color2: customizationData.color2,
+            rawJsonData: JSON.stringify(customizationData),
+            lastProcessedAt: new Date(),
+          }
+        });
+      } else {
+        warning(`Skipping database update for item ${itemId} due to invalid customizationFile object (likely dry run or creation failed).`, { orderId, itemId });
+      }
+    }
+
+    info(`Successfully processed customization for order item ${itemId}`, {
+      orderId,
+      itemId,
+      customizationData
+    });
+
+    return { success: true };
+
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+
+    // Update the customization file record with error, ensuring it exists and has a valid ID
+    if (!options.dryRun) {
+      if (customizationFile && customizationFile.id !== 0) {
+        await prisma.amazonCustomizationFile.update({
+          where: { id: customizationFile.id },
+          data: {
+            downloadStatus: STATUSES.FAILED,
+            processingStatus: STATUSES.FAILED,
+            errorMessage: errorMessage,
+            retryCount: { increment: 1 },
+            lastProcessedAt: new Date(),
+          }
+        });
+      } else {
+        warning(`Skipping database error update for item ${itemId} due to invalid customizationFile object.`, { orderId, itemId, error: errorMessage });
+      }
+    }
+
+    error(`Failed to process customization for order item ${itemId}`, {
+      orderId,
+      itemId,
+      error: errorMessage,
+      url: customizationUrl
+    });
+
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * Find or create a customization file record
+ * 
+ * @param prisma Prisma client instance
+ * @param orderItemId Order item ID
+ * @param url Customization URL
+ * @param options Sync options
+ * @returns Customization file record
+ */
+async function findOrCreateCustomizationFile(
+  prisma: PrismaClient,
+  orderItemId: number,
+  url: string,
+  options: WorkflowOptions
+) {
+  // Check if a record already exists
+  let customizationFile = await prisma.amazonCustomizationFile.findFirst({
+    where: {
+      orderItemId,
+      originalUrl: url
+    }
+  });
+
+  // If no record exists, create one
+  if (!customizationFile && !options.dryRun) {
+    customizationFile = await prisma.amazonCustomizationFile.create({
+      data: {
+        orderItemId,
+        originalUrl: url,
+        downloadStatus: STATUSES.PENDING,
+        processingStatus: STATUSES.PENDING,
+      }
+    });
+  } else if (!customizationFile && options.dryRun) {
+    // For dry run, create a mock record
+    customizationFile = {
+      id: 0,
+      orderItemId,
+      originalUrl: url,
+      localFilePath: null,
+      downloadStatus: STATUSES.PENDING,
+      processingStatus: STATUSES.PENDING,
+      customText: null,
+      color1: null,
+      color2: null,
+      rawJsonData: null,
+      errorMessage: null,
+      retryCount: 0,
+      lastProcessedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  return customizationFile;
+}

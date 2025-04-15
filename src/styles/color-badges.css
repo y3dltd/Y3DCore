@@ -1,0 +1,195 @@
+/* Color-specific styles for the print queue */
+
+/* Light Blue */
+.color-light-blue {
+  background-color: #3b82f6 !important; /* bg-blue-500 */
+  color: white !important;
+}
+
+/* Magenta */
+.color-magenta {
+  background-color: #a21caf !important; /* bg-fuchsia-700 */
+  color: white !important;
+}
+
+/* White */
+.color-white {
+  background-color: white !important;
+  color: black !important;
+  border: 2px solid #9ca3af !important; /* border-gray-400 */
+}
+
+/* Cold White */
+.color-cold-white {
+  background-color: #f8fafc !important; /* bg-slate-50 */
+  color: black !important;
+  border: 2px solid #9ca3af !important; /* border-gray-400 */
+}
+
+/* Peak Green */
+.color-peak-green {
+  background-color: #10b981 !important; /* bg-green-500 */
+  color: white !important;
+}
+
+/* Dark Blue */
+.color-dark-blue {
+  background-color: #1e40af !important; /* bg-blue-800 */
+  color: white !important;
+}
+
+/* Black */
+.color-black {
+  background-color: black !important;
+  color: white !important;
+}
+
+/* Blue */
+.color-blue {
+  background-color: #2563eb !important; /* bg-blue-600 */
+  color: white !important;
+}
+
+/* Green */
+.color-green {
+  background-color: #10b981 !important; /* bg-green-500 */
+  color: white !important;
+}
+
+/* Red */
+.color-red {
+  background-color: #ef4444 !important; /* bg-red-500 */
+  color: white !important;
+}
+
+/* Yellow */
+.color-yellow {
+  background-color: #eab308 !important; /* bg-yellow-500 */
+  color: black !important;
+}
+
+/* Purple */
+.color-purple {
+  background-color: #8b5cf6 !important; /* bg-purple-500 */
+  color: white !important;
+}
+
+/* Pink */
+.color-pink {
+  background-color: #ec4899 !important; /* bg-pink-500 */
+  color: white !important;
+}
+
+/* Orange */
+.color-orange {
+  background-color: #f97316 !important; /* bg-orange-500 */
+  color: white !important;
+}
+
+/* Brown */
+.color-brown {
+  background-color: #92400e !important; /* bg-amber-800 */
+  color: white !important;
+}
+
+/* Grey */
+.color-grey, .color-gray {
+  background-color: #6b7280 !important; /* bg-gray-500 */
+  color: white !important;
+}
+
+/* Silver */
+.color-silver {
+  background-color: #d1d5db !important; /* bg-gray-300 */
+  color: black !important;
+}
+
+/* Gold */
+.color-gold {
+  background-color: #f59e0b !important; /* bg-amber-500 */
+  color: black !important;
+}
+
+/* Fire Engine Red */
+.color-fire-engine-red {
+  background-color: #dc2626 !important; /* bg-red-600 */
+  color: white !important;
+}
+
+/* Rose Gold */
+.color-rose-gold {
+  background-color: #f9a8d4 !important; /* bg-pink-300 */
+  color: black !important;
+}
+
+/* Matt Orange */
+.color-matt-orange {
+  background-color: #ea580c !important; /* bg-orange-600 */
+  color: white !important;
+}
+
+/* Silk Orange */
+.color-silk-orange {
+  background-color: #fb923c !important; /* bg-orange-400 */
+  color: black !important;
+}
+
+/* Silk Silver */
+.color-silk-silver {
+  background-color: #e5e7eb !important; /* bg-gray-200 */
+  color: black !important;
+}
+
+/* Skin */
+.color-skin {
+  background-color: #fed7aa !important; /* bg-orange-200 */
+  color: black !important;
+}
+
+/* Olive Green */
+.color-olive-green {
+  background-color: #15803d !important; /* bg-green-700 */
+  color: white !important;
+}
+
+/* Pine Green */
+.color-pine-green {
+  background-color: #166534 !important; /* bg-green-800 */
+  color: white !important;
+}
+
+/* Matt Pink */
+.color-matt-pink {
+  background-color: #ec4899 !important; /* bg-pink-500 */
+  color: white !important;
+}
+
+/* Silk Pink */
+.color-silk-pink {
+  background-color: #f9a8d4 !important; /* bg-pink-300 */
+  color: black !important;
+}
+
+/* Glow in the Dark */
+.color-glow-in-the-dark {
+  background-color: #a3e635 !important; /* bg-lime-300 */
+  color: black !important;
+}
+
+/* Bronze */
+.color-bronze {
+  background-color: #b45309 !important; /* bg-amber-700 */
+  color: white !important;
+}
+
+/* Beige */
+.color-beige {
+  background-color: #fef3c7 !important; /* bg-amber-100 */
+  color: black !important;
+}
+
+/* Turquoise */
+.color-turquoise {
+  background-color: #2dd4bf !important; /* bg-teal-400 */
+  color: black !important;
+}
