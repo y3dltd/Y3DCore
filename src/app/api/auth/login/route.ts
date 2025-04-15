@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, getSession } from '@/lib/auth';
+import { verifyPassword } from '@/lib/server-only/auth-password';
+import { getSession } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {

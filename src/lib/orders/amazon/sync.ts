@@ -83,7 +83,7 @@ export async function syncCustomizationFiles(options: AmazonSyncOptions): Promis
     };
 
     try {
-        logger.info('[Amazon Sync] Starting Amazon customization sync process', options);
+        logger.info('[Amazon Sync] Starting Amazon customization sync process', { ...options });
 
         // Find order items with customization URLs that need processing
         logger.info('[Amazon Sync] Finding order items with customization URLs...');

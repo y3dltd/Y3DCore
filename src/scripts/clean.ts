@@ -50,7 +50,7 @@ async function main() {
     } else {
       logger.warn(`Cleanup completed with ${result.errors.length} errors`);
       if (options.verbose) {
-        logger.error('Errors:', result.errors);
+        logger.error('Errors:', { errors: result.errors });
       }
     }
 

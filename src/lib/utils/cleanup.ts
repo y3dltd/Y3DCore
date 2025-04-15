@@ -157,7 +157,7 @@ export async function cleanup(options: CleanupOptions = {}): Promise<CleanupResu
   if (verbose || dryRun) {
     logger.info(`Found ${files.length} items to remove`);
     if (files.length > 0 && verbose) {
-      logger.info('Items to remove:', files);
+      logger.info('Items to remove:', { files });
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { hashPassword, getCurrentUser } from '@/lib/auth';
+import { hashPassword } from '@/lib/server-only/auth-password';
+import { getCurrentUser } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { z } from 'zod';
 
