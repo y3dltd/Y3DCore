@@ -129,15 +129,16 @@ async function main(args: ArgvType) {
     };
 
     switch (
-      args.mode // Use args parameter
+    args.mode // Use args parameter
     ) {
       case "all":
         logger.info("[Script] Starting full order sync...");
-        // Call syncAllPaginatedOrders correctly, passing undefined for defaultStartDate if forceStartDate is used
+        // Call syncAllPaginatedOrders correctly, passing options object
         syncResult = await syncAllPaginatedOrders(
-          args.forceStartDate,
-          undefined,
-          syncOptions
+          {
+            dryRun: syncOptions.dryRun,
+            overrideStartDate: args.forceStartDate
+          }
         );
         break;
 
@@ -169,8 +170,11 @@ async function main(args: ArgvType) {
           throw new Error("Order ID is required for single order sync mode");
         }
         logger.info(`[Script] Syncing single order: ${args.orderId}...`);
-        // Pass options to syncSingleOrder
-        syncResult = await syncSingleOrder(args.orderId, syncOptions);
+        // Pass options to syncSingleOrder and convert orderId to number
+        syncResult = await syncSingleOrder(
+          parseInt(args.orderId, 10),
+          syncOptions
+        );
         break;
 
       // 'tags' mode is handled above

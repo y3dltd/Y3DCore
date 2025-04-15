@@ -65,21 +65,21 @@ async function getDistinctShippingMethodsForTasks(): Promise<string[]> {
   }
 }
 
-// Define interface for the expected searchParams structure
-interface PrintQueueSearchParams {
-  page?: string | string[];
-  limit?: string | string[];
-  status?: string | string[];
-  needsReview?: string | string[];
-  query?: string | string[];
-  shipByDateStart?: string | string[];
-  shipByDateEnd?: string | string[];
-  productName?: string | string[];
-  shippingMethod?: string | string[];
+// --- Add Interface for Search Params ---
+interface PrintQueuePageSearchParams {
+  page?: string;
+  limit?: string;
+  status?: string;
+  needsReview?: string;
+  query?: string;
+  shipByDateStart?: string;
+  shipByDateEnd?: string;
+  color1?: string;
+  color2?: string;
+  productName?: string;
+  shippingMethod?: string;
 }
-
-// Interface for validated/parsed filters - NO LONGER NEEDED INSIDE getPrintTasks
-// interface PrintTaskFiltersValidated { /* ... */ }
+// --- End Interface ---
 
 // --- Refactored getPrintTasks ---
 // Accepts validated, individual parameters
@@ -303,7 +303,8 @@ async function getPrintTasks({
 export default async function PrintQueuePage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  // Use the specific interface here
+  searchParams?: PrintQueuePageSearchParams;
 }) {
   const now = new Date(); // Get current time on the server
   const formattedNow = now.toLocaleTimeString(); // Format the string on the server
@@ -325,54 +326,29 @@ export default async function PrintQueuePage({
     const queryParamRaw = resolvedSearchParams.query;
     const shipByDateStartParamRaw = resolvedSearchParams.shipByDateStart;
     const shipByDateEndParamRaw = resolvedSearchParams.shipByDateEnd;
+    // Get color filter params
+    const color1ParamRaw = resolvedSearchParams.color1;
+    const color2ParamRaw = resolvedSearchParams.color2;
+    // Get product name filter param
+    const productNameParamRaw = resolvedSearchParams.productName;
+    // Get shipping method filter param
+    const shippingMethodParamRaw = resolvedSearchParams.shippingMethod;
 
     console.log("[PrintQueuePage] Accessed raw params from resolved object");
 
     // --- Validation ---
-    // Get single string value (handle potential arrays)
-    const pageParam = Array.isArray(pageParamRaw)
-      ? pageParamRaw[0]
-      : pageParamRaw;
-    const limitParam = Array.isArray(limitParamRaw)
-      ? limitParamRaw[0]
-      : limitParamRaw;
-    const statusParam = Array.isArray(statusParamRaw)
-      ? statusParamRaw[0]
-      : statusParamRaw;
-    const needsReviewParam = Array.isArray(needsReviewParamRaw)
-      ? needsReviewParamRaw[0]
-      : needsReviewParamRaw;
-    const queryParam = Array.isArray(queryParamRaw)
-      ? queryParamRaw[0]
-      : queryParamRaw;
-    const shipByDateStartParam = Array.isArray(shipByDateStartParamRaw)
-      ? shipByDateStartParamRaw[0]
-      : shipByDateStartParamRaw;
-    const shipByDateEndParam = Array.isArray(shipByDateEndParamRaw)
-      ? shipByDateEndParamRaw[0]
-      : shipByDateEndParamRaw;
-
-    // Get color filter params
-    const color1ParamRaw = searchParams?.color1;
-    const color2ParamRaw = searchParams?.color2;
-    const color1Param = Array.isArray(color1ParamRaw)
-      ? color1ParamRaw[0]
-      : color1ParamRaw;
-    const color2Param = Array.isArray(color2ParamRaw)
-      ? color2ParamRaw[0]
-      : color2ParamRaw;
-
-    // Get product name filter param
-    const productNameParamRaw = searchParams?.productName;
-    const productNameParam = Array.isArray(productNameParamRaw)
-      ? productNameParamRaw[0]
-      : productNameParamRaw;
-
-    // Get shipping method filter param
-    const shippingMethodParamRaw = searchParams?.shippingMethod;
-    const shippingMethodParam = Array.isArray(shippingMethodParamRaw)
-      ? shippingMethodParamRaw[0]
-      : shippingMethodParamRaw;
+    // No need to check for array type now, as the interface enforces string
+    const pageParam = pageParamRaw;
+    const limitParam = limitParamRaw;
+    const statusParam = statusParamRaw;
+    const needsReviewParam = needsReviewParamRaw;
+    const queryParam = queryParamRaw;
+    const shipByDateStartParam = shipByDateStartParamRaw;
+    const shipByDateEndParam = shipByDateEndParamRaw;
+    const color1Param = color1ParamRaw;
+    const color2Param = color2ParamRaw;
+    const productNameParam = productNameParamRaw;
+    const shippingMethodParam = shippingMethodParamRaw;
 
     // Validate and set defaults
     const page = parseInt(pageParam || "1", 10);
@@ -478,7 +454,7 @@ export default async function PrintQueuePage({
 
           {/* --- Filters component --- */}
           <PrintQueueFilters
-            currentFilters={resolvedSearchParams as PrintQueueSearchParams}
+            currentFilters={resolvedSearchParams as PrintQueuePageSearchParams}
             availableProductNames={availableProductNames} // Pass fetched names
             availableShippingMethods={availableShippingMethods} // Pass fetched shipping methods
           />

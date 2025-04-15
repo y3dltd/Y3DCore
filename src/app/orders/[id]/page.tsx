@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { MoreDetailsCard } from '@/components/orders/more-details-card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tag, OrderItem, Product, PrintOrderTask, Prisma } from '@prisma/client';
+import { Tag, Prisma, Customer, OrderItem, Product, PrintOrderTask } from '@prisma/client';
 import {
   formatCarrierCode,
   formatServiceCode,
@@ -22,76 +22,147 @@ import {
   formatCountryCode
 } from '@/lib/formatting';
 
-// Use the formatDateTime function from date-utils.ts instead of this local function
-function formatDate(date: Date | string | null | undefined): string {
-  return formatDateTime(date);
-}
+// --- Define Serializable Types --- START
 
-// Define getColorDisplay for showing colors in the order view
-const getColorDisplay = (colorName: string | null | undefined): JSX.Element => {
-  if (!colorName) return <span className="text-muted-foreground">-</span>;
-
-  // Convert to lowercase and create CSS class name
-  const colorClass = `color-${colorName.toLowerCase().replace(/\s+/g, '-')}`;
-
-  return (
-    <div className="flex items-center gap-1">
-      <span
-        className={cn(
-          "px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center",
-          colorClass,
-          colorName.toLowerCase() === 'white' ? "border-2 border-gray-400" : "border border-gray-700"
-        )}
-        title={colorName}
-      >
-        {colorName}
-      </span>
-    </div>
-  );
-};
-
-// Type for the raw data returned by Prisma
+// Base type from Prisma payload
 type OrderDataFromPrisma = Prisma.OrderGetPayload<{
   include: {
-    customer: true,
+    customer: true;
     items: {
       include: {
-        product: true,
-        printTasks: true
-      }
-    }
-  }
+        product: true;
+        printTasks: true;
+      };
+    };
+  };
 }>;
 
-// Type reflecting the data structure AFTER serialization (Decimals become strings, Dates become strings)
-// We need to map the original type recursively
-type SerializableValue<T> = T extends Date
-  ? string
-  : T extends Prisma.Decimal
-  ? string
-  : T extends Buffer | ArrayBuffer | SharedArrayBuffer
-  ? string
-  : T extends object | null
-  ? SerializableObject<T>
-  : T;
+// Interface for the serialized Product
+interface SerializableProductForDetails extends Omit<Product, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
+  weight: string | null;
+  item_weight_value: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
-type SerializableObject<T> = T extends Array<infer U>
-  ? Array<SerializableObject<U>>
-  : T extends Map<unknown, infer V>
-  ? Record<string, SerializableObject<V>>
-  : T extends Set<infer U>
-  ? Array<SerializableObject<U>>
-  : { [K in keyof T]: SerializableValue<T[K]> };
+// Interface for the serialized OrderItem
+interface SerializableOrderItemForDetails extends Omit<OrderItem, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
+  unit_price: string;
+  created_at: string;
+  updated_at: string | null;
+  product: SerializableProductForDetails | null; // Product can be null
+  printTasks: Array<Omit<PrintOrderTask, 'created_at' | 'updated_at' | 'ship_by_date'> & {
+    created_at: string;
+    updated_at: string | null;
+    ship_by_date: string | null;
+  }>;
+}
 
-// The final type for the order data passed to the component
-type SerializableOrderDetailsData = SerializableObject<OrderDataFromPrisma>;
+// Interface for the serialized Customer
+interface SerializableCustomerForDetails extends Omit<Customer, 'created_at' | 'updated_at'> {
+  created_at: string;
+  updated_at: string | null;
+}
 
+
+// Explicitly define the serializable version of the main Order data
+interface SerializableOrderDetailsData extends Omit<OrderDataFromPrisma,
+  | 'shipping_price' | 'tax_amount' | 'discount_amount' | 'shipping_amount_paid'
+  | 'shipping_tax' | 'total_price' | 'amount_paid' | 'order_weight_value'
+  | 'dimensions_height' | 'dimensions_length' | 'dimensions_width' | 'insurance_insured_value'
+  | 'order_date' | 'created_at' | 'updated_at' | 'payment_date' | 'ship_by_date'
+  | 'shipped_date' | 'last_sync_date' | 'void_date'
+  | 'items' | 'customer' // Omit relations that will be replaced
+> {
+  // Re-define Decimal fields as string | null
+  shipping_price: string | null;
+  tax_amount: string | null;
+  discount_amount: string | null;
+  shipping_amount_paid: string | null;
+  shipping_tax: string | null;
+  total_price: string; // Not nullable in schema, ensure it's string
+  amount_paid: string | null;
+  order_weight_value: string | null;
+  dimensions_height: string | null;
+  dimensions_length: string | null;
+  dimensions_width: string | null;
+  insurance_insured_value: string | null;
+  // Re-define Date fields as string | null
+  order_date: string | null;
+  created_at: string; // Not nullable
+  updated_at: string | null;
+  payment_date: string | null;
+  ship_by_date: string | null;
+  shipped_date: string | null;
+  last_sync_date: string | null;
+  void_date: string | null;
+  // Re-define relations with their serializable types
+  items: SerializableOrderItemForDetails[];
+  customer: SerializableCustomerForDetails | null; // Customer can be null
+  tag_ids: Prisma.JsonValue;
+}
+
+// --- Define Serializable Types --- END
+
+// --- Explicit Serialization Helper ---
+function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDetailsData {
+  return {
+    ...order,
+    shipping_price: order.shipping_price?.toString() ?? null,
+    tax_amount: order.tax_amount?.toString() ?? null,
+    discount_amount: order.discount_amount?.toString() ?? null,
+    shipping_amount_paid: order.shipping_amount_paid?.toString() ?? null,
+    shipping_tax: order.shipping_tax?.toString() ?? null,
+    total_price: order.total_price.toString(),
+    amount_paid: order.amount_paid?.toString() ?? null,
+    order_weight_value: order.order_weight_value?.toString() ?? null,
+    dimensions_height: order.dimensions_height?.toString() ?? null,
+    dimensions_length: order.dimensions_length?.toString() ?? null,
+    dimensions_width: order.dimensions_width?.toString() ?? null,
+    insurance_insured_value: order.insurance_insured_value?.toString() ?? null,
+    order_date: order.order_date?.toISOString() ?? null,
+    created_at: order.created_at.toISOString(),
+    updated_at: order.updated_at?.toISOString() ?? null,
+    payment_date: order.payment_date?.toISOString() ?? null,
+    ship_by_date: order.ship_by_date?.toISOString() ?? null,
+    shipped_date: order.shipped_date?.toISOString() ?? null,
+    last_sync_date: order.last_sync_date?.toISOString() ?? null,
+    void_date: order.void_date?.toISOString() ?? null,
+    items: order.items.map(item => ({
+      ...item,
+      unit_price: item.unit_price.toString(),
+      created_at: item.created_at.toISOString(),
+      updated_at: item.updated_at?.toISOString() ?? null,
+      product: item.product ? {
+        ...item.product,
+        weight: item.product.weight?.toString() ?? null,
+        item_weight_value: item.product.item_weight_value?.toString() ?? null,
+        createdAt: item.product.createdAt.toISOString(),
+        updatedAt: item.product.updatedAt.toISOString(),
+      } : null,
+      printTasks: item.printTasks.map(task => ({
+        ...task,
+        ship_by_date: task.ship_by_date?.toISOString() ?? null,
+        created_at: task.created_at.toISOString(),
+        updated_at: task.updated_at?.toISOString() ?? null,
+      })),
+    })),
+    customer: order.customer ? {
+      ...order.customer,
+      created_at: order.customer.created_at.toISOString(),
+      updated_at: order.customer.updated_at?.toISOString() ?? null,
+    } : null,
+    tag_ids: order.tag_ids,
+  };
+}
+// --- End Serialization Helper ---
+
+// Use the explicit SerializableOrderDetailsData type for the return value
 async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDetailsData; allTags: Tag[] }> {
-  // Fetch the order and all tags in parallel
-  const [order, allTags] = await Promise.all([
+  const [orderData, allTags] = await Promise.all([
     prisma.order.findUnique({
       where: { id },
-      select: { // Use select to explicitly include fields and relations
+      select: {
         id: true,
         shipstation_order_id: true,
         shipstation_order_number: true,
@@ -102,7 +173,7 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
         payment_date: true,
         ship_by_date: true,
         order_status: true,
-        internal_status: true, // Explicitly select internal_status
+        internal_status: true,
         customer_notes: true,
         internal_notes: true,
         gift: true,
@@ -115,12 +186,12 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
         tracking_number: true,
         shipped_date: true,
         shipstation_store_id: true,
-        customer_name: true, // Fallback if customer relation isn't loaded
+        customer_name: true,
         amount_paid: true,
         tax_amount: true,
         shipping_amount_paid: true,
         discount_amount: true,
-        total_price: true, // Assuming total_price is calculated or stored
+        total_price: true,
         order_weight_value: true,
         order_weight_units: true,
         dimensions_units: true,
@@ -141,7 +212,8 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
         gift_email: true,
         notes: true,
         shipping_tax: true,
-        // Include relations
+        customerId: true,
+        marketplace_notified: true,
         customer: true,
         items: {
           orderBy: { id: 'asc' },
@@ -157,38 +229,72 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
     prisma.tag.findMany()
   ]);
 
-  if (!order) {
+  if (!orderData) {
     notFound();
   }
 
-  // Serialize using JSON methods
-  const serializedOrderTemp = JSON.parse(JSON.stringify(order, (key, value) => {
-    if (typeof value === 'object' && value !== null && value.constructor && value.constructor.name === 'Decimal') {
-      return value.toString();
-    }
-    return value;
-  }));
-
-  // Add internal_status explicitly if it exists on the original order object
-  // This ensures it survives serialization even if JSON.stringify skips it somehow
-  const serializedOrder: SerializableOrderDetailsData = serializedOrderTemp // Now directly use the result
-
-  // Explicitly ensure Decimals that might be missed are strings (optional safety net)
-  // This part might not be strictly necessary if JSON.stringify handles Decimals adequately
-  serializedOrder.total_price = order.total_price.toString();
-  // ... add other top-level Decimal fields if needed ...
-  serializedOrder.items = serializedOrder.items.map(item => ({
-    ...item,
-    unit_price: item.unit_price, // Should be string from JSON parse
-    product: {
-      ...item.product,
-      weight: item.product?.weight?.toString() ?? null,
-      item_weight_value: item.product?.item_weight_value?.toString() ?? null,
-    }
-  }));
-
+  const serializedOrder = serializeOrderDetails(orderData);
   return { order: serializedOrder, allTags };
 }
+
+// +++ Add Color Map and Helper +++
+const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
+  black: { bg: "bg-black", textColor: "text-white" },
+  grey: { bg: "bg-gray-400", textColor: "text-white" },
+  gray: { bg: "bg-gray-400", textColor: "text-white" },
+  "light blue": { bg: "bg-blue-400", textColor: "text-white" },
+  blue: { bg: "bg-blue-500", textColor: "text-white" },
+  "dark blue": { bg: "bg-blue-900", textColor: "text-white" },
+  brown: { bg: "bg-yellow-800", textColor: "text-white" },
+  orange: { bg: "bg-orange-500", textColor: "text-white" },
+  "matt orange": { bg: "bg-orange-600", textColor: "text-white" },
+  "silk orange": { bg: "bg-orange-400", textColor: "text-black" },
+  red: { bg: "bg-red-600", textColor: "text-white" },
+  "fire engine red": { bg: "bg-red-700", textColor: "text-white" },
+  "rose gold": { bg: "bg-pink-300", textColor: "text-black" },
+  magenta: { bg: "bg-fuchsia-700", textColor: "text-white" },
+  white: { bg: "bg-white", textColor: "text-black" },
+  "cold white": { bg: "bg-slate-50 border border-gray-300", textColor: "text-black" },
+  yellow: { bg: "bg-yellow-400", textColor: "text-black" },
+  silver: { bg: "bg-gray-300", textColor: "text-black" },
+  "silk silver": { bg: "bg-gray-200", textColor: "text-black" },
+  purple: { bg: "bg-purple-500", textColor: "text-white" },
+  pink: { bg: "bg-pink-400", textColor: "text-white" },
+  "matt pink": { bg: "bg-pink-500", textColor: "text-white" },
+  "silk pink": { bg: "bg-pink-300", textColor: "text-black" },
+  gold: { bg: "bg-yellow-500", textColor: "text-black" },
+  skin: { bg: "bg-orange-200", textColor: "text-black" },
+  "peak green": { bg: "bg-green-400", textColor: "text-white" },
+  green: { bg: "bg-green-500", textColor: "text-white" },
+  "olive green": { bg: "bg-green-700", textColor: "text-white" },
+  "pine green": { bg: "bg-green-800", textColor: "text-white" },
+  "glow in the dark": { bg: "bg-lime-300", textColor: "text-black" },
+  bronze: { bg: "bg-amber-700", textColor: "text-white" },
+  beige: { bg: "bg-amber-100", textColor: "text-black" },
+  turquoise: { bg: "bg-teal-400", textColor: "text-black" },
+};
+
+const getColorInfo = (
+  colorName: string | null | undefined
+): { bgClass: string; textClass: string } => {
+  const defaultColor = { bgClass: "bg-gray-200", textClass: "text-black" };
+  if (!colorName)
+    return { bgClass: "bg-transparent", textClass: "text-foreground" };
+  const lowerColorName = colorName.toLowerCase();
+  if (lowerColorName.includes("peak green")) return { bgClass: colorMapInternal["peak green"].bg, textClass: colorMapInternal["peak green"].textColor };
+  if (lowerColorName.includes("light blue")) return { bgClass: colorMapInternal["light blue"].bg, textClass: colorMapInternal["light blue"].textColor };
+  if (lowerColorName.includes("dark grey") || lowerColorName.includes("dark gray")) return { bgClass: "bg-gray-600", textClass: "text-white" };
+  if (lowerColorName.includes("magenta")) return { bgClass: colorMapInternal.magenta.bg, textClass: colorMapInternal.magenta.textColor };
+  if (lowerColorName.includes("white")) return { bgClass: colorMapInternal.white.bg, textClass: colorMapInternal.white.textColor };
+  const exactMatch = colorMapInternal[lowerColorName];
+  if (exactMatch) return { bgClass: exactMatch.bg, textClass: exactMatch.textColor };
+  const entries = Object.entries(colorMapInternal).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, value] of entries) {
+    if (lowerColorName.includes(key)) return { bgClass: value.bg, textClass: value.textColor };
+  }
+  return defaultColor;
+};
+// +++ End Color Map and Helper +++
 
 interface OrderDetailPageProps {
   params: { id: string };
@@ -218,18 +324,41 @@ function getStatusClass(status: string | null | undefined, type: 'order' | 'inte
   return map[key] || map.default;
 }
 
+// Add type for PrintTask relation within the serialized data
+interface SerializedPrintTask {
+  id: number;
+  orderId: number;
+  marketplace_order_number: string | null;
+  customerId: number | null;
+  custom_text: string | null;
+  quantity: number;
+  color_1: string | null;
+  color_2: string | null;
+  ship_by_date: string | null;
+  status: string; // Assuming PrintTaskStatus enum is string
+  needs_review: boolean;
+  review_reason: string | null;
+  created_at: string;
+  updated_at: string | null;
+  orderItemId: number;
+  taskIndex: number;
+  productId: number;
+  shorthandProductName: string | null;
+}
+
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const id = parseInt(params.id, 10);
 
   if (isNaN(id)) {
-    notFound(); // Invalid ID format
+    notFound();
   }
 
   const { order, allTags } = await getOrderDetails(id);
   const tagIds = (Array.isArray(order.tag_ids) ? order.tag_ids : []) as number[];
   const tagMap = new Map(allTags.map(tag => [tag.shipstation_tag_id, tag]));
 
-  const totalItems = order.items.reduce((sum: number, item: SerializableObject<OrderItem>) => sum + item.quantity, 0);
+  // Use explicit type for item in reduce
+  const totalItems = order.items.reduce((sum: number, item: SerializableOrderItemForDetails) => sum + item.quantity, 0);
 
   return (
     <div>
@@ -285,7 +414,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           <div className="flex items-center gap-4">
             {/* Use dynamic status badge */}
             <Badge className={cn("text-sm font-semibold px-3 py-1", getStatusClass(order.order_status, 'order'))}>
-              {order.order_status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) ?? 'N/A'}
+              {order.order_status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) ?? 'N/A'}
             </Badge>
             <Link href="/orders">
               <Button variant="outline" className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
@@ -325,8 +454,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </Badge>
               </p>
               <p><strong>Total Items:</strong> {totalItems}</p>
-              <p><strong>Order Date:</strong> {formatDate(order.order_date)}</p>
-              <p><strong>Ship By Date:</strong> {formatDate(order.ship_by_date)}</p>
+              <p><strong>Order Date:</strong> {order.order_date ? formatDateTime(new Date(order.order_date)) : 'N/A'}</p>
+              <p><strong>Ship By Date:</strong> {order.ship_by_date ? formatDateTime(new Date(order.ship_by_date)) : 'N/A'}</p>
             </CardContent>
             <CardFooter className="text-sm">
               <div className="flex flex-col space-y-1 w-full">
@@ -468,7 +597,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </div>
                 <div>
                   <dt className="font-medium">Shipped Date:</dt>
-                  <dd>{formatDate(order.shipped_date)}</dd>
+                  <dd>{order.shipped_date ? formatDateTime(new Date(order.shipped_date)) : 'N/A'}</dd>
                 </div>
                 <div className="md:col-span-2">
                   <dt className="font-medium">Tracking #:</dt>
@@ -490,7 +619,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </div>
                 <div>
                   <dt className="font-medium">Void Date:</dt>
-                  <dd>{formatDate(order.void_date)}</dd>
+                  <dd>{order.void_date ? formatDateTime(new Date(order.void_date)) : 'N/A'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium">Marketplace Notified:</dt>
@@ -518,7 +647,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               {order.items.length > 0 ? (
-                order.items.map((item: SerializableObject<OrderItem & { product: Product | null, printTasks: PrintOrderTask[] }>) => (
+                // Use explicit type for item in map
+                order.items.map((item: SerializableOrderItemForDetails) => (
                   <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-md bg-muted/30">
                     {/* Item Image */}
                     <div className="flex-shrink-0 w-20 h-20 bg-muted rounded-md overflow-hidden relative border">
@@ -543,22 +673,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                       <p className="text-muted-foreground">SKU: {item.product?.sku || 'N/A'}</p>
                       <p className="text-muted-foreground">Price per unit: {CURRENCY_SYMBOL}{Number(item.unit_price).toFixed(2)}</p>
                       <p className="text-muted-foreground">Weight: {item.product?.weight ? `${item.product.weight} units` : 'N/A'}</p>
-                      {/* Display customization URL if found in options */}
-                      {/* TODO: Improve parsing of options for URL */}
-                      {(() => {
-                        try {
-                          const options = item.print_settings as Array<{ name: string; value: string }>; // Assuming structure
-                          const urlOption = options?.find(opt => opt.name?.toLowerCase().includes('url') || opt.value?.startsWith('http'));
-                          if (urlOption) {
-                            return (
-                              <p className="text-muted-foreground truncate">
-                                Customized URL: <a href={urlOption.value} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{urlOption.value}</a>
-                              </p>
-                            );
-                          }
-                        } catch /* istanbul ignore next */ {/* Ignore parsing errors - remove unused 'e' */ }
-                        return null;
-                      })()}
                     </div>
 
                     {/* Print Task Personalization Details */}
@@ -577,7 +691,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {item.printTasks.map((task: SerializableObject<PrintOrderTask>) => (
+                            {/* Use explicit type for task in map */}
+                            {item.printTasks.map((task: SerializedPrintTask) => (
                               <TableRow key={task.id} className="text-xs">
                                 <TableCell className="px-2 py-1">{task.id}</TableCell>
                                 <TableCell className="px-2 py-1"><Badge variant="secondary" className="text-xs px-1 py-0">{task.status}</Badge></TableCell>
@@ -590,10 +705,52 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                                 </TableCell>
                                 <TableCell className="font-mono max-w-[15ch] truncate px-2 py-1" title={task.custom_text ?? ''}>{task.custom_text ?? '-'}</TableCell>
                                 <TableCell className="px-2 py-1">
-                                  {getColorDisplay(task.color_1)}
+                                  {task.color_1 ? (
+                                    (() => {
+                                      const { bgClass, textClass } = getColorInfo(task.color_1);
+                                      return (
+                                        <div className="flex items-center gap-1">
+                                          <span
+                                            className={cn(
+                                              "px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center",
+                                              bgClass,
+                                              textClass,
+                                              task.color_1.toLowerCase() === 'white' ? "border-2 border-gray-400" : "border border-gray-700"
+                                            )}
+                                            title={task.color_1}
+                                          >
+                                            {task.color_1}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="px-2 py-1">
-                                  {getColorDisplay(task.color_2)}
+                                  {task.color_2 ? (
+                                    (() => {
+                                      const { bgClass, textClass } = getColorInfo(task.color_2);
+                                      return (
+                                        <div className="flex items-center gap-1">
+                                          <span
+                                            className={cn(
+                                              "px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center",
+                                              bgClass,
+                                              textClass,
+                                              task.color_2.toLowerCase() === 'white' ? "border-2 border-gray-400" : "border border-gray-700"
+                                            )}
+                                            title={task.color_2}
+                                          >
+                                            {task.color_2}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             ))}

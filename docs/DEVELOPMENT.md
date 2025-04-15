@@ -122,3 +122,57 @@ try {
 2. Add a header comment explaining the purpose and usage
 3. Implement proper error handling and database disconnection
 4. Update the `scripts/README.md` file if necessary
+
+## Timezone Handling (From docs/timezone-handling.md)
+
+This section explains how timezones are handled in the Y3DHub application, particularly for ShipStation integration.
+
+### Overview
+
+- **ShipStation** operates in **Pacific Time** (America/Los_Angeles), which is UTC-8 during standard time and UTC-7 during daylight saving time.
+- Our **database** stores all timestamps in **UTC**.
+- Our **UI** displays timestamps in **UTC** with a timezone indicator.
+
+### Implementation Details
+
+#### 1. Storing ShipStation Timestamps
+
+When we receive timestamps from ShipStation, we convert them from Pacific Time to UTC before storing them in the database using the `convertShipStationDateToUTC` function in `src/lib/orders/mappers.ts` (which utilizes `date-fns-tz`).
+
+#### 2. Displaying Timestamps
+
+When displaying timestamps in the UI, we use the utility functions from `src/lib/shared/date-utils.ts` (e.g., `formatDateWithTimezone`) to format them consistently in UTC with a timezone indicator.
+
+#### 3. Relative Time Formatting
+
+For relative time formatting (e.g., \"2 hours ago\"), we use the `formatRelativeTime` function from `src/lib/shared/date-utils.ts`, which also ensures UTC context.
+
+### Libraries Used
+
+- **date-fns**: For basic date formatting and calculations
+- **date-fns-tz**: For timezone-aware date formatting and conversions
+
+### Migration
+
+A migration script (`scripts/migrate-timestamps.ts`) was previously used to update existing timestamps in the database from PST to UTC.
+
+### Best Practices
+
+1. **Always use the utility functions** from `src/lib/shared/date-utils.ts` for date formatting and display.
+2. **Never manually manipulate dates** without considering timezone implications.
+3. **Always include UTC timezone indicators** in the UI to avoid confusion.
+4. **Document any timezone-specific logic** in comments.
+
+### Common Issues
+
+1. **Browser timezone differences**: The browser may display dates in the local timezone. Always use the utility functions to ensure consistent UTC display.
+2. **Daylight saving time**: Pacific Time switches between PST and PDT. The `date-fns-tz` library handles this.
+3. **Manual date manipulation**: Avoid manually adding/subtracting hours.
+
+### Testing
+
+When testing timezone-related functionality:
+
+1. Test with dates during both standard time and daylight saving time.
+2. Test with browsers set to different timezones.
+3. Verify that dates are displayed consistently as UTC across the application.

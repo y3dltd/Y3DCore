@@ -1,6 +1,6 @@
 import { logger } from "../shared/logging"; // Import logger
 // --- Imports ---
-import { Prisma, Customer, Product, PrismaClient } from "@prisma/client";
+import { Prisma, Customer, Product } from "@prisma/client";
 import { prisma } from "../shared/database"; // Use relative path
 import {
   shipstationApi, // Ensure this is exported from shared
@@ -12,13 +12,14 @@ import {
   type ShipStationOrdersResponse, // Ensure this is exported from shared
 } from "../shared/shipstation"; // Use relative path
 import { recordMetric } from "../shared/metrics"; // Import the recordMetric helper
+// import type { MetricsCollector } from "../shared/metrics"; // Import MetricsCollector type - removed unused import
 import {
   createSyncProgress,
   updateSyncProgress,
   markSyncCompleted,
-  incrementProcessedOrders, // Used in dry run block
-  incrementFailedOrders, // Used in error handling
-  updateLastProcessedOrder, // Used in syncAllPaginatedOrders and syncSingleOrder
+  incrementProcessedOrders,
+  incrementFailedOrders,
+  // updateLastProcessedOrder, // removed unused import
 } from "../shipstation/sync-progress"; // Import progress functions
 import {
   mapAddressToCustomerFields,
@@ -252,8 +253,8 @@ export const upsertProductFromItem = async (
         ) {
           logger.warn(
             `[Product Sync Conflict] SKU '${trimmedSku}' exists (DB ID: ${existingBySku.id}) but with different ShipStation Product ID. ` +
-              `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
-              `Attempting to update with incoming ID.`
+            `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
+            `Attempting to update with incoming ID.`
           );
         }
 
@@ -285,8 +286,8 @@ export const upsertProductFromItem = async (
           ) {
             logger.warn(
               `[Product Sync Conflict] Update failed for SKU '${trimmedSku}' (ID: ${existingBySku.id}). ` +
-                `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
-                `Keeping existing product record without updating SS_ID.`
+              `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
+              `Keeping existing product record without updating SS_ID.`
             );
             return existingBySku; // Return existing even on conflict during update attempt
           } else {
@@ -455,9 +456,6 @@ async function upsertOrderWithItems(
       // Do not return here, attempt to process the order itself
     }
 
-    // Prepare Order Data (map after customer upsert)
-    const orderMappedData = mapOrderToPrisma(orderData, dbCustomer?.id); // Pass customer ID if available
-
     if (options?.dryRun) {
       logger.info(
         `[Dry Run] Would upsert order ${orderData.orderNumber} and its items.`
@@ -484,23 +482,56 @@ async function upsertOrderWithItems(
       // Use Prisma transaction with explicit type for tx
       const transactionResult = await prisma.$transaction(
         async (tx: Prisma.TransactionClient) => {
-          // Upsert Order first
-          const orderDataForDb = { ...orderMappedData }; // Create a mutable copy
+          // Ensure the Order exists first within the transaction
+          // Use shipstation_order_id as the unique identifier
+          const ssOrderIdValue = orderData.orderId?.toString(); // Use the correct field 'orderId' from ShipStationOrder
 
-          // Remove properties not directly part of Order model or handled via relations
-          delete orderDataForDb.items;
-          delete orderDataForDb.printTasks;
+          if (!ssOrderIdValue) {
+            // Cannot reliably upsert without the shipstation_order_id value
+            logger.error(
+              `[Sync][Order ${orderData.orderNumber}] Missing orderId from ShipStation data. Cannot process order.`
+            );
+            throw new Error(`Order ${orderData.orderNumber} is missing orderId`);
+          }
 
+          const orderWhereUniqueInput: Prisma.OrderWhereUniqueInput = {
+            shipstation_order_id: ssOrderIdValue, // Use the value for the where clause
+          };
 
-            const lineItemKey = ssItem.lineItemKey;
+          const orderPayload: Prisma.OrderCreateInput | Prisma.OrderUpdateInput = {
+            ...mapOrderToPrisma(orderData, dbCustomer?.id), // Use mapped data
+            // Ensure updatedAt is set on update
+            updated_at: new Date(),
+          };
+
+          // Perform the Order upsert
+          const upsertedOrder = await tx.order.upsert({
+            where: orderWhereUniqueInput,
+            create: {
+              ...(orderPayload as Prisma.OrderCreateInput),
+              // Explicitly set required fields for create if not in mapOrderToPrisma
+              // e.g., order_status: orderPayload.order_status || 'awaiting_shipment',
+              // e.g., total_price: orderPayload.total_price || 0,
+              // e.g., created_at: new Date(),
+              updated_at: new Date(), // Ensure updated_at is set on create too
+            },
+            update: orderPayload as Prisma.OrderUpdateInput,
+          });
+          dbOrderId = upsertedOrder.id; // Assign the ID from the upserted order
+
+          let currentItemsProcessed = 0;
+          let currentItemsFailed = 0;
+
+          for (const ssItem of orderData.items) {
+            const lineItemKey = ssItem.lineItemKey || '';
 
             try {
-              // Pass metricsCollector directly
+              // Pass options directly
               const dbProduct = await upsertProductFromItem(
                 tx,
                 ssItem,
                 options
-              ); // Removed metricsCollector argument
+              );
               if (!dbProduct) {
                 const errorMsg = `Product could not be upserted. SKU: ${ssItem.sku}, Name: ${ssItem.name}`;
                 logger.warn(
@@ -521,24 +552,47 @@ async function upsertOrderWithItems(
               const { productId: _ignoredProductId, ...dataForUpsert } =
                 orderItemMappedData;
 
-              // Use Upsert for the OrderItem
-              await tx.orderItem.upsert({
-                where: { shipstationLineItemKey: lineItemKey },
-                create: {
-                  ...dataForUpsert,
-                  shipstationLineItemKey: lineItemKey,
-                  order: { connect: { id: dbOrderId } }, // Use dbOrderId here
-                  product: { connect: { id: dbProduct.id } },
-                  created_at: new Date(),
-                  updated_at: new Date(),
-                },
-                update: {
-                  ...dataForUpsert,
-                  orderId: dbOrderId, // Use dbOrderId here
-                  productId: dbProduct.id,
-                  updated_at: new Date(),
-                },
-              });
+              // Get the key from ShipStation item
+              const ssLineItemKey = ssItem.lineItemKey;
+
+              if (ssLineItemKey) {
+                // Key exists, proceed with upsert using the key
+                await tx.orderItem.upsert({
+                  where: { shipstationLineItemKey: ssLineItemKey },
+                  create: {
+                    ...dataForUpsert,
+                    shipstationLineItemKey: ssLineItemKey, // Use the actual key
+                    order: { connect: { id: dbOrderId } }, // Use dbOrderId here
+                    product: { connect: { id: dbProduct.id } },
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  },
+                  update: {
+                    ...dataForUpsert, // Update data
+                    // Do not try to update connect fields like orderId/productId in update block
+                    updated_at: new Date(),
+                  },
+                });
+              } else {
+                // Key is missing, cannot upsert based on it. We MUST create.
+                // This assumes the item doesn't exist yet. If the sync runs again on the
+                // same order where items are missing keys, this could create duplicates.
+                // A more robust solution might involve composite keys if needed later.
+                logger.warn(
+                  `[Sync][Order ${orderData.orderNumber}][Item SKU ${ssItem.sku || 'N/A'}] Missing shipstationLineItemKey. Creating new OrderItem. Potential duplicate if re-syncing.`
+                );
+                await tx.orderItem.create({
+                  data: {
+                    ...dataForUpsert,
+                    shipstationLineItemKey: null, // Explicitly set to null
+                    order: { connect: { id: dbOrderId } }, // Use dbOrderId here
+                    product: { connect: { id: dbProduct.id } },
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                  },
+                });
+              }
+
               currentItemsProcessed++;
             } catch (itemError: unknown) {
               // Changed any to unknown
@@ -591,15 +645,21 @@ async function upsertOrderWithItems(
       } catch {
         /* ignore progress update errors */
       }
+
+      // Record metrics
+      recordMetric({
+        name: "order_processed",
+        value: 1,
+        tags: {
+          orderNumber: orderData.orderNumber.toString(),
+          success: "true",
+          itemsProcessed: itemsProcessed.toString(),
+          itemsFailed: itemsFailed.toString()
+        }
+      });
     }
 
-    // Use orderNumber string for metrics
-    metricsCollector?.recordOrderProcessed(
-      orderData.orderNumber.toString(),
-      true,
-      itemsProcessed,
-      itemsFailed
-    );
+    return { success, itemsProcessed, itemsFailed, errors };
   } catch (error: unknown) {
     // Changed any to unknown
     logger.error(`[Sync] Error processing order ${orderData.orderNumber}:`, {
@@ -626,24 +686,27 @@ async function upsertOrderWithItems(
       /* ignore progress update errors */
     }
 
-    // Use orderNumber string for metrics on failure
-    metricsCollector?.recordOrderProcessed(
-      orderData.orderNumber.toString(),
-      false,
-      itemsProcessed,
-      itemsFailed
-    );
-  } // <<< Added closing brace for main try...catch
+    // Record metrics on failure
+    recordMetric({
+      name: "order_processed",
+      value: 1,
+      tags: {
+        orderNumber: orderData.orderNumber.toString(),
+        success: "false",
+        itemsProcessed: itemsProcessed.toString(),
+        itemsFailed: itemsFailed.toString()
+      }
+    });
 
-  return { success, itemsProcessed, itemsFailed, errors };
-} // <<< Added closing brace for the function
+    return { success, itemsProcessed, itemsFailed, errors };
+  }
+}
 
 /**
  * Fetches orders from ShipStation API with retry logic.
  */
 async function getShipstationOrders(
   params: ShipStationApiParams,
-  metrics: MetricsCollector | null,
   retries = MAX_RETRIES
 ): Promise<ShipStationOrdersResponse> {
   recordMetric({
@@ -683,13 +746,13 @@ async function getShipstationOrders(
           `[API Call] Rate limit hit. Waiting ${waitTime / 1000}s before retrying...`
         );
         await new Promise((resolve) => setTimeout(resolve, waitTime));
-        return getShipstationOrders(params, metrics, retries - 1);
+        return getShipstationOrders(params, retries - 1);
       } else if (status && status >= 500 && retries > 0) {
         logger.warn(
           `[API Call] Server error (${status}). Waiting ${DELAY_MS / 1000}s before retrying...`
         );
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        return getShipstationOrders(params, metrics, retries - 1);
+        return getShipstationOrders(params, retries - 1);
       }
     }
     logger.error(
@@ -718,7 +781,9 @@ export async function syncAllPaginatedOrders(
 }> {
   // progressId is string
   const progressId = await createSyncProgress("full");
-  // Metrics are handled via the imported recordMetric helper function
+  // Metrics tracking
+  let ordersProcessed = 0;
+  let ordersFailed = 0;
 
   let page = 1;
   let totalPages = 1;
@@ -761,8 +826,7 @@ export async function syncAllPaginatedOrders(
             modifyDateStart: dateStartFilter,
             sortBy: "modifyDate",
             sortDir: "ASC",
-          },
-          metrics
+          }
         );
 
         const { orders, pages, total } = response;
@@ -780,18 +844,16 @@ export async function syncAllPaginatedOrders(
           for (const orderData of orders) {
             const result = await upsertOrderWithItems(
               orderData,
-              prisma, // Pass prisma client
-              // Removed metrics argument from upsertOrderWithItems call
               progressId, // Pass progressId (string)
               options // Pass options
             );
-            // Accumulate results from upsertOrderWithItems
-            // Note: upsertOrderWithItems increments progress/metrics internally
-            if (!result.success) {
-              overallSuccess = false; // Mark overall sync as failed if any order fails
+
+            // Accumulate results
+            if (result.success) {
+              ordersProcessed++;
             } else {
-              // Assuming upsertOrderWithItems correctly increments processed count via progressId
-              // We might need a way to get the *actual* count if needed here, but metrics summary is better
+              ordersFailed++;
+              overallSuccess = false; // Mark overall sync as failed if any order fails
             }
           } // End order loop
 
@@ -831,20 +893,16 @@ export async function syncAllPaginatedOrders(
       }
     } // End while loop
 
-    // Use metrics summary for final counts
-    // Metrics summary logic removed
-
     if (overallSuccess) {
       logger.info(
-        `[Full Sync] ShipStation full order sync completed successfully. Orders processed: ${finalMetrics.totalOrdersProcessed}, Orders failed: ${finalMetrics.totalOrdersFailed}`
+        `[Full Sync] ShipStation full order sync completed successfully. Orders processed: ${ordersProcessed}, Orders failed: ${ordersFailed}`
       );
     } else {
       logger.warn(
-        `[Full Sync] ShipStation full order sync completed with errors. Orders processed: ${finalMetrics.totalOrdersProcessed}, Orders failed: ${finalMetrics.totalOrdersFailed}`
+        `[Full Sync] ShipStation full order sync completed with errors. Orders processed: ${ordersProcessed}, Orders failed: ${ordersFailed}`
       );
     }
 
-    // Metrics saving logic removed
     // Mark completion status after the loop finishes or breaks
     await markSyncCompleted(
       progressId,
@@ -852,11 +910,11 @@ export async function syncAllPaginatedOrders(
       overallSuccess ? undefined : "Sync completed with errors"
     );
 
-    // Return final counts from metrics summary
+    // Return final counts
     return {
       success: overallSuccess,
-      ordersProcessed: finalMetrics.totalOrdersProcessed,
-      ordersFailed: finalMetrics.totalOrdersFailed,
+      ordersProcessed,
+      ordersFailed,
     };
   } catch (error: unknown) {
     // Changed any to unknown
@@ -865,31 +923,24 @@ export async function syncAllPaginatedOrders(
       `[Full Sync] Unexpected error in sync setup or loop: ${errorMsg}`,
       { error }
     );
-    const finalMetrics = metrics.getMetricsSummary(); // Get metrics even on error
-    try {
-      await metrics.saveMetrics();
-    } catch (metricsError: unknown) {
-      /* ignore metrics save error */
-      logger.warn("[Full Sync] Failed to save metrics during error handling", {
-        error: metricsError,
-      });
-    }
+
     try {
       // Ensure progressId exists before marking completion
       if (progressId) {
         await markSyncCompleted(progressId, false, errorMsg);
       }
-    } catch (progressError: unknown) {
+    } catch (_progressError: unknown) {
       /* ignore progress mark error */
       logger.warn("[Full Sync] Failed to mark progress during error handling", {
-        error: progressError,
+        error: _progressError,
       });
     }
-    // Return final counts from metrics summary even on error
+
+    // Return final counts even on error
     return {
       success: false,
-      ordersProcessed: finalMetrics.totalOrdersProcessed,
-      ordersFailed: finalMetrics.totalOrdersFailed,
+      ordersProcessed,
+      ordersFailed,
     };
   }
 }
@@ -947,7 +998,6 @@ export async function syncSingleOrder(
   options?: SyncOptions // Added options
 ): Promise<{ success: boolean; error?: string }> {
   const progressId = await createSyncProgress("single");
-  // Metrics are handled via the imported recordMetric helper function
   let overallSuccess = false;
   let errorMsg: string | undefined;
 
@@ -965,7 +1015,7 @@ export async function syncSingleOrder(
 
     // Use getShipstationOrders with orderId filter for consistency and retry logic
     // Pass orderId as number directly to the params object
-    const response = await getShipstationOrders({ orderId: orderId }); // Removed metrics argument
+    const response = await getShipstationOrders({ orderId: orderId });
 
     if (
       !response.orders ||
@@ -986,17 +1036,21 @@ export async function syncSingleOrder(
     // Pass options down
     const result = await upsertOrderWithItems(
       orderData,
-      prisma, // Pass prisma client
-      metrics,
       progressId, // Pass progressId
       options
     );
-    metrics.recordOrderProcessed(
-      orderData.orderNumber, // Use orderNumber
-      result.success,
-      result.itemsProcessed,
-      result.itemsFailed
-    );
+
+    // Record metrics
+    recordMetric({
+      name: "order_processed",
+      value: 1,
+      tags: {
+        orderNumber: orderData.orderNumber.toString(),
+        success: result.success ? "true" : "false",
+        itemsProcessed: result.itemsProcessed.toString(),
+        itemsFailed: result.itemsFailed.toString()
+      }
+    });
 
     if (result.success) {
       logger.info(
@@ -1020,7 +1074,6 @@ export async function syncSingleOrder(
       throw new Error(errorMsg);
     }
 
-    // Metrics saving logic removed
     await markSyncCompleted(progressId, overallSuccess, errorMsg);
     return { success: overallSuccess, error: errorMsg };
   } catch (error: unknown) {
@@ -1031,17 +1084,9 @@ export async function syncSingleOrder(
     errorMsg = error instanceof Error ? error.message : "Unknown error";
     if (progressId) {
       try {
-        await metrics.saveMetrics(); // Attempt to save metrics on error
-      } catch (_metricsError: unknown) {
-        // Prefix unused variable
-        /* ignore */
-      }
-      try {
         await markSyncCompleted(progressId, false, errorMsg);
-      } catch (_progressError: unknown) {
-        // Ensure prefix is correct
-        // Prefix unused variable
-        /* ignore */
+      } catch {
+        /* ignore progress update errors */
       }
     }
     return { success: overallSuccess, error: errorMsg };

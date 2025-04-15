@@ -3,32 +3,34 @@ import type {
   ShipStationAddress,
   ShipStationOrderItem,
   ShipStationOrder,
-  ShipStationTag, // Add missing type
-  ShipStationApiParams, // Add missing type
-  ShipStationOrdersResponse, // Add missing type
+  ShipStationTag,
+  ShipStationApiParams,
+  ShipStationOrdersResponse,
 } from "../shipstation/types"; // Import types
+
+// Import from the correct location
+import { shipstationApi } from "../shipstation/client"; // Import from client.ts
+import { getShipstationOrders, listTags } from "../shipstation/api"; // Import from api.ts
+
+// Import sync functions
 import {
-  createShipStationClient,
-  getOrder,
-  getOrdersByDate,
-  getShipstationOrders,
-  getTags,
-  updateOrder,
-  shipstationApi, // Add missing export
-  listTags, // Add missing export
-} from "../shipstation"; // Use relative path for ShipStation functions
-// Prisma types (OrderCreateInput, OrderUpdateInput) should be imported directly from @/lib/shared/database where needed
+  syncAllPaginatedOrders,
+  syncRecentOrders,
+  syncSingleOrder,
+  syncShipStationTags,
+} from "../orders/sync"; // Import from orders/sync
+import type { SyncOptions } from "../orders/sync"; // Import as type
 
 // Export functions normally
 export {
-  createShipStationClient,
-  getOrder,
-  getOrdersByDate,
+  shipstationApi,
   getShipstationOrders,
-  getTags,
-  updateOrder,
-  shipstationApi, // Add missing export
-  listTags, // Add missing export
+  listTags,
+  // Re-export sync functions
+  syncAllPaginatedOrders,
+  syncRecentOrders,
+  syncSingleOrder,
+  syncShipStationTags,
 };
 
 // Export types using 'export type' due to isolatedModules
@@ -36,9 +38,10 @@ export type {
   ShipStationAddress,
   ShipStationOrderItem,
   ShipStationOrder,
-  ShipStationTag, // Add missing type
-  ShipStationApiParams, // Add missing type
-  ShipStationOrdersResponse, // Add missing type
+  ShipStationTag,
+  ShipStationApiParams,
+  ShipStationOrdersResponse,
+  SyncOptions,
 };
 
 // Add any additional shipstation utilities here

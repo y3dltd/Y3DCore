@@ -62,23 +62,23 @@ import { PrintTaskDetailModal } from "./print-task-detail-modal";
 import Link from "next/link";
 
 // Define a product type suitable for client components (Decimals as strings)
-type SerializableProduct = Omit<
+interface SerializableProduct extends Omit<
   PrismaProduct,
   "weight" | "item_weight_value"
-> & {
+> {
   weight: string | null;
   item_weight_value: string | null;
-};
+}
 
 // Update PrintTaskData to use the serializable product type
-export type PrintTaskData = PrintOrderTask & {
+export interface PrintTaskData extends PrintOrderTask {
   product: SerializableProduct;
   orderLink?: string;
   order?: {
     requested_shipping_service: string | null;
     marketplace?: string | null; // Add marketplace here
   };
-};
+}
 
 // Helper function for single task status update
 async function updateTaskStatus(taskId: number, status: PrintTaskStatus) {

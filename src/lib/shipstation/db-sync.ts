@@ -302,8 +302,8 @@ export const upsertProductFromItem = async (
         ) {
           logger.warn(
             `[Product Sync Conflict] SKU '${trimmedSku}' exists (DB ID: ${existingBySku.id}) but with different ShipStation Product ID. ` +
-              `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
-              `Attempting to update with incoming ID.`
+            `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
+            `Attempting to update with incoming ID.`
           );
         }
 
@@ -323,12 +323,13 @@ export const upsertProductFromItem = async (
           return {
             id: existingBySku.id, // Use existing ID (number)
             // Use simple string/null types from updateData
-            name: updateData.name ?? existingBySku.name, // Fallback to existing name
-            sku: updateData.sku ?? existingBySku.sku, // Fallback to existing sku
+            name: typeof updateData.name === 'string' ? updateData.name : existingBySku.name,
+            sku: typeof updateData.sku === 'string' || updateData.sku === null ? updateData.sku : existingBySku.sku,
             shipstation_product_id:
-              updateData.shipstation_product_id ??
-              existingBySku.shipstation_product_id,
-            imageUrl: updateData.imageUrl ?? existingBySku.imageUrl,
+              typeof updateData.shipstation_product_id === 'string' ? updateData.shipstation_product_id :
+                existingBySku.shipstation_product_id,
+            imageUrl: typeof updateData.imageUrl === 'string' || updateData.imageUrl === null ?
+              updateData.imageUrl : existingBySku.imageUrl,
             createdAt: existingBySku.createdAt, // Keep original creation date
             updatedAt: updateData.updatedAt,
             // Add required fields with null or default values
@@ -359,8 +360,8 @@ export const upsertProductFromItem = async (
             ) {
               logger.warn(
                 `[Product Sync Conflict] Update failed for SKU '${trimmedSku}' (ID: ${existingBySku.id}). ` +
-                  `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
-                  `Keeping existing product record without updating SS_ID.`
+                `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
+                `Keeping existing product record without updating SS_ID.`
               );
               return existingBySku as Product; // Return the original existing product
             } else {
@@ -411,13 +412,14 @@ export const upsertProductFromItem = async (
                 ? updateInput.name
                 : "Unknown Product",
           sku:
-            typeof createInput.sku === "string"
+            typeof createInput.sku === "string" || createInput.sku === null
               ? createInput.sku
-              : typeof updateInput.sku === "string"
+              : typeof updateInput.sku === "string" || updateInput.sku === null
                 ? updateInput.sku
                 : null,
           shipstation_product_id: shipstationProductId,
-          imageUrl: createInput.imageUrl ?? updateInput.imageUrl ?? null,
+          imageUrl: typeof createInput.imageUrl === 'string' || createInput.imageUrl === null ? createInput.imageUrl :
+            typeof updateInput.imageUrl === 'string' || updateInput.imageUrl === null ? updateInput.imageUrl : null,
           createdAt: existingProductById?.createdAt ?? new Date(), // Use existing or new date
           updatedAt: new Date(),
           // Add required fields with null or default values

@@ -10,7 +10,7 @@ import {
 import { logger } from "@/lib/shared/logging";
 
 // Helper function to handle async commands and logging
-async function runCommand(commandName: string, handler: () => Promise<any>) {
+async function runCommand(commandName: string, handler: () => Promise<unknown>) {
   logger.info(`[${commandName}] Starting command...`);
   try {
     await handler();
@@ -22,7 +22,8 @@ async function runCommand(commandName: string, handler: () => Promise<any>) {
   }
 }
 
-yargs(hideBin(process.argv))
+// Create and execute the CLI
+const cli = yargs(hideBin(process.argv))
   .scriptName("order-sync")
   .command(
     "sync",
@@ -132,7 +133,6 @@ yargs(hideBin(process.argv))
             // Pass options to syncSingleOrder - convert orderId to number if needed
             result = await syncSingleOrder(Number(argv.orderId), options);
             break;
-            break;
           default:
             logger.error(`Invalid sync mode: ${argv.mode}`);
             throw new Error(`Invalid sync mode: ${argv.mode}`);
@@ -160,7 +160,7 @@ yargs(hideBin(process.argv))
         .command(
           "sync",
           "Download and process Amazon customization files",
-          () => {},
+          () => { },
           async () => {
             await runCommand("Amazon Sync", async () => {
               logger.warn("Amazon sync command not yet implemented.");
@@ -170,7 +170,7 @@ yargs(hideBin(process.argv))
         .command(
           "update",
           "Update order items and ShipStation with personalization data",
-          () => {},
+          () => { },
           async () => {
             await runCommand("Amazon Update", async () => {
               logger.warn("Amazon update command not yet implemented.");
@@ -180,7 +180,7 @@ yargs(hideBin(process.argv))
         .command(
           "workflow",
           "Run the entire Amazon customization workflow",
-          () => {},
+          () => { },
           async () => {
             await runCommand("Amazon Workflow", async () => {
               logger.warn("Amazon workflow command not yet implemented.");
@@ -190,56 +190,19 @@ yargs(hideBin(process.argv))
         .command(
           "fix",
           "Find and fix orders with missing personalization data",
-          () => {},
+          () => { },
           async () => {
             await runCommand("Amazon Fix", async () => {
               logger.warn("Amazon fix command not yet implemented.");
             });
           }
         )
-        .demandCommand(
-          1,
-          "Please specify an Amazon subcommand (sync, update, workflow, fix)."
-        )
-        .help();
-    },
-    () => {
-      /* This handler is for the top-level 'amazon' command, which shouldn't run directly */
+        .demandCommand();
     }
   )
-  // Placeholder for status command
-  .command(
-    "status",
-    "Show sync status and statistics",
-    () => {},
-    async (argv) => {
-      await runCommand("Status", async () => {
-        logger.warn("Status command not yet implemented.");
-      });
-    }
-  )
-  // Placeholder for metrics command
-  .command(
-    "metrics",
-    "Report on sync performance and issues",
-    () => {},
-    async (argv) => {
-      await runCommand("Metrics", async () => {
-        logger.warn("Metrics command not yet implemented.");
-      });
-    }
-  )
-  .demandCommand(1, "Please provide a valid command.")
-  .strict() // Enforce validation
   .help()
-  .alias("help", "h")
-  .fail((msg, err, yargs) => {
-    // Custom error handling
-    if (err) {
-      logger.error("Command execution failed:", err);
-    } else {
-      logger.error(`Error: ${msg}`);
-      yargs.showHelp(); // Show help message on validation failure
-    }
-    process.exit(1);
-  }).argv;
+  .demandCommand()
+  .strict();
+
+// Execute the command
+cli.parse();

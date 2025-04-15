@@ -46,41 +46,41 @@ async function reprocessAllOrders() {
         created_at: 'desc'
       }
     });
-    
+
     console.log(`Found ${orders.length} orders with "awaiting_shipment" status.`);
-    
+
     // Ask for confirmation
     const confirmed = await askForConfirmation(
       `This will reprocess ${orders.length} orders. Are you sure you want to proceed? (y/n): `
     );
-    
+
     if (!confirmed) {
       console.log('Operation cancelled.');
       return;
     }
-    
+
     // Process orders in batches to avoid overloading the system
     const batchSize = 10;
     const totalBatches = Math.ceil(orders.length / batchSize);
-    
+
     console.log(`Processing orders in ${totalBatches} batches of ${batchSize}...`);
-    
+
     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
       const batchStart = batchIndex * batchSize;
       const batchEnd = Math.min((batchIndex + 1) * batchSize, orders.length);
       const batchOrders = orders.slice(batchStart, batchEnd);
-      
+
       console.log(`\nProcessing batch ${batchIndex + 1}/${totalBatches} (orders ${batchStart + 1}-${batchEnd})...`);
-      
+
       for (const order of batchOrders) {
         console.log(`Processing order ${order.id} (${order.shipstation_order_number})...`);
-        
+
         // Run the populate-print-queue script for this order
-        await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve) => {
           const process = spawn('npm', ['run', 'populate-queue', '--', `--order-id=${order.id}`], {
             stdio: 'inherit'
           });
-          
+
           process.on('close', (code) => {
             if (code === 0) {
               console.log(`Successfully processed order ${order.id}.`);
@@ -90,28 +90,28 @@ async function reprocessAllOrders() {
               resolve(); // Continue with next order even if this one fails
             }
           });
-          
+
           process.on('error', (err) => {
             console.error(`Error processing order ${order.id}:`, err);
             resolve(); // Continue with next order even if this one fails
           });
         });
-        
+
         // Add a small delay between orders to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       console.log(`Completed batch ${batchIndex + 1}/${totalBatches}.`);
-      
+
       // Add a delay between batches to avoid overloading the system
       if (batchIndex < totalBatches - 1) {
         console.log('Waiting 5 seconds before processing next batch...');
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
-    
+
     console.log('\nAll orders have been processed.');
-    
+
   } catch (error) {
     console.error('Error reprocessing orders:', error);
   } finally {
