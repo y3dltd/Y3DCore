@@ -132,3 +132,4 @@ example.*
 *.tar
 *.zip
 .qodo
+amazon-spapi-credentials.md

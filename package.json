@@ -17,6 +17,8 @@
     "cleanup-print-tasks": "tsx scripts/cleanup-print-tasks.ts"
   },
   "dependencies": {
+    "@aws-sdk/credential-provider-node": "^3.787.0",
+    "@aws-sdk/signature-v4": "^3.374.0",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.0",
     "@nextui-org/react": "^2.6.11",

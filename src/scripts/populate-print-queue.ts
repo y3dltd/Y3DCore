@@ -91,7 +91,7 @@ interface OrderDebugInfo {
 
 // Simplified options with OpenAI as primary provider
 interface ProcessingOptions {
-  orderId?: number;
+  orderId?: string; // Changed type to string to accept any identifier
   limit?: number;
   openaiApiKey: string | null;
   openaiModel: string;
@@ -154,31 +154,31 @@ const updateRunLog = async (id: number | null, data: { status: string, message?:
  * Extracts the customization URL from various print_settings formats.
  */
 function extractCustomizationUrl(item: OrderItem): string | null {
-    const printSettings = item.print_settings;
+  const printSettings = item.print_settings;
 
-    if (!printSettings) return null;
+  if (!printSettings) return null;
 
-    // Handle array format: [{name: 'CustomizedURL', value: 'https://...'}]
-    if (Array.isArray(printSettings)) {
-        const urlSetting = printSettings.find(setting =>
-            setting && typeof setting === 'object' && 'name' in setting && setting.name === 'CustomizedURL'
-        );
-        if (urlSetting && typeof urlSetting === 'object' && 'value' in urlSetting && typeof urlSetting.value === 'string') {
-            return urlSetting.value;
-        }
+  // Handle array format: [{name: 'CustomizedURL', value: 'https://...'}]
+  if (Array.isArray(printSettings)) {
+    const urlSetting = printSettings.find(setting =>
+      setting && typeof setting === 'object' && 'name' in setting && setting.name === 'CustomizedURL'
+    );
+    if (urlSetting && typeof urlSetting === 'object' && 'value' in urlSetting && typeof urlSetting.value === 'string') {
+      return urlSetting.value;
     }
-    // Handle object format: {CustomizedURL: 'https://...'}
-    else if (typeof printSettings === 'object') {
-        // Safer access for object format
-        const settingsRecord = printSettings as Record<string, unknown>;
-        if ('CustomizedURL' in settingsRecord && typeof settingsRecord.CustomizedURL === 'string') {
-            return settingsRecord.CustomizedURL;
-        }
+  }
+  // Handle object format: {CustomizedURL: 'https://...'}
+  else if (typeof printSettings === 'object') {
+    // Safer access for object format
+    const settingsRecord = printSettings as Record<string, unknown>;
+    if ('CustomizedURL' in settingsRecord && typeof settingsRecord.CustomizedURL === 'string') {
+      return settingsRecord.CustomizedURL;
     }
+  }
 
-    // Log if URL couldn't be extracted but print_settings exist
-    // logger.debug(`[Amazon Sync] Could not extract CustomizedURL from item ${item.id}`, { printSettings }); // Logger not available here
-    return null;
+  // Log if URL couldn't be extracted but print_settings exist
+  // logger.debug(`[Amazon Sync] Could not extract CustomizedURL from item ${item.id}`, { printSettings }); // Logger not available here
+  return null;
 }
 
 
@@ -463,7 +463,7 @@ async function createOrUpdateTasksInTransaction(
             // --- Update ShipStation Item Options ---
             if (!options.dryRun) {
               // Ensure we have the necessary IDs and data to update ShipStation
-              if (order.shipstation_order_id && item.shipstationLineItemKey && (amazonData.customText || amazonData.color1)) {
+              if (order.shipstation_order_id && item.shipstationLineItemKey && (amazonData.customText || amazonData.color1 || amazonData.color2)) { // Check all potential data points
                 logger.info(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Preparing to update item options. Fetching current order details...`);
                 try {
                   // Fetch the full order details from ShipStation first
@@ -475,38 +475,40 @@ async function createOrUpdateTasksInTransaction(
                     logger.debug({ fetchedSsOrder: ssOrder }, `[ShipStation Update][Order ${order.id}] Fetched ShipStation order details.`);
 
 
-                    // *** Add check for order status ***
-                    if (ssOrder.orderStatus !== 'awaiting_shipment') {
-                      logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Skipping update: Order status is '${ssOrder.orderStatus}', not 'awaiting_shipment'.`);
-                    } else { // Only proceed if status is awaiting_shipment
-                      // Construct the options array from extracted Amazon data
-                      const ssOptions = [];
-                      if (amazonData.customText) {
-                        ssOptions.push({ name: "Personalization", value: amazonData.customText });
-                      }
-                      if (amazonData.color1) {
-                        ssOptions.push({ name: "Color", value: amazonData.color1 });
-                      }
-                      // Add color2 if needed: if (amazonData.color2) { ssOptions.push({ name: "Secondary Color", value: amazonData.color2 }); }
+                    // *** REMOVED check for order status ***
+                    // Construct the options array using consistent names ("Colour 1", "Colour 2", "Name or Text")
+                    const ssOptions = [];
+                    if (amazonData.customText) {
+                      // Use the same name as the AI path for consistency
+                      ssOptions.push({ name: "Name or Text", value: amazonData.customText });
+                    }
+                    if (amazonData.color1) {
+                      // Use the same name as the AI path
+                      ssOptions.push({ name: "Colour 1", value: amazonData.color1 });
+                    }
+                    // Add color2 if it exists, using the consistent name
+                    if (amazonData.color2) {
+                      ssOptions.push({ name: "Colour 2", value: amazonData.color2 });
+                    }
 
-                      if (ssOptions.length > 0) {
-                        // Call update function with minimal payload (3 args)
-                        logger.info(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Calling updateOrderItemOptions...`);
-                        // Pass the required 3 arguments: lineItemKey, options array, and the full fetched order object
-                        const updateSuccess = await updateOrderItemOptions(
-                          item.shipstationLineItemKey, // Ensure this exists and is correct
-                          ssOptions,
-                          ssOrder // Pass the full fetched ShipStation order object
-                        );
-                        if (updateSuccess) {
-                          logger.info(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Successfully updated item options.`);
-                        } else {
-                          logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to update item options via API (updateOrderItemOptions returned false).`);
-                        }
+                    if (ssOptions.length > 0) {
+                      // Call update function with minimal payload (3 args)
+                      logger.info(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Calling updateOrderItemOptions (status check removed)...`); // Updated log
+                      // Pass the required 3 arguments: lineItemKey, options array, and the full fetched order object
+                      const updateSuccess = await updateOrderItemOptions(
+                        item.shipstationLineItemKey, // Ensure this exists and is correct
+                        ssOptions,
+                        ssOrder // Pass the full fetched ShipStation order object
+                      );
+                      if (updateSuccess) {
+                        logger.info(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Successfully updated item options.`);
                       } else {
-                        logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Skipping update: No valid options constructed from Amazon data.`);
+                        logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to update item options via API (updateOrderItemOptions returned false).`);
                       }
-                    } // *** End of else block for order status check ***
+                    } else {
+                      logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Skipping update: No valid options constructed from Amazon data.`);
+                    }
+                    // *** REMOVED closing brace for status check ***
                   } else {
                     logger.error(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to fetch order details from ShipStation.`);
                   }
@@ -518,8 +520,8 @@ async function createOrUpdateTasksInTransaction(
               }
             } else {
               // Log dry run intention
-              if (order.shipstation_order_id && item.shipstationLineItemKey && (amazonData.customText || amazonData.color1)) {
-                 logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${item.id}] Would fetch order and attempt to update item options.`);
+              if (order.shipstation_order_id && item.shipstationLineItemKey && (amazonData.customText || amazonData.color1 || amazonData.color2)) {
+                logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${item.id}] Would fetch order and attempt to update item options.`);
               }
             }
             // --- End ShipStation Item Options Update ---
@@ -549,118 +551,119 @@ async function createOrUpdateTasksInTransaction(
           dataSource = 'Placeholder'; // Mark as placeholder on error
         }
       } else {
-         logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Amazon order item without CustomizedURL. Using AI data.`);
-         // No URL, will proceed to AI fallback naturally
+        logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Amazon order item without CustomizedURL. Using AI data.`);
+        // No URL, will proceed to AI fallback naturally
       }
     }
 
     // 2. eBay Special Case (Only if not already processed by Amazon URL)
     if (dataSource !== 'AmazonURL' && order.marketplace?.toLowerCase().includes('ebay') && order.customer_notes?.includes('Personalisation:')) {
-        // Attempt eBay special case logic (simplified for integration)
-        logger.info(`[Order ${order.id}][Item ${orderItemId}] Attempting eBay special case parsing...`);
-        // ... (Keep the eBay parsing logic from lines 428-543 here) ...
-        // If successful, populate taskDetailsToCreate and set dataSource = 'eBaySpecial'
-        // For brevity, assuming the existing eBay logic populates taskDetailsToCreate correctly if a match is found
-        // Need to adapt the existing logic slightly to push to taskDetailsToCreate instead of directly upserting
-        // --- Start eBay Logic Adaptation ---
-          const customerNotes = order.customer_notes || '';
-          let itemColor = null;
-          if (item.print_settings && typeof item.print_settings === 'object' && Array.isArray(item.print_settings)) {
-            const colorSetting = item.print_settings.find(s => typeof s === 'object' && s !== null && 'name' in s && s.name === 'Color');
-            if (colorSetting && typeof colorSetting === 'object' && 'value' in colorSetting) itemColor = String(colorSetting.value);
-          }
-          if (!itemColor && product?.name) {
-            const colorMatch = product.name.match(/\[(.*?)\]/);
-            if (colorMatch && colorMatch[1]) itemColor = colorMatch[1];
-          }
+      // Attempt eBay special case logic (simplified for integration)
+      logger.info(`[Order ${order.id}][Item ${orderItemId}] Attempting eBay special case parsing...`);
+      // ... (Keep the eBay parsing logic from lines 428-543 here) ...
+      // If successful, populate taskDetailsToCreate and set dataSource = 'eBaySpecial'
+      // For brevity, assuming the existing eBay logic populates taskDetailsToCreate correctly if a match is found
+      // Need to adapt the existing logic slightly to push to taskDetailsToCreate instead of directly upserting
+      // --- Start eBay Logic Adaptation ---
+      const customerNotes = order.customer_notes || '';
+      let itemColor = null;
+      if (item.print_settings && typeof item.print_settings === 'object' && Array.isArray(item.print_settings)) {
+        const colorSetting = item.print_settings.find(s => typeof s === 'object' && s !== null && 'name' in s && s.name === 'Color');
+        if (colorSetting && typeof colorSetting === 'object' && 'value' in colorSetting) itemColor = String(colorSetting.value);
+      }
+      if (!itemColor && product?.name) {
+        const colorMatch = product.name.match(/\[(.*?)\]/);
+        if (colorMatch && colorMatch[1]) itemColor = colorMatch[1];
+      }
 
-          if (itemColor) {
-            const personalizations: { variationId: string; text: string }[] = [];
-            const regex = /Item ID: \d+ Variation: (\d+)[\s\S]*?Text: ([^\n]+)/g;
-            let match;
-            while ((match = regex.exec(customerNotes)) !== null) personalizations.push({ variationId: match[1], text: match[2].trim() });
+      if (itemColor) {
+        const personalizations: { variationId: string; text: string }[] = [];
+        const regex = /Item ID: \d+ Variation: (\d+)[\s\S]*?Text: ([^\n]+)/g;
+        let match;
+        while ((match = regex.exec(customerNotes)) !== null) personalizations.push({ variationId: match[1], text: match[2].trim() });
 
-            const itemIndex = order.items.findIndex(i => i.id === orderItemId);
-            if (itemIndex >= 0 && itemIndex < personalizations.length) {
-              const personalization = personalizations[itemIndex];
-              logger.info(`[Order ${order.id}][Item ${orderItemId}] eBay Special Case: Matched personalization by position.`);
-              taskDetailsToCreate.push({
-                custom_text: personalization.text,
-                color_1: itemColor,
-                color_2: null,
-                quantity: item.quantity,
-                needs_review: false,
-                review_reason: null,
-                status: PrintTaskStatus.pending,
-                annotation: "Data from eBay Customer Notes (Special Case)"
-              });
-              dataSource = 'eBaySpecial';
-            }
-          }
-        // --- End eBay Logic Adaptation ---
+        const itemIndex = order.items.findIndex(i => i.id === orderItemId);
+        if (itemIndex >= 0 && itemIndex < personalizations.length) {
+          const personalization = personalizations[itemIndex];
+          logger.info(`[Order ${order.id}][Item ${orderItemId}] eBay Special Case: Matched personalization by position.`);
+          taskDetailsToCreate.push({
+            custom_text: personalization.text,
+            color_1: itemColor,
+            color_2: null,
+            quantity: item.quantity,
+            needs_review: false,
+            review_reason: null,
+            status: PrintTaskStatus.pending,
+            annotation: "Data from eBay Customer Notes (Special Case)"
+          });
+          dataSource = 'eBaySpecial';
+        }
+      }
+      // --- End eBay Logic Adaptation ---
     }
 
 
     // 3. AI Data Fallback / Primary Source (if not handled by Amazon/eBay)
     if (dataSource === 'AI') {
-        const itemResult = aiData.itemPersonalizations[item.id.toString()];
-        if (!itemResult || itemResult.personalizations.length === 0) {
-            const reason = !itemResult ? "No AI data for item" : "AI returned zero personalizations";
-            logger.warn(`[Order ${order.id}][Item ${orderItemId}] No AI data found. Creating placeholder.`);
-            dataSource = 'Placeholder';
-            finalNeedsReview = true;
-            finalReviewReason = reason.substring(0, 1000);
-            finalCustomText = "Placeholder - Review Needed";
-            finalColor1 = null;
-            finalColor2 = null;
-            finalQuantity = item.quantity;
-            taskDetailsToCreate.push({ custom_text: finalCustomText, color_1: finalColor1, color_2: finalColor2, quantity: finalQuantity, needs_review: finalNeedsReview, review_reason: finalReviewReason, status: PrintTaskStatus.pending, annotation: finalAnnotation });
+      const itemResult = aiData.itemPersonalizations[item.id.toString()];
+      if (!itemResult || itemResult.personalizations.length === 0) {
+        const reason = !itemResult ? "No AI data for item" : "AI returned zero personalizations";
+        logger.warn(`[Order ${order.id}][Item ${orderItemId}] No AI data found. Creating placeholder.`);
+        dataSource = 'Placeholder';
+        finalNeedsReview = true;
+        finalReviewReason = reason.substring(0, 1000);
+        finalCustomText = "Placeholder - Review Needed";
+        finalColor1 = null;
+        finalColor2 = null;
+        finalQuantity = item.quantity;
+        taskDetailsToCreate.push({ custom_text: finalCustomText, color_1: finalColor1, color_2: finalColor2, quantity: finalQuantity, needs_review: finalNeedsReview, review_reason: finalReviewReason, status: PrintTaskStatus.pending, annotation: finalAnnotation });
 
-        } else {
-            logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using AI data.`);
-            let itemRequiresReview = itemResult.overallNeedsReview || false;
-            const itemReviewReasons: string[] = itemResult.overallReviewReason ? [itemResult.overallReviewReason] : [];
-            let totalQuantityFromAI = 0;
-            itemResult.personalizations.forEach(p => totalQuantityFromAI += p.quantity);
-            if (totalQuantityFromAI !== item.quantity) {
-                logger.warn(`[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI Quantity Mismatch!`);
-                itemRequiresReview = true;
-                itemReviewReasons.push(`Qty Mismatch (AI: ${totalQuantityFromAI}, Order: ${item.quantity})`);
-            }
-
-            for (const detail of itemResult.personalizations) {
-                const combinedNeedsReview = itemRequiresReview || detail.needsReview;
-                const detailReason = detail.needsReview ? detail.reviewReason : null;
-                const annotationReason = combinedNeedsReview && detail.annotation ? `Annotation: ${detail.annotation}` : null;
-                const reviewReasonCombined = Array.from(new Set([...itemReviewReasons, ...(detailReason ? [detailReason] : []), ...(annotationReason ? [annotationReason] : [])])).filter(Boolean).join('; ').substring(0, 1000) || null;
-
-                if (detail.annotation) {
-                  logger.info(`[AI Annotation][Order ${order.id}][Item ${orderItemId}]: ${detail.annotation}`);
-                }
-
-                taskDetailsToCreate.push({
-                    custom_text: detail.customText,
-                    color_1: detail.color1,
-                    color_2: detail.color2,
-                    quantity: detail.quantity,
-                    needs_review: combinedNeedsReview,
-                    review_reason: reviewReasonCombined,
-                    status: PrintTaskStatus.pending,
-                    annotation: detail.annotation
-                });
-                if (combinedNeedsReview) itemsNeedReviewCount++;
-            }
-             itemDebugEntry.status = itemRequiresReview ? 'Success (Needs Review)' : 'Success'; // Set status based on AI review flag
+      } else {
+        logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using AI data.`);
+        let itemRequiresReview = itemResult.overallNeedsReview || false;
+        const itemReviewReasons: string[] = itemResult.overallReviewReason ? [itemResult.overallReviewReason] : [];
+        let totalQuantityFromAI = 0;
+        itemResult.personalizations.forEach(p => totalQuantityFromAI += p.quantity);
+        if (totalQuantityFromAI !== item.quantity) {
+          logger.warn(`[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI Quantity Mismatch!`);
+          itemRequiresReview = true;
+          itemReviewReasons.push(`Qty Mismatch (AI: ${totalQuantityFromAI}, Order: ${item.quantity})`);
         }
+
+        // ShipStation update logic moved below, after successful task upsert
+        for (const detail of itemResult.personalizations) {
+          const combinedNeedsReview = itemRequiresReview || detail.needsReview;
+          const detailReason = detail.needsReview ? detail.reviewReason : null;
+          const annotationReason = combinedNeedsReview && detail.annotation ? `Annotation: ${detail.annotation}` : null;
+          const reviewReasonCombined = Array.from(new Set([...itemReviewReasons, ...(detailReason ? [detailReason] : []), ...(annotationReason ? [annotationReason] : [])])).filter(Boolean).join('; ').substring(0, 1000) || null;
+
+          if (detail.annotation) {
+            logger.info(`[AI Annotation][Order ${order.id}][Item ${orderItemId}]: ${detail.annotation}`);
+          }
+
+          taskDetailsToCreate.push({
+            custom_text: detail.customText,
+            color_1: detail.color1,
+            color_2: detail.color2,
+            quantity: detail.quantity,
+            needs_review: combinedNeedsReview,
+            review_reason: reviewReasonCombined,
+            status: PrintTaskStatus.pending,
+            annotation: detail.annotation
+          });
+          if (combinedNeedsReview) itemsNeedReviewCount++;
+        }
+        itemDebugEntry.status = itemRequiresReview ? 'Success (Needs Review)' : 'Success'; // Set status based on AI review flag
+      }
     } else if (dataSource === 'Placeholder' && taskDetailsToCreate.length === 0) {
-        // Ensure placeholder is created if Amazon fetch failed and no AI fallback occurred
-         taskDetailsToCreate.push({ custom_text: "Placeholder - Review Needed", color_1: null, color_2: null, quantity: item.quantity, needs_review: true, review_reason: finalReviewReason ?? "Placeholder due to processing error", status: PrintTaskStatus.pending, annotation: null });
-         itemsNeedReviewCount++;
-         itemDebugEntry.status = 'Placeholder Created';
+      // Ensure placeholder is created if Amazon fetch failed and no AI fallback occurred
+      taskDetailsToCreate.push({ custom_text: "Placeholder - Review Needed", color_1: null, color_2: null, quantity: item.quantity, needs_review: true, review_reason: finalReviewReason ?? "Placeholder due to processing error", status: PrintTaskStatus.pending, annotation: null });
+      itemsNeedReviewCount++;
+      itemDebugEntry.status = 'Placeholder Created';
     } else if (dataSource === 'AmazonURL' || dataSource === 'eBaySpecial') {
-         itemDebugEntry.status = 'Success (' + dataSource + ')';
+      itemDebugEntry.status = 'Success (' + dataSource + ')';
     } else {
-         itemDebugEntry.status = 'Skipped (Unknown Reason)'; // Should not happen ideally
+      itemDebugEntry.status = 'Skipped (Unknown Reason)'; // Should not happen ideally
     }
 
 
@@ -668,58 +671,113 @@ async function createOrUpdateTasksInTransaction(
     itemDebugEntry.createdTaskIds = [];
     let currentTaskIndex = 0;
     for (const taskDetail of taskDetailsToCreate) {
-         const taskData: Prisma.PrintOrderTaskCreateInput = {
-            order: { connect: { id: order.id } },
-            orderItem: { connect: { id: orderItemId } },
-            product: { connect: { id: productId } },
-            taskIndex: currentTaskIndex,
-            shorthandProductName: shorthandName,
-            customer: order.customerId ? { connect: { id: order.customerId } } : undefined,
-            quantity: taskDetail.quantity,
-            custom_text: taskDetail.custom_text,
-            color_1: taskDetail.color_1,
-            color_2: taskDetail.color_2,
-            ship_by_date: order.ship_by_date,
-            needs_review: taskDetail.needs_review,
-            review_reason: taskDetail.review_reason,
-            status: taskDetail.status, // Should be PrintTaskStatus.pending
-            marketplace_order_number: order.shipstation_order_number,
-            annotation: taskDetail.annotation // Add annotation
-        };
+      const taskData: Prisma.PrintOrderTaskCreateInput = {
+        order: { connect: { id: order.id } },
+        orderItem: { connect: { id: orderItemId } },
+        product: { connect: { id: productId } },
+        taskIndex: currentTaskIndex,
+        shorthandProductName: shorthandName,
+        customer: order.customerId ? { connect: { id: order.customerId } } : undefined,
+        quantity: taskDetail.quantity,
+        custom_text: taskDetail.custom_text,
+        color_1: taskDetail.color_1,
+        color_2: taskDetail.color_2,
+        ship_by_date: order.ship_by_date,
+        needs_review: taskDetail.needs_review,
+        review_reason: taskDetail.review_reason,
+        status: taskDetail.status, // Should be PrintTaskStatus.pending
+        marketplace_order_number: order.shipstation_order_number,
+        annotation: taskDetail.annotation // Add annotation
+      };
 
-        if (options.dryRun) {
-            logger.info(`[Dry Run][Order ${order.id}][Item ${orderItemId}] Would upsert task ${currentTaskIndex} from ${dataSource}. Review: ${taskDetail.needs_review}`);
-        } else {
-            try {
-                const upsertData = {
-                    where: { orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex } },
-                    update: {
-                        shorthandProductName: taskData.shorthandProductName, custom_text: taskData.custom_text,
-                        color_1: taskData.color_1, color_2: taskData.color_2, quantity: taskData.quantity,
-                        needs_review: taskData.needs_review,
-                        review_reason: taskData.review_reason,
-                        status: taskData.status, // Use enum
-                        ship_by_date: taskData.ship_by_date, marketplace_order_number: taskData.marketplace_order_number,
-                        annotation: taskData.annotation // Add annotation to update
-                    },
-                    create: taskData
-                };
-                logger.debug(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preparing to UPSERT task from ${dataSource} with data:`, upsertData);
-                const task = await tx.printOrderTask.upsert(upsertData);
-                logger.info(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${dataSource}.`);
-                tasksCreatedCount++;
-                itemDebugEntry.createdTaskIds.push(task.id);
-            } catch (e) {
-                logger.error(`[DB][Order ${order.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${dataSource}:`, e);
-                itemDebugEntry.status = 'Failed'; // Update item status on failure
-                itemDebugEntry.error = e instanceof Error ? e.message : String(e);
-                // Decide whether to throw or just log and continue with next item/order
-                throw e; // Re-throwing will rollback the transaction for the whole order
+      if (options.dryRun) {
+        logger.info(`[Dry Run][Order ${order.id}][Item ${orderItemId}] Would upsert task ${currentTaskIndex} from ${dataSource}. Review: ${taskDetail.needs_review}`);
+      } else {
+        try {
+          const upsertData = {
+            where: { orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex } },
+            update: {
+              shorthandProductName: taskData.shorthandProductName, custom_text: taskData.custom_text,
+              color_1: taskData.color_1, color_2: taskData.color_2, quantity: taskData.quantity,
+              needs_review: taskData.needs_review,
+              review_reason: taskData.review_reason,
+              status: taskData.status, // Use enum
+              ship_by_date: taskData.ship_by_date, marketplace_order_number: taskData.marketplace_order_number,
+              annotation: taskData.annotation // Add annotation to update
+            },
+            create: taskData
+          };
+          logger.debug(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preparing to UPSERT task from ${dataSource} with data:`, upsertData);
+          const task = await tx.printOrderTask.upsert(upsertData);
+          logger.info(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${dataSource}.`);
+
+          // --- BEGIN ShipStation Update (Post Task Upsert) ---
+          // Update Shipstation only if the task came from AI and upsert succeeded
+          if (dataSource === 'AI' && item.shipstationLineItemKey && order.shipstation_order_id) {
+            if (options.dryRun) {
+              logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Would fetch order and attempt to update item options using task data.`);
+            } else {
+              logger.info(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Task upserted, preparing ShipStation update...`);
+              try {
+                // Fetch fresh order data from ShipStation *before* updating
+                const ssOrderResponse = await getShipstationOrders({ orderId: Number(order.shipstation_order_id) });
+                if (ssOrderResponse && ssOrderResponse.orders && ssOrderResponse.orders.length > 0) {
+                  const ssOrder = ssOrderResponse.orders[0];
+                  logger.debug({ fetchedSsOrder: ssOrder }, `[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Fetched ShipStation order details.`);
+
+                  // Construct options from the task data that was just saved
+                  const ssOptions = [];
+                  if (taskDetail.custom_text) {
+                    ssOptions.push({ name: "Name or Text", value: taskDetail.custom_text });
+                  }
+                  if (taskDetail.color_1) {
+                    ssOptions.push({ name: "Colour 1", value: taskDetail.color_1 });
+                  }
+                  if (taskDetail.color_2) {
+                    ssOptions.push({ name: "Colour 2", value: taskDetail.color_2 });
+                  }
+
+                  if (ssOptions.length > 0) {
+                    logger.info(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Calling updateOrderItemOptions...`);
+                    const updateSuccess = await updateOrderItemOptions(
+                      item.shipstationLineItemKey,
+                      ssOptions,
+                      ssOrder // Pass the fetched order object
+                    );
+                    if (updateSuccess) {
+                      logger.info(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Successfully updated item options.`);
+                    } else {
+                      // Log failure but don't throw, allow transaction to commit task data
+                      logger.warn(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Failed to update item options (updateOrderItemOptions returned false). Task data is saved.`);
+                    }
+                  } else {
+                    logger.warn(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Skipping update: No valid options constructed from task data.`);
+                  }
+                } else {
+                  logger.error(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Failed to fetch order details from ShipStation.`);
+                }
+              } catch (fetchOrUpdateError) {
+                // Log failure but don't throw, allow transaction to commit task data
+                logger.error(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Error during ShipStation fetch or update process:`, fetchOrUpdateError);
+              }
             }
+          } else if (dataSource === 'AI' && (!item.shipstationLineItemKey || !order.shipstation_order_id)) {
+            logger.warn(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Skipping update for AI task: Missing shipstationLineItemKey or shipstation_order_id.`);
+          }
+          // --- END ShipStation Update (Post Task Upsert) ---
+          tasksCreatedCount++;
+          itemDebugEntry.createdTaskIds.push(task.id);
+        } catch (e) {
+          logger.error(`[DB][Order ${order.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${dataSource}:`, e);
+          itemDebugEntry.status = 'Failed'; // Update item status on failure
+          itemDebugEntry.error = e instanceof Error ? e.message : String(e);
+          // Decide whether to throw or just log and continue with next item/order
+          throw e; // Re-throwing will rollback the transaction for the whole order
         }
-        currentTaskIndex++;
+      }
+      currentTaskIndex++;
     }
-     logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`);
+    logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`);
 
 
     // --- End Refactored Logic ---
@@ -753,33 +811,62 @@ async function main() {
     logger.info(`--- Script Start: ${new Date().toISOString()} ---`);
     logger.info(`Logging to file: ${logFilePath}`);
 
-    // Argument Parsing
+    // --- REMOVED Manual Arg Parsing for orderId ---
+
+    // Argument Parsing (Commander for others)
     const program = new Command();
     program
       .name(SCRIPT_NAME)
       .description('Fetch orders and create print tasks via AI.')
-      .option('-o, --order-id <id>', 'Process specific order DB ID', (val) => parseInt(val, 10))
+      // Use Commander to parse the order ID directly as a string
+      .option('-o, --order-id <id>', 'Process specific order by DB ID, ShipStation Order Number, or ShipStation Order ID', String)
       .option('-l, --limit <number>', 'Limit orders fetched', (val) => parseInt(val, 10), 10) // Changed default back to 10
       .option('--openai-api-key <key>', 'OpenAI API Key', process.env.OPENAI_API_KEY)
       .option('--openai-model <model>', 'OpenAI model', 'gpt-4o-mini')
-      .option('--debug', 'Enable debug logging') // Boolean flag (presence implies true)
+      .option('--debug', 'Enable debug logging', false) // Boolean flag (presence implies true) - Added default false
       .option('--log-level <level>', 'Set log level', 'info')
-      .option('-f, --force-recreate', 'Delete existing tasks first') // Boolean flag (presence implies true)
+      .option('-f, --force-recreate', 'Delete existing tasks first', false) // Boolean flag (presence implies true) - Added default false
       .option('--create-placeholder', 'Create placeholder on AI fail', true) // Boolean flag (with default true - keep default here)
-      .option('-y, --confirm', 'Skip confirmation prompts') // Boolean flag (presence implies true)
-      .option('--clear-all', 'Delete ALL tasks first (requires confirm)') // Boolean flag (presence implies true)
-      .option('--dry-run', 'Simulate without DB changes') // Boolean flag (presence implies true)
+      .option('-y, --confirm', 'Skip confirmation prompts', false) // Boolean flag (presence implies true) - Added default false
+      .option('--clear-all', 'Delete ALL tasks first (requires confirm)', false) // Boolean flag (presence implies true) - Added default false
+      .option('--dry-run', 'Simulate without DB changes', false) // Boolean flag (presence implies true) - Added default false
       .option('--debug-file <path>', 'Path for detailed debug log file (requires --order-id)')
-      // Slice argv to exclude node executable and script path before parsing
-      .parse(process.argv.slice(2));
-    const cmdOptions = program.opts();
+
+    // Log raw argv before parsing (use info level to ensure visibility regardless of logger level)
+    logger.info({ argv: process.argv }, 'Raw process.argv before commander parse');
+
+    // Direct extraction of --order-id from process.argv (before commander parsing)
+    let directOrderId: string | undefined = undefined;
+    for (let i = 0; i < process.argv.length - 1; i++) {
+      if ((process.argv[i] === '--order-id' || process.argv[i] === '-o') && process.argv[i + 1]) {
+        directOrderId = process.argv[i + 1];
+        logger.info(`Directly extracted --order-id from process.argv: ${directOrderId}`);
+        break;
+      }
+    }
+
+    // Slice argv to exclude node executable and script path before parsing
+    program.parse(process.argv.slice(2));
+
+    // Get options directly from Commander
+    const cmdOptions = program.opts<ProcessingOptions>(); // Use the interface type
+
+    // Use directly extracted order ID if commander didn't find it
+    if (!cmdOptions.orderId && directOrderId) {
+      logger.info(`Order ID not found in parsed args. Using directly extracted value: ${directOrderId}`);
+      cmdOptions.orderId = directOrderId;
+    }
 
     // Set logger level from options (after initialization)
     logger.level = cmdOptions.logLevel;
 
     // Validate OpenAI API key
     if (!cmdOptions.openaiApiKey) throw new Error('OpenAI API key missing.');
-    if (cmdOptions.debugFile && !cmdOptions.orderId) { logger.warn('--debug-file requires --order-id, disabling file debug.'); cmdOptions.debugFile = undefined; }
+    // Validate debug file dependency
+    if (cmdOptions.debugFile && !cmdOptions.orderId) {
+      logger.warn('--debug-file requires --order-id, disabling file debug.');
+      cmdOptions.debugFile = undefined;
+    }
 
     // Load Prompts
     logger.info('Loading prompts...');
@@ -787,39 +874,18 @@ async function main() {
     const userPromptTemplate = await loadPromptFile('src/scripts/prompt-user-template-optimized.txt');
     logger.info('Prompts loaded.');
 
-    // --- Workaround for commander parsing issue ---
-    // Manually check process.argv for flags that commander might misinterpret
-    const manualArgs = process.argv.slice(2); // Get args passed to the script
-    const hasClearAllFlag = manualArgs.includes('--clear-all');
-    const hasConfirmFlag = manualArgs.includes('-y') || manualArgs.includes('--confirm');
-    const hasForceRecreateFlag = manualArgs.includes('-f') || manualArgs.includes('--force-recreate');
-    const hasDebugFlag = manualArgs.includes('--debug');
-    const hasDryRunFlag = manualArgs.includes('--dry-run');
-    // --- End Workaround ---
-
-
-    // Create options object (Using manual checks for problematic flags)
-    const options: ProcessingOptions = {
-      orderId: cmdOptions.orderId, // Keep commander's parsing for options with values
-      limit: cmdOptions.limit,     // Keep commander's parsing for options with values
-      openaiApiKey: cmdOptions.openaiApiKey ?? null, // Keep commander's parsing
-      openaiModel: cmdOptions.openaiModel,         // Keep commander's parsing
+    // Prepare options for AI processing
+    const processingOptionsForAI: Pick<ProcessingOptions, 'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate'> = {
+      openaiApiKey: cmdOptions.openaiApiKey ?? null,
+      openaiModel: cmdOptions.openaiModel,
       systemPrompt,
       userPromptTemplate,
-      // Use manual checks for boolean flags that were problematic
-      debug: hasDebugFlag,
-      logLevel: cmdOptions.logLevel, // Keep commander's parsing
-      debugFile: cmdOptions.debugFile, // Keep commander's parsing
-      forceRecreate: hasForceRecreateFlag,
-      createPlaceholder: cmdOptions.createPlaceholder ?? true, // Keep default true logic
-      confirm: hasConfirmFlag,
-      clearAll: hasClearAllFlag,
-      dryRun: hasDryRunFlag,
     };
-    // Log the manually constructed options
-    logger.info(`Effective Options (manual checks applied): ${JSON.stringify({ ...options, openaiApiKey: '***' })}`);
-    if (options.dryRun) logger.info('--- DRY RUN MODE ---');
-    if (options.debug) logger.debug('Debug mode enabled.');
+
+    // Log the options parsed by commander
+    logger.info(`Commander Parsed Options (opts): ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })}`);
+    if (cmdOptions.dryRun) logger.info('--- DRY RUN MODE ---');
+    if (cmdOptions.debug) logger.debug('Debug mode enabled.');
 
     // Initialize Prisma
     prisma = new PrismaClient();
@@ -830,12 +896,12 @@ async function main() {
     await createRunLog({ scriptName: SCRIPT_NAME });
 
     // Pre-processing: Clear All
-    if (options.clearAll) {
-      if (!options.confirm && !await confirmExecution('CONFIRM: Delete ALL print tasks? This cannot be undone.')) {
+    if (cmdOptions.clearAll) {
+      if (!cmdOptions.confirm && !await confirmExecution('CONFIRM: Delete ALL print tasks? This cannot be undone.')) {
         logger.info('Aborted by user.');
         process.exit(0);
       }
-      if (options.dryRun) {
+      if (cmdOptions.dryRun) {
         logger.info('[Dry Run] Would clear all tasks from PrintOrderTask table.');
       } else {
         logger.info('[DB] Clearing all tasks from PrintOrderTask table...');
@@ -844,19 +910,41 @@ async function main() {
       }
     }
 
+    // Pre-processing: Force Recreate for specific order
+    // Use the orderId directly from cmdOptions (which is now a string)
+    if (cmdOptions.forceRecreate && cmdOptions.orderId && !cmdOptions.dryRun) {
+      // Need to find the order first to get its internal ID for deletion
+      logger.info(`[DB] Force recreate enabled for order identifier '${cmdOptions.orderId}'. Finding order to delete tasks...`);
+      const ordersToDelete = await getOrdersToProcess(prisma, cmdOptions.orderId, 1, true); // Find the order first
+      if (ordersToDelete.length > 0) {
+        const orderDbId = ordersToDelete[0].id;
+        logger.info(`[DB] Found order with DB ID ${orderDbId}. Deleting existing tasks...`);
+        const { count } = await prisma.printOrderTask.deleteMany({
+          where: { orderId: orderDbId } // Delete by the actual database ID
+        });
+        logger.info(`[DB] Deleted ${count} tasks for order DB ID ${orderDbId}.`);
+      } else {
+        logger.warn(`[DB] Force recreate specified, but could not find order with identifier '${cmdOptions.orderId}' to delete tasks for.`);
+      }
+    }
+
     // Find Orders
     logger.info('Finding orders...');
-    const orderIdString = options.orderId ? options.orderId.toString() : undefined;
-    // Pass the forceRecreate flag to getOrdersToProcess
-    const ordersToProcess = await getOrdersToProcess(prisma, orderIdString, options.limit, options.forceRecreate);
+    // Pass the orderId string directly from cmdOptions
+    const ordersToProcess = await getOrdersToProcess(prisma, cmdOptions.orderId, cmdOptions.limit, cmdOptions.forceRecreate);
     logger.info(`Found ${ordersToProcess.length} orders.`);
+    if (ordersToProcess.length > 0) {
+      logger.debug(`First order ID: ${ordersToProcess[0].id}, Order Number: ${ordersToProcess[0].shipstation_order_number}`);
+    } else if (cmdOptions.orderId) {
+      // This log is now handled within getOrdersToProcess
+      // logger.warn(`No order found with identifier: ${cmdOptions.orderId}`);
+    }
 
     // Process Orders
     for (const order of ordersToProcess) {
       totalOrdersProcessed++;
       logger.info(`--- Processing Order ${order.id} (${order.shipstation_order_number}) ---`);
-      // Using OpenAI as the only provider
-      const effectiveModelUsed = options.openaiModel;
+      const effectiveModelUsed = cmdOptions.openaiModel;
 
       const orderDebugInfo: OrderDebugInfo = {
         orderId: order.id, orderNumber: order.shipstation_order_number ?? '', marketplace: order.marketplace,
@@ -868,62 +956,65 @@ async function main() {
       try {
         // AI Call (Order Level) - Still call AI first to get data for non-Amazon or as fallback
         orderDebugInfo.overallStatus = 'Extracting AI Data';
-        await appendToDebugLog(options.debugFile, orderDebugInfo);
-        const extractionResult = await extractOrderPersonalization(order, options);
+        await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
+        const extractionResult = await extractOrderPersonalization(order, processingOptionsForAI);
         orderDebugInfo.promptSent = extractionResult.promptUsed;
         orderDebugInfo.rawResponseReceived = extractionResult.rawResponse;
-        // Using OpenAI as the only provider
         orderDebugInfo.aiProvider = 'openai';
         orderDebugInfo.modelUsed = extractionResult.modelUsed ?? orderDebugInfo.modelUsed;
 
         if (!extractionResult.success) {
-           // Log AI failure but don't throw immediately, let transaction handle potential Amazon URL or placeholder
-           logger.error(`[Order ${order.id}] AI Extraction Failed: ${extractionResult.error}`);
-           orderDebugInfo.overallStatus = 'Extraction Failed';
-           orderDebugInfo.processingError = `AI Extraction Failed: ${extractionResult.error}`;
-           // Proceed to transaction, which will check Amazon URL or create placeholder
+          logger.error(`[Order ${order.id}] AI Extraction Failed: ${extractionResult.error}`);
+          orderDebugInfo.overallStatus = 'Extraction Failed';
+          orderDebugInfo.processingError = `AI Extraction Failed: ${extractionResult.error}`;
         } else {
-             orderDebugInfo.overallStatus = 'AI Data Extracted, Starting DB Transaction';
-             orderDebugInfo.parsedResponse = extractionResult.data;
+          orderDebugInfo.overallStatus = 'AI Data Extracted, Starting DB Transaction';
+          orderDebugInfo.parsedResponse = extractionResult.data;
         }
 
         // DB Transaction - Now handles Amazon URL check, AI fallback, and task creation
-        await appendToDebugLog(options.debugFile, orderDebugInfo);
+        await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
 
-        if (options.dryRun) {
+        if (cmdOptions.dryRun) {
           logger.info(`[Dry Run][Order ${order.id}] Simulating task creation/upserts...`);
-          // Dry run simulation needs refinement to reflect the new logic
-          // For now, just log that it would simulate
           orderDebugInfo.overallStatus = 'Dry Run Complete';
         } else {
+          // Pass relevant cmdOptions to createOrUpdateTasksInTransaction
+          const transactionOptions: ProcessingOptions = {
+            dryRun: cmdOptions.dryRun,
+            openaiApiKey: null,
+            openaiModel: '',
+            systemPrompt: '',
+            userPromptTemplate: '',
+            debug: cmdOptions.debug,
+            logLevel: cmdOptions.logLevel,
+            debugFile: cmdOptions.debugFile,
+            createPlaceholder: cmdOptions.createPlaceholder,
+          };
           const { tasksCreatedCount, /* tasksSkippedCount, itemsNeedReviewCount */ } = await prisma.$transaction(async (tx) => {
-            // Pass AI data (even if extraction failed, it will be an error object)
-            return await createOrUpdateTasksInTransaction(tx, order, extractionResult.success ? extractionResult.data : { itemPersonalizations: {} }, options, orderDebugInfo);
-          }, { maxWait: 120000, timeout: 300000 }); // Increased timeout to 5 minutes (300000ms) and maxWait to 2 minutes (120000ms)
+            return await createOrUpdateTasksInTransaction(tx, order, extractionResult.success ? extractionResult.data : { itemPersonalizations: {} }, transactionOptions, orderDebugInfo);
+          }, { maxWait: 120000, timeout: 300000 });
           logger.info(`[Order ${order.id}] DB Transaction finished. Tasks upserted: ${tasksCreatedCount}.`);
           totalTasksCreated += tasksCreatedCount;
-          // Update status based on transaction outcome (assuming success if no throw)
-           if (!orderDebugInfo.processingError) { // Only set to committed if no prior error
-               orderDebugInfo.overallStatus = 'Transaction Committed';
-           }
+          if (!orderDebugInfo.processingError) {
+            orderDebugInfo.overallStatus = 'Transaction Committed';
+          }
         }
-        // Removed internal note update logic as per new requirement.
 
       } catch (error: unknown) {
-        // Catch errors from transaction or other steps
         const errorMsg = error instanceof Error ? error.message : String(error);
-         if (!orderDebugInfo.processingError) { // Avoid overwriting specific extraction error
-             logger.error(`[Order ${order.id}] FAILED: ${errorMsg}`, error);
-             orderDebugInfo.processingError = errorMsg;
-         } else {
-              logger.error(`[Order ${order.id}] FAILED (additional error): ${errorMsg}`, error);
-         }
+        if (!orderDebugInfo.processingError) {
+          logger.error(`[Order ${order.id}] FAILED: ${errorMsg}`, error);
+          orderDebugInfo.processingError = errorMsg;
+        } else {
+          logger.error(`[Order ${order.id}] FAILED (additional error): ${errorMsg}`, error);
+        }
         totalOrdersFailed++;
         failedOrderIds.push(order.id);
-        orderDebugInfo.overallStatus = 'Processing Failed'; // General processing failure
+        orderDebugInfo.overallStatus = 'Processing Failed';
 
       } finally {
-        await appendToDebugLog(options.debugFile, orderDebugInfo);
+        await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
         logger.info(`--- Finished Order ${order.id}. Status: ${orderDebugInfo.overallStatus} ---`);
       }
     } // End order loop
@@ -935,7 +1026,6 @@ async function main() {
     await updateRunLog(runLogId, { status: scriptRunSuccess ? 'success' : 'partial_success' });
 
   } catch (error) {
-    // Catch top-level errors (init, prompt loading, fatal DB connection, etc.)
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.error("SCRIPT FAILED (Unhandled Exception)", error);
     scriptRunSuccess = false;
@@ -945,7 +1035,7 @@ async function main() {
     logger.info(`--- Script End ---`);
     logger.info(finalMessage);
     if (prisma) { try { await prisma.$disconnect(); logger.info('DB disconnected.'); } catch (e) { logger.error("DB disconnect error", e); } }
-    if (logStream) logStream.end(); // Ensure stream is closed
+    if (logStream) logStream.end();
     process.exit(scriptRunSuccess ? 0 : 1);
   }
 }
