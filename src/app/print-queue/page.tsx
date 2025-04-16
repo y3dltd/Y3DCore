@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { PrintQueueTable, PrintTaskData } from "@/components/print-queue-table";
+import PrintQueueSummaryServer from "./PrintQueueSummaryServer";
 // Remove unused imports
 // import { PrintOrderTask, PrintTaskStatus } from '@prisma/client';
 import { OrdersPagination } from "@/components/orders-pagination"; // Import pagination
@@ -442,6 +443,8 @@ export default async function PrintQueuePage({
       <div>
         {/* Add the AutoRefresher component here (renders null) */}
         <AutoRefresher intervalSeconds={30} />
+        {/* Print Queue Summary (AI-powered) */}
+        <PrintQueueSummaryServer tasks={tasks} />
         {/* Add task totals component at the top level */}
         <PrintQueueTaskTotals tasks={tasks} />
 

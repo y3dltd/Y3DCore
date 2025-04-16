@@ -9,7 +9,10 @@ import type {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type is used implicitly in loop
   ShipStationOrder,
   SyncSummary,
-  ShipStationTag
+  ShipStationTag,
+  // ShipStationOrderItem, // Removed as it's only used in the duplicate import below
+  // Removed duplicate ShipStationOrderItem import
+  // ShipStationOrderItem // Removed unused import
 } from './types'
 
 const MAX_RETRIES = 3
@@ -40,29 +43,47 @@ export const getShipstationOrders = async (
   params.pageSize = params.pageSize || 100 
 
   while (attempt < MAX_RETRIES) {
-    attempt++
+    attempt++;
     try {
-      console.log(
-        `[API] Attempt ${attempt}: Fetching orders from ShipStation with params:`,
-        params
-      )
-      
-      const response = await shipstationApi.get<ShipStationOrdersResponse>(
-        '/orders',
-        { params }
-      )
+      let response;
+      const orderIdToFetch = params.orderId;
 
-      console.log(
-        `[API] Fetched ${response.data.orders.length} orders from page ${response.data.page}/${response.data.pages}. Total: ${response.data.total}`
-      )
+      // If a specific orderId is provided, fetch that single order
+      if (orderIdToFetch) {
+        const endpoint = `/orders/${orderIdToFetch}`;
+        console.log(
+          `[API] Attempt ${attempt}: Fetching single order from ShipStation: ${endpoint}`
+        );
+        // Fetch single order - response data is the ShipStationOrder object directly
+        response = await shipstationApi.get<ShipStationOrder>(endpoint);
 
-      // Optional: Keep minimal debug logging if helpful during development
-      // console.log(`[API DEBUG] Metadata: Total=${response.data.total}, Page=${response.data.page}, Pages=${response.data.pages}`);
-      // if (response.data.orders?.length > 0) {
-      //   console.log(`[API DEBUG] First order ID: ${response.data.orders[0].orderId}`);
-      // }
+        // Wrap the single order in the expected list response structure
+        const singleOrderData = response.data;
+        console.log(
+          `[API] Fetched single order ${singleOrderData.orderNumber} (ID: ${singleOrderData.orderId}). Status: ${singleOrderData.orderStatus}`
+        );
+        return {
+          orders: [singleOrderData],
+          total: 1,
+          page: 1,
+          pages: 1,
+        }; // Return wrapped response
 
-      return response.data // Success
+      } else {
+        // Otherwise, fetch the list of orders using provided params
+        console.log(
+          `[API] Attempt ${attempt}: Fetching order list from ShipStation with params:`,
+          params
+        );
+        response = await shipstationApi.get<ShipStationOrdersResponse>(
+          '/orders',
+          { params } // Pass the original params for filtering/pagination
+        );
+        console.log(
+          `[API] Fetched ${response.data.orders.length} orders from page ${response.data.page}/${response.data.pages}. Total: ${response.data.total}`
+        );
+        return response.data; // Return list response
+      }
     } catch (error: unknown) {
       let errorMessage = '[API] Error fetching ShipStation orders'
       let statusCode: number | string = 'N/A'
@@ -263,6 +284,86 @@ export async function listTags(): Promise<ShipStationTag[]> {
   console.log(`[ShipStation API] Fetched ${tags.length} tags.`);
   return tags;
 }
+
+
+/**
+ * Updates the options for a specific order item in ShipStation.
+ * Uses the /orders/createorder endpoint which also handles updates.
+ * @param shipstationOrderId The ShipStation Order ID.
+ * @param lineItemKey The unique key for the order item to update.
+ * @param options An array of option objects ({ name: string, value: string | null }).
+ * @returns {Promise<boolean>} True if successful, false otherwise.
+ */
+// Removed duplicate import - types are imported at the top
+
+export async function updateOrderItemOptions(
+ lineItemKey: string,
+ newOptions: Array<{ name: string; value: string | null }>,
+ fetchedOrder: ShipStationOrder // Accept the full fetched order object
+): Promise<boolean> {
+ const endpoint = '/orders/createorder';
+
+ // Map over the fetched items to create the updated items array
+ const updatedOrderItems = fetchedOrder.items.map(item => {
+   if (item.lineItemKey === lineItemKey) {
+     // Return the target item with updated options
+     // Keep all original item fields, just override options
+     return {
+       ...item,
+       options: newOptions.filter(opt => opt.value !== null) // Set the new options
+     };
+   }
+   // Return other items unchanged
+   return item;
+ });
+
+ // Construct payload by spreading the fetched order and overriding items
+ // Ensure orderId and orderKey are present from the fetchedOrder
+ const payload = {
+   ...fetchedOrder, // Spread all properties from the fetched order
+   items: updatedOrderItems, // Override with the modified items array
+ };
+
+ // Ensure orderId is a number if it exists (it should)
+ if (payload.orderId) {
+     payload.orderId = Number(payload.orderId);
+ }
+
+ // Remove potentially problematic fields if necessary (optional, based on testing)
+ // delete payload.createDate;
+ // delete payload.modifyDate;
+ // delete payload.orderTotal; // API might recalculate this
+
+ console.log(`[ShipStation API] Updating options for item ${lineItemKey} in order ${fetchedOrder.orderId} (Order Number: ${fetchedOrder.orderNumber})...`);
+ // Log the payload being sent for debugging (optional, remove sensitive data if needed)
+ // logger.debug({ payload }, `[ShipStation API] Update Payload for order ${fetchedOrder.orderId}`);
+ try {
+   // Log the payload before sending
+   console.log('[ShipStation API] Sending payload:', JSON.stringify(payload, null, 2));
+   const response = await shipstationApi.post(endpoint, payload);
+   if (response.status === 200 || response.status === 201) {
+     console.log(`[ShipStation API] Successfully updated options for item ${lineItemKey} in order ${fetchedOrder.orderId}.`);
+     return true;
+   } else {
+     console.warn(`[ShipStation API] Unexpected status code ${response.status} when updating item options for order ${fetchedOrder.orderId}.`);
+     return false;
+   }
+ } catch (error: unknown) {
+   let errorMessage = `[ShipStation API] Error updating item options for item ${lineItemKey} in order ${fetchedOrder.orderId}`;
+   if (axios.isAxiosError(error)) {
+     errorMessage += `. Status: ${error.response?.status ?? 'N/A'}`;
+      if (error.response?.data) {
+        errorMessage += ` Response: ${JSON.stringify(error.response.data)}`;
+      }
+    } else if (error instanceof Error) {
+      errorMessage += `: ${error.message}`;
+    }
+    console.error(errorMessage, error);
+    return false;
+  }
+}
+
+// Removed addInternalOrderNote function.
 
 // Helper to construct full URL
 // ... existing code ...

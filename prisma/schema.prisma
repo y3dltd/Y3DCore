@@ -154,6 +154,7 @@ model PrintOrderTask {
   status                   PrintTaskStatus @default(pending)
   needs_review             Boolean         @default(false)
   review_reason            String?         @db.Text
+  annotation               String?         @db.Text // Added annotation field
   created_at               DateTime        @default(now()) @db.Timestamp(0)
   updated_at               DateTime?       @updatedAt @db.Timestamp(0)
   orderItemId              Int

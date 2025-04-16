@@ -28,11 +28,13 @@ import {
   mapOrderToPrisma,
 } from "./mappers";
 import axios from "axios";
+// Removed unused import: format from 'date-fns-tz'
 
 // --- Constants ---
 const PAGE_SIZE = 100; // Orders per API call (adjust as needed, max 500)
 const DELAY_MS = 1500; // Delay between API calls (adjust based on rate limits)
 const MAX_RETRIES = 3; // Max retries for API calls
+// Removed unused constant: SHIPSTATION_TIMEZONE
 
 // --- Options Interface ---
 export interface SyncOptions {
@@ -715,6 +717,7 @@ async function getShipstationOrders(
     tags: { endpoint: "/orders" },
   }); // Use recordMetric
   try {
+    logger.info(`[API Call] Fetching orders with params: ${JSON.stringify(params)}`); // Changed to info level
     const response = await shipstationApi.get("/orders", { params });
     return {
       orders: response.data.orders,
@@ -825,7 +828,7 @@ export async function syncAllPaginatedOrders(
             page: page,
             modifyDateStart: dateStartFilter,
             sortBy: "modifyDate",
-            sortDir: "ASC",
+            sortDir: "ASC", // Changed from DESC - fetch oldest first
           }
         );
 
@@ -946,47 +949,146 @@ export async function syncAllPaginatedOrders(
 }
 
 /**
- * Syncs recent orders from ShipStation (orders created within the specified number of days)
- * @param lookbackDays Number of days to look back (can be fractional, e.g., 0.5 for 12 hours)
+ * Syncs recent orders from ShipStation (orders modified within the specified lookback period).
+ * Fetches all relevant orders, sorts them in memory (newest first), then processes.
+ * @param lookbackDays Number of days to look back (can be fractional).
+ * @param options Sync options.
  */
 export async function syncRecentOrders(
   lookbackDays: number = 2,
-  options?: SyncOptions // Added options
+  options?: SyncOptions
 ): Promise<{
   success: boolean;
   ordersProcessed: number;
   ordersFailed: number;
 }> {
-  // Note: Recent sync creates its own progress record internally via syncAllPaginatedOrders
-  // We don't need a separate one here unless we change the structure.
+  const progressId = await createSyncProgress("recent"); // Create specific progress record
+  let ordersProcessed = 0;
+  let ordersFailed = 0;
+  let overallSuccess = true;
+  const allRecentOrders: ShipStationOrder[] = []; // Array to hold all fetched orders
 
   try {
-    const startDate = new Date();
-    const millisecondsToSubtract = lookbackDays * 24 * 60 * 60 * 1000;
-    startDate.setTime(startDate.getTime() - millisecondsToSubtract);
-    const dateStartFilter = startDate.toISOString();
+    const now = new Date();
+    const bufferMilliseconds = 15 * 60 * 1000; // 15 minutes buffer
+    const startDate = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000 - bufferMilliseconds);
+    // Format start date as ISO 8601 UTC string for the API
+    const dateStartFilter = startDate.toISOString(); // e.g., 2025-04-14T23:23:21.123Z
 
     const lookbackPeriod =
       lookbackDays >= 1
         ? `${lookbackDays} days`
         : `${Math.round(lookbackDays * 24)} hours`;
     logger.info(
-      `[Recent Sync] Starting sync for orders in the last ${lookbackPeriod} (since ${dateStartFilter})${options?.dryRun ? " (DRY RUN)" : ""}`
+      `[Recent Sync] Starting sync for orders modified in the last ${lookbackPeriod} (since ${dateStartFilter} UTC)${options?.dryRun ? " (DRY RUN)" : ""}`
     );
 
-    // Pass options down, pass calculated start date as overrideStartDate
-    // The second argument to syncAllPaginatedOrders is the direct overrideStartDate
-    const result = await syncAllPaginatedOrders(options, dateStartFilter);
+    await updateSyncProgress(progressId, {
+      status: "running",
+      lastProcessedTimestamp: startDate,
+    });
 
-    return result;
+    // --- Fetch all relevant orders ---
+    let page = 1;
+    let totalPages = 1;
+    logger.info("[Recent Sync] Fetching all relevant orders from ShipStation...");
+    while (true) {
+      try {
+        logger.info(
+          `[Recent Sync] Fetching page ${page}... (Reported total pages: ${totalPages})`
+        );
+        const response = await getShipstationOrders({
+          pageSize: PAGE_SIZE,
+          page: page,
+          modifyDateStart: dateStartFilter,
+          sortBy: "modifyDate", // Keep sorting for potential API optimization
+          sortDir: "ASC",      // Fetch oldest first during pagination
+        });
+
+        const { orders, pages } = response;
+        totalPages = pages; // Update total pages
+
+        if (orders && orders.length > 0) {
+          allRecentOrders.push(...orders);
+          logger.info(`[Recent Sync] Fetched ${orders.length} orders from page ${page}. Total fetched: ${allRecentOrders.length}`);
+
+          if (page >= totalPages) {
+            logger.info(`[Recent Sync] Reached the last reported page (${totalPages}). Finished fetching.`);
+            break; // Exit fetch loop
+          }
+          page++;
+          logger.info(`[Recent Sync] Waiting ${DELAY_MS / 1000}s before fetching page ${page}...`);
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        } else {
+          logger.info(`[Recent Sync] No more orders returned on page ${page}. Finished fetching.`);
+          break; // Exit fetch loop
+        }
+      } catch (fetchError: unknown) {
+        overallSuccess = false;
+        const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        logger.error(`[Recent Sync] Error fetching page ${page}: ${errorMsg}`, { error: fetchError });
+        throw new Error(`Failed during order fetch: ${errorMsg}`); // Throw to exit sync
+      }
+    } // End fetch loop
+
+    logger.info(`[Recent Sync] Total orders fetched: ${allRecentOrders.length}.`);
+    await updateSyncProgress(progressId, { totalOrders: allRecentOrders.length });
+
+    // --- Sort orders in memory (newest first based on modifyDate) ---
+    logger.info("[Recent Sync] Sorting fetched orders by modification date (newest first)...");
+    allRecentOrders.sort((a, b) => {
+      const dateA = a.modifyDate ? new Date(a.modifyDate).getTime() : 0;
+      const dateB = b.modifyDate ? new Date(b.modifyDate).getTime() : 0;
+      return dateB - dateA; // Descending order
+    });
+
+    // --- Process sorted orders ---
+    logger.info(`[Recent Sync] Processing ${allRecentOrders.length} sorted orders...`);
+    for (const orderData of allRecentOrders) {
+      const result = await upsertOrderWithItems(
+        orderData,
+        progressId, // Pass the specific progressId for recent sync
+        options
+      );
+
+      if (result.success) {
+        ordersProcessed++;
+      } else {
+        ordersFailed++;
+        overallSuccess = false; // Mark overall as failed if any order fails
+        // Log specific errors from result.errors if needed
+        logger.warn(`[Recent Sync] Failed to process order ${orderData.orderNumber}. Errors: ${JSON.stringify(result.errors)}`);
+      }
+      // Progress update (lastProcessedOrderId, timestamp) happens within upsertOrderWithItems
+    } // End processing loop
+
+    if (overallSuccess) {
+      logger.info(
+        `[Recent Sync] Completed successfully. Orders processed: ${ordersProcessed}, Orders failed: ${ordersFailed}${options?.dryRun ? " (DRY RUN)" : ""}`
+      );
+    } else {
+      logger.warn(
+        `[Recent Sync] Completed with errors. Orders processed: ${ordersProcessed}, Orders failed: ${ordersFailed}${options?.dryRun ? " (DRY RUN)" : ""}`
+      );
+    }
+
+    await markSyncCompleted(
+      progressId,
+      overallSuccess,
+      overallSuccess ? undefined : "Recent sync completed with errors"
+    );
+
+    return { success: overallSuccess, ordersProcessed, ordersFailed };
+
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error(
-      `[Recent Sync] Unexpected error in sync process: ${errorMsg}`,
-      { error }
-    );
-    // No progressId or metrics to manage here directly
-    return { success: false, ordersProcessed: 0, ordersFailed: 0 };
+    logger.error(`[Recent Sync] Fatal error during sync process: ${errorMsg}`, { error });
+    try {
+      await markSyncCompleted(progressId, false, `Fatal error: ${errorMsg}`);
+    } catch (markError) {
+      logger.warn("[Recent Sync] Failed to mark progress during error handling", { error: markError });
+    }
+    return { success: false, ordersProcessed, ordersFailed }; // Return failure state
   }
 }
 

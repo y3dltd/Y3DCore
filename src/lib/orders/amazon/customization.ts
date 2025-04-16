@@ -1,6 +1,26 @@
 import JSZip from 'jszip';
 import { logger } from '@/lib/shared/logging'; // Updated logger import path
 
+// --- Interfaces for Amazon Customization JSON Structure ---
+interface AmazonCustomizationArea {
+  customizationType?: string;
+  label?: string;
+  text?: string; // For TextPrinting
+  optionValue?: string; // For Options
+}
+
+interface AmazonCustomizationSurface {
+  areas?: AmazonCustomizationArea[];
+}
+
+interface AmazonCustomizationVersionInfo {
+  surfaces?: AmazonCustomizationSurface[];
+}
+
+interface AmazonCustomizationInfo {
+  'version3.0'?: AmazonCustomizationVersionInfo;
+}
+// --- End Interfaces ---
 export interface AmazonCustomizationResult {
     success: boolean;
     orderItemId: number;
@@ -63,11 +83,39 @@ export async function fetchAndProcessAmazonCustomization(url: string): Promise<A
         const color2 = null; // Determine if secondary color exists
         */
 
-        // Placeholder extraction - REPLACE WITH ACTUAL LOGIC
-        // Safely access properties, assuming they might be strings or null
-        const customText = typeof jsonData?.customText === 'string' ? jsonData.customText : typeof jsonData?.name === 'string' ? jsonData.name : null;
-        const color1 = typeof jsonData?.color1 === 'string' ? jsonData.color1 : typeof jsonData?.colour === 'string' ? jsonData.colour : null;
-        const color2 = typeof jsonData?.color2 === 'string' ? jsonData.color2 : null;
+        // --- Start: Specific parsing for customizationInfo v3.0 structure ---
+        let customText: string | null = null;
+        let color1: string | null = null;
+        const color2: string | null = null; // Keep as null for this structure
+
+        try {
+            // Use defined interfaces for type safety
+            const info = jsonData?.customizationInfo as AmazonCustomizationInfo | undefined; // Cast to our interface
+            const surfaces = info?.['version3.0']?.surfaces;
+
+            if (Array.isArray(surfaces) && surfaces.length > 0) {
+                const firstSurface = surfaces[0];
+                const areas = firstSurface?.areas; // Access areas using optional chaining
+
+                if (Array.isArray(areas)) {
+                    // Find areas using the defined types
+                    const textArea = areas.find(area => area?.customizationType === 'TextPrinting');
+                    const colorArea = areas.find(area => area?.customizationType === 'Options' && area?.label === 'Colour');
+
+                    // Extract text and color using optional chaining
+                    if (textArea?.text) {
+                        customText = textArea.text;
+                    }
+                    if (colorArea?.optionValue) {
+                        color1 = colorArea.optionValue;
+                    }
+                }
+            }
+        } catch (parseError) {
+            logger.warn(`[Amazon Processor] Error parsing customizationInfo structure in ${url}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+            // Fallback or error handling if structure is different than expected
+        }
+        // --- End: Specific parsing ---
 
         // --- Create allFields --- 
         // Iterate over jsonData and convert values to string or null

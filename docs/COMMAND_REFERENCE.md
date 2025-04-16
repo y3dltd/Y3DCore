@@ -1,32 +1,28 @@
 # Command Reference
 
-This document provides a comprehensive reference for all commands available in the unified scripts after refactoring. It serves as a detailed guide for using the command-line interfaces of the Y3DHub system.
+This document provides a comprehensive reference for all commands available in the Y3DHub system scripts. It serves as a detailed guide for using the command-line interfaces.
 
 ## Overview
 
-The Y3DHub system provides three main command-line scripts:
+The Y3DHub system provides several main command-line scripts:
 
-1. `order-sync.ts` - Handles order synchronization and processing
-2. `print-tasks.ts` - Manages print task creation and management
-3. `utils.ts` - Provides utility functions for maintenance and diagnostics
+1.  `order-sync.ts` - Handles order synchronization from ShipStation.
+2.  `populate-print-queue.ts` - Handles print task creation and management, including Amazon URL fetching and AI extraction.
+3.  `utils.ts` - Provides utility functions for maintenance and diagnostics (Structure may vary).
 
-## Global Options
+## Global Options (Apply to most scripts, check specific script for exact support)
 
-All scripts support the following global options:
-
-| Option               | Description                                | Default | Example            |
-| -------------------- | ------------------------------------------ | ------- | ------------------ |
-| `--verbose`          | Show detailed debug output                 | `false` | `--verbose`        |
-| `--dry-run`          | Simulate operations without making changes | `false` | `--dry-run`        |
-| `--order-id=<id>`    | Process a specific order by ID             | -       | `--order-id=12345` |
-| `--days-back=<days>` | Process data from the last N days          | Varies  | `--days-back=7`    |
-| `--hours=<hours>`    | Process data from the last N hours         | -       | `--hours=24`       |
-| `--limit=<limit>`    | Limit the number of items to process       | Varies  | `--limit=50`       |
-| `--help`             | Show help information                      | -       | `--help`           |
+| Option                            | Description                                                                                                | Default          | Example                            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------- |
+| `--verbose` / `--log-level debug` | Show detailed debug output                                                                                 | `false` / `info` | `--verbose` or `--log-level debug` |
+| `--dry-run`                       | Simulate operations without making changes                                                                 | `false`          | `--dry-run`                        |
+| `--order-id=<id>`                 | Process a specific order by DB ID (for `populate-print-queue`) or ShipStation ID (for `order-sync single`) | -                | `--order-id=12345`                 |
+| `--limit=<limit>`                 | Limit the number of items to process                                                                       | Varies           | `--limit=50`                       |
+| `--help`                          | Show help information                                                                                      | -                | `--help`                           |
 
 ## Order Sync Script (`order-sync.ts`)
 
-The Order Sync script handles order synchronization with ShipStation and Amazon customization processing.
+The Order Sync script handles order synchronization with ShipStation.
 
 ### Usage
 
@@ -38,71 +34,44 @@ npx tsx src/scripts/order-sync.ts <command> [options]
 
 #### `sync` - Synchronize orders from ShipStation
 
-Fetches orders from ShipStation and stores them in the database.
+Fetches orders from ShipStation based on modification date and upserts them into the database. Correctly handles ShipStation's Pacific Time zone for date filters.
 
 ```bash
 npx tsx src/scripts/order-sync.ts sync [options]
 ```
 
-| Option                      | Description                                 | Default  | Example                         |
-| --------------------------- | ------------------------------------------- | -------- | ------------------------------- |
-| `--mode=<mode>`             | Sync mode (all, recent, single)             | `recent` | `--mode=all`                    |
-| `--skip-tags`               | Skip syncing ShipStation tags               | `false`  | `--skip-tags`                   |
-| `--order-date-start=<date>` | Start date for order filtering (YYYY-MM-DD) | -        | `--order-date-start=2025-01-01` |
-| `--order-date-end=<date>`   | End date for order filtering (YYYY-MM-DD)   | -        | `--order-date-end=2025-02-01`   |
+| Option                      | Description                                                                       | Default  | Example                                       |
+| --------------------------- | --------------------------------------------------------------------------------- | -------- | --------------------------------------------- |
+| `--mode=<mode>`             | Sync mode (`all`, `recent`, `single`)                                             | `recent` | `--mode=all`                                  |
+| `--order-id=<ss_id>`        | ShipStation Order ID to sync (required for `single` mode)                         | -        | `--order-id=12345678`                         |
+| `--days-back=<days>`        | Number of days to look back for modified orders (for `recent` mode)               | 2        | `--days-back 7`                               |
+| `--hours=<hours>`           | Number of hours to look back (for `recent` mode, overrides `--days-back`)         | -        | `--hours 12`                                  |
+| `--order-date-start=<date>` | Start date filter (YYYY-MM-DD HH:MM:SS format, assumes Pacific Time)              | -        | `--order-date-start="2024-01-01 00:00:00"`    |
+| `--order-date-end=<date>`   | End date filter (YYYY-MM-DD HH:MM:SS format, assumes Pacific Time)                | -        | `--order-date-end="2024-01-31 23:59:59"`      |
+| `--force-start-date=<date>` | Force sync to start from this ISO date (YYYY-MM-DDTHH:mm:ss.sssZ, for `all` mode) | -        | `--force-start-date=2023-01-01T00:00:00.000Z` |
+| `--skip-tags`               | Skip syncing ShipStation tags                                                     | `false`  | `--skip-tags`                                 |
+| `--verbose`                 | Show verbose output (Note: May not increase detail beyond Prisma logs)            | `false`  | `--verbose`                                   |
+| `--dry-run`                 | Simulate operations without making changes                                        | `false`  | `--dry-run`                                   |
 
-#### `amazon` - Process Amazon customization
+#### `amazon` - Process Amazon customization (Currently Not Implemented)
 
-Handles Amazon customization processes.
+Handles Amazon customization processes. **Note:** These subcommands are currently placeholders and do not execute the intended logic. Amazon URL fetching is now integrated into `populate-print-queue.ts`.
 
 ```bash
 npx tsx src/scripts/order-sync.ts amazon <subcommand> [options]
 ```
 
-##### Subcommands
+##### Subcommands (Placeholders)
 
-###### `sync` - Download and process Amazon customization files
+###### `sync` - Download and process Amazon customization files (Not Implemented)
 
-```bash
-npx tsx src/scripts/order-sync.ts amazon sync [options]
-```
+###### `update` - Update order items with personalization data (Not Implemented)
 
-| Option                | Description                                  | Default | Example           |
-| --------------------- | -------------------------------------------- | ------- | ----------------- |
-| `--retry-failed`      | Retry previously failed downloads/processing | `false` | `--retry-failed`  |
-| `--max-retries=<num>` | Maximum number of retries for failed items   | 3       | `--max-retries=5` |
+###### `fix` - Find and fix orders with missing personalization data (Not Implemented)
 
-###### `update` - Update order items with personalization data
+###### `workflow` - Run the entire Amazon customization workflow (Not Implemented)
 
-```bash
-npx tsx src/scripts/order-sync.ts amazon update [options]
-```
-
-| Option                 | Description                                  | Default | Example                |
-| ---------------------- | -------------------------------------------- | ------- | ---------------------- |
-| `--create-print-tasks` | Create print tasks for orders                | `false` | `--create-print-tasks` |
-| `--update-shipstation` | Update ShipStation with personalization data | `false` | `--update-shipstation` |
-
-###### `fix` - Find and fix orders with missing personalization data
-
-```bash
-npx tsx src/scripts/order-sync.ts amazon fix [options]
-```
-
-| Option              | Description            | Default | Example             |
-| ------------------- | ---------------------- | ------- | ------------------- |
-| `--fix-shipstation` | Fix ShipStation orders | `false` | `--fix-shipstation` |
-| `--fix-print-tasks` | Fix print tasks        | `false` | `--fix-print-tasks` |
-
-###### `workflow` - Run the entire Amazon customization workflow
-
-```bash
-npx tsx src/scripts/order-sync.ts amazon workflow [options]
-```
-
-This runs `sync`, `update`, and task creation sequentially.
-
-#### `status` - Show sync status and statistics
+#### `status` - Show sync status and statistics (May need update/verification)
 
 Displays information about order synchronization status.
 
@@ -114,7 +83,7 @@ npx tsx src/scripts/order-sync.ts status [options]
 | -------------------- | ------------------------------------------ | ------- | ---------------- |
 | `--days-back=<days>` | Number of days to look back for statistics | 7       | `--days-back=14` |
 
-#### `metrics` - Report on sync performance and issues
+#### `metrics` - Report on sync performance and issues (May need update/verification)
 
 Generates metrics reports for order synchronization.
 
@@ -127,88 +96,38 @@ npx tsx src/scripts/order-sync.ts metrics [options]
 | `--format=<format>` | Output format (json, table, csv) | `table` | `--format=json`         |
 | `--output=<file>`   | Output file for metrics          | -       | `--output=metrics.json` |
 
-## Print Tasks Script (`print-tasks.ts`)
+## Populate Print Queue Script (`populate-print-queue.ts`)
 
-The Print Tasks script handles print task creation, updating, and management.
+Fetches eligible orders from the database, processes personalization (prioritizing Amazon URLs, then eBay notes, then AI), and creates/updates print tasks.
 
 ### Usage
 
 ```bash
-npx tsx src/scripts/print-tasks.ts <command> [options]
+npx tsx src/scripts/populate-print-queue.ts [options]
 ```
 
-### Commands
+### Options
 
-#### `create` - Create print tasks from orders
+| Option                   | Alias | Description                                                                                               | Default       | Example                   |
+| ------------------------ | ----- | --------------------------------------------------------------------------------------------------------- | ------------- | ------------------------- |
+| `--order-id=<id>`        | `-o`  | Process specific order by **database ID**. Bypasses default filters.                                      | -             | `--order-id 450`          |
+| `--limit=<number>`       | `-l`  | Limit the number of orders fetched when not using `--order-id`.                                           | 10            | `--limit 100`             |
+| `--force-recreate`       | `-f`  | Delete existing tasks for fetched orders before creating new ones. Allows reprocessing orders with tasks. | `false`       | `--force-recreate`        |
+| `--clear-all`            |       | Delete ALL print tasks from the database before processing. **Requires confirmation unless -y is used.**  | `false`       | `--clear-all`             |
+| `--confirm`              | `-y`  | Skip confirmation prompts (e.g., for `--clear-all`).                                                      | `false`       | `-y`                      |
+| `--create-placeholder`   |       | Create placeholder task if Amazon URL fetch fails and AI extraction also fails/is skipped.                | `true`        | `--no-create-placeholder` |
+| `--openai-api-key=<key>` |       | OpenAI API Key (reads from `OPENAI_API_KEY` env var by default).                                          | `env`         | `--openai-api-key sk-...` |
+| `--openai-model=<model>` |       | OpenAI model to use for extraction.                                                                       | `gpt-4o-mini` | `--openai-model gpt-4`    |
+| `--log-level=<level>`    |       | Set log level (e.g., `debug`, `info`, `warn`, `error`).                                                   | `info`        | `--log-level debug`       |
+| `--dry-run`              |       | Simulate operations without making database changes.                                                      | `false`       | `--dry-run`               |
+| `--debug-file=<path>`    |       | Path for detailed debug log file (requires `--order-id`).                                                 | -             | `--debug-file debug.log`  |
+| `--help`                 | `-h`  | Show help information.                                                                                    | -             | `--help`                  |
 
-Creates print tasks based on order data.
-
-```bash
-npx tsx src/scripts/print-tasks.ts create [options]
-```
-
-| Option                     | Description                                                                       | Default  | Example                    |
-| -------------------------- | --------------------------------------------------------------------------------- | -------- | -------------------------- |
-| `--create-placeholder`     | Create placeholder tasks for orders without personalization data                  | `false`  | `--create-placeholder`     |
-| `--ai-provider=<provider>` | AI provider for personalization extraction (openai, openrouter, ollama, lmstudio) | `openai` | `--ai-provider=openrouter` |
-| `--batch-size=<size>`      | Number of orders to process in a batch                                            | 10       | `--batch-size=20`          |
-
-#### `update` - Update print tasks with personalization data
-
-Updates existing print tasks with personalization data.
-
-```bash
-npx tsx src/scripts/print-tasks.ts update [options]
-```
-
-| Option                 | Description                                          | Default | Example                |
-| ---------------------- | ---------------------------------------------------- | ------- | ---------------------- |
-| `--update-from-amazon` | Update tasks from Amazon customization data          | `false` | `--update-from-amazon` |
-| `--force-update`       | Force update of tasks even if they already have data | `false` | `--force-update`       |
-
-#### `cleanup` - Clean up completed/shipped tasks
-
-Cleans up print tasks for completed or shipped orders.
-
-```bash
-npx tsx src/scripts/print-tasks.ts cleanup [options]
-```
-
-| Option                | Description                                   | Default | Example              |
-| --------------------- | --------------------------------------------- | ------- | -------------------- |
-| `--fix-pending`       | Fix tasks for shipped/cancelled orders        | `false` | `--fix-pending`      |
-| `--delete-completed`  | Delete completed tasks (instead of archiving) | `false` | `--delete-completed` |
-| `--older-than=<days>` | Only clean up tasks older than N days         | 30      | `--older-than=60`    |
-
-#### `status` - Show print queue status and statistics
-
-Displays information about the current print queue.
-
-```bash
-npx tsx src/scripts/print-tasks.ts status [options]
-```
-
-| Option               | Description                                | Default | Example          |
-| -------------------- | ------------------------------------------ | ------- | ---------------- |
-| `--days-back=<days>` | Number of days to look back for statistics | 7       | `--days-back=14` |
-| `--format=<format>`  | Output format (json, table, csv)           | `table` | `--format=json`  |
-
-#### `metrics` - Report on print task performance and issues
-
-Generates metrics reports for print tasks.
-
-```bash
-npx tsx src/scripts/print-tasks.ts metrics [options]
-```
-
-| Option              | Description                      | Default | Example                 |
-| ------------------- | -------------------------------- | ------- | ----------------------- |
-| `--format=<format>` | Output format (json, table, csv) | `table` | `--format=json`         |
-| `--output=<file>`   | Output file for metrics          | -       | `--output=metrics.json` |
+_(Note: The old `print-tasks.ts` script seems deprecated or refactored into `populate-print-queue.ts` based on recent changes. Commands like `update`, `cleanup`, `status`, `metrics` specific to print tasks might need separate scripts or integration into `utils.ts` if still required.)_
 
 ## Utilities Script (`utils.ts`)
 
-The Utils script provides various utility functions for system maintenance and diagnostics.
+The Utils script provides various utility functions for system maintenance and diagnostics. (Structure and commands may need verification based on current implementation).
 
 ### Usage
 
@@ -216,207 +135,77 @@ The Utils script provides various utility functions for system maintenance and d
 npx tsx src/scripts/utils.ts <command> [options]
 ```
 
-### Commands
+### Commands (Example Structure - Verify Actual Implementation)
 
 #### `check` - Check system status
-
-Performs system checks to identify potential issues.
-
-```bash
-npx tsx src/scripts/utils.ts check <subcommand> [options]
-```
 
 ##### Subcommands
 
 ###### `database` - Check database status and consistency
 
-```bash
-npx tsx src/scripts/utils.ts check database [options]
-```
-
-| Option      | Description                    | Default | Example     |
-| ----------- | ------------------------------ | ------- | ----------- |
-| `--fix`     | Automatically fix issues found | `false` | `--fix`     |
-| `--verbose` | Show detailed output           | `false` | `--verbose` |
-
 ###### `order` - Check order details and status
 
-```bash
-npx tsx src/scripts/utils.ts check order --order-id=<id> [options]
-```
-
-| Option            | Description                   | Default | Example              |
-| ----------------- | ----------------------------- | ------- | -------------------- |
-| `--include-items` | Include order items in output | `true`  | `--no-include-items` |
-| `--include-tasks` | Include print tasks in output | `true`  | `--no-include-tasks` |
-
 #### `fix` - Fix common issues
-
-Fixes common issues with the database or system.
-
-```bash
-npx tsx src/scripts/utils.ts fix <subcommand> [options]
-```
 
 ##### Subcommands
 
 ###### `missing-data` - Find and fix missing data
 
-```bash
-npx tsx src/scripts/utils.ts fix missing-data [options]
-```
-
-| Option          | Description                                 | Default | Example        |
-| --------------- | ------------------------------------------- | ------- | -------------- |
-| `--type=<type>` | Type of data to fix (order, customer, task) | -       | `--type=order` |
-| `--dry-run`     | Don't make any changes                      | `false` | `--dry-run`    |
-
 ###### `orphaned-tasks` - Find and fix orphaned tasks
 
-```bash
-npx tsx src/scripts/utils.ts fix orphaned-tasks [options]
-```
-
-| Option               | Description                                   | Default | Example          |
-| -------------------- | --------------------------------------------- | ------- | ---------------- |
-| `--delete`           | Delete orphaned tasks instead of marking them | `false` | `--delete`       |
-| `--days-back=<days>` | Only check tasks from the last N days         | 30      | `--days-back=60` |
-
 #### `backup` - Backup database or files
-
-Creates backups of the database or important files.
-
-```bash
-npx tsx src/scripts/utils.ts backup <subcommand> [options]
-```
 
 ##### Subcommands
 
 ###### `database` - Backup the database
 
-```bash
-npx tsx src/scripts/utils.ts backup database [options]
-```
-
-| Option           | Description                 | Default     | Example                 |
-| ---------------- | --------------------------- | ----------- | ----------------------- |
-| `--output=<dir>` | Output directory for backup | `./backups` | `--output=/var/backups` |
-| `--compress`     | Compress the backup         | `true`      | `--no-compress`         |
-
 ###### `logs` - Backup log files
 
-```bash
-npx tsx src/scripts/utils.ts backup logs [options]
-```
-
-| Option               | Description                           | Default          | Example                      |
-| -------------------- | ------------------------------------- | ---------------- | ---------------------------- |
-| `--output=<dir>`     | Output directory for backup           | `./backups/logs` | `--output=/var/backups/logs` |
-| `--days-back=<days>` | Only backup logs from the last N days | 7                | `--days-back=30`             |
-
 #### `stats` - Generate statistics and reports
-
-Generates various statistics and reports about the system.
-
-```bash
-npx tsx src/scripts/utils.ts stats <subcommand> [options]
-```
 
 ##### Subcommands
 
 ###### `orders` - Generate order statistics
 
-```bash
-npx tsx src/scripts/utils.ts stats orders [options]
-```
-
-| Option               | Description                      | Default | Example                     |
-| -------------------- | -------------------------------- | ------- | --------------------------- |
-| `--days-back=<days>` | Number of days to look back      | 30      | `--days-back=90`            |
-| `--group-by=<field>` | Group statistics by field        | -       | `--group-by=marketplace`    |
-| `--format=<format>`  | Output format (json, table, csv) | `table` | `--format=json`             |
-| `--output=<file>`    | Output file                      | -       | `--output=order-stats.json` |
-
 ###### `ai-usage` - Generate AI usage statistics
-
-```bash
-npx tsx src/scripts/utils.ts stats ai-usage [options]
-```
-
-| Option               | Description                      | Default | Example                  |
-| -------------------- | -------------------------------- | ------- | ------------------------ |
-| `--days-back=<days>` | Number of days to look back      | 30      | `--days-back=90`         |
-| `--format=<format>`  | Output format (json, table, csv) | `table` | `--format=json`          |
-| `--output=<file>`    | Output file                      | -       | `--output=ai-usage.json` |
 
 ## Examples
 
 ### Order Synchronization
 
 ```bash
-# Sync all orders from ShipStation
-npx tsx src/scripts/order-sync.ts sync --mode=all
+# Sync recent orders from the last 12 hours
+npx tsx src/scripts/order-sync.ts sync --mode=recent --hours 12
 
-# Sync recent orders from the last 2 hours
-npx tsx src/scripts/order-sync.ts sync --hours=2
+# Sync orders modified between two dates (Pacific Time assumed by ShipStation)
+npx tsx src/scripts/order-sync.ts sync --order-date-start="2024-03-01 00:00:00" --order-date-end="2024-03-31 23:59:59"
 
-# Sync a specific order by ID
-npx tsx src/scripts/order-sync.ts sync --order-id=12345
-
-# Sync orders within a date range
-npx tsx src/scripts/order-sync.ts sync --order-date-start=2025-01-01 --order-date-end=2025-02-01
+# Sync a single specific order from ShipStation
+npx tsx src/scripts/order-sync.ts sync --mode=single --order-id=<SHIPSTATION_ORDER_ID>
 ```
 
-### Amazon Customization
+### Print Task Population
 
 ```bash
-# Run the entire Amazon customization workflow
-npx tsx src/scripts/order-sync.ts amazon workflow
+# Populate tasks for the 50 oldest eligible orders
+npx tsx src/scripts/populate-print-queue.ts --limit 50
 
-# Download and process Amazon customization files
-npx tsx src/scripts/order-sync.ts amazon sync --retry-failed
+# Force re-population for the 20 oldest eligible orders, deleting old tasks first
+npx tsx src/scripts/populate-print-queue.ts --limit 20 --force-recreate
 
-# Update order items with personalization data and create print tasks
-npx tsx src/scripts/order-sync.ts amazon update --create-print-tasks --update-shipstation
+# Force re-population for a specific order (DB ID 450)
+npx tsx src/scripts/populate-print-queue.ts --order-id 450 --force-recreate
 
-# Find and fix orders with missing personalization
-npx tsx src/scripts/order-sync.ts amazon fix --fix-shipstation --fix-print-tasks
+# Clear the entire print queue and repopulate up to 100 orders (no confirmation prompt)
+npx tsx src/scripts/populate-print-queue.ts --clear-all -y --limit 100 --force-recreate
 ```
 
-### Print Tasks
+### Utilities (Verify actual commands)
 
 ```bash
-# Create print tasks for all unprocessed orders
-npx tsx src/scripts/print-tasks.ts create
-
-# Create print tasks with a specific AI provider
-npx tsx src/scripts/print-tasks.ts create --ai-provider=openrouter
-
-# Update print tasks with Amazon customization data
-npx tsx src/scripts/print-tasks.ts update --update-from-amazon
-
-# Clean up completed tasks and fix pending tasks
-npx tsx src/scripts/print-tasks.ts cleanup --fix-pending
-
-# Show print queue status
-npx tsx src/scripts/print-tasks.ts status --days-back=14
-```
-
-### Utilities
-
-```bash
-# Check database status and consistency
+# Check database status and consistency with verbose output
 npx tsx src/scripts/utils.ts check database --verbose
 
-# Check details for a specific order
-npx tsx src/scripts/utils.ts check order --order-id=12345
-
-# Fix missing data
-npx tsx src/scripts/utils.ts fix missing-data --type=order
-
-# Backup the database
-npx tsx src/scripts/utils.ts backup database --output=/var/backups
-
-# Generate order statistics
-npx tsx src/scripts/utils.ts stats orders --days-back=90 --group-by=marketplace --format=json --output=stats.json
+# Backup the database to a specific directory
+npx tsx src/scripts/utils.ts backup database --output=/mnt/backups
 ```

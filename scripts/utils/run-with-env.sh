@@ -2,7 +2,7 @@
 # Script to run Node.js scripts with environment variables loaded from .env file
 
 # Set the working directory to the project root
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.." # Go up two levels from scripts/utils to the project root
 
 # Load environment variables from .env file
 if [ -f .env ]; then

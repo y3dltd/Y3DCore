@@ -10,7 +10,7 @@ import type {
 
 // Import from the correct location
 import { shipstationApi } from "../shipstation/client"; // Import from client.ts
-import { getShipstationOrders, listTags } from "../shipstation/api"; // Import from api.ts
+import { getShipstationOrders, listTags, updateOrderItemOptions } from "../shipstation/api"; // Import from api.ts
 
 // Import sync functions
 import {
@@ -26,6 +26,8 @@ export {
   shipstationApi,
   getShipstationOrders,
   listTags,
+  updateOrderItemOptions, // Export the new function
+  // Removed export for addInternalOrderNote
   // Re-export sync functions
   syncAllPaginatedOrders,
   syncRecentOrders,

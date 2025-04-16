@@ -19,19 +19,21 @@ export type OrderWithItemsAndProducts = Prisma.OrderGetPayload<typeof orderWithI
  *
  * By default, only returns orders that:
  * 1. Have status 'awaiting_shipment' (excluding 'on_hold' orders)
- * 2. Have at least one item without an existing print task
+ * 2. Have at least one item without an existing print task (unless forceRecreate is true)
  *
  * If a specific orderId is provided, these filters are bypassed.
  *
  * @param db - The PrismaClient instance.
  * @param orderId - Optional specific order ID (database ID) to fetch.
  * @param limit - Optional limit on the number of orders to fetch if orderId is not provided.
+ * @param forceRecreate - Optional flag to bypass the check for existing print tasks.
  * @returns A promise resolving to an array of orders with their items and products.
  */
 export async function getOrdersToProcess(
   db: PrismaClient,
   orderId?: string,
   limit?: number,
+  forceRecreate?: boolean, // Add forceRecreate flag
 ): Promise<OrderWithItemsAndProducts[]> {
   const where: Prisma.OrderWhereInput = {}
 
@@ -50,12 +52,14 @@ export async function getOrdersToProcess(
     // Only fetch orders that are awaiting shipment (exclude on_hold orders)
     where.order_status = 'awaiting_shipment'
 
-    // Exclude orders that already have print tasks
-    where.items = {
-      some: {
-        // At least one item without a print task
-        printTasks: {
-          none: {}
+    // Exclude orders that already have print tasks, UNLESS forceRecreate is true
+    if (!forceRecreate) {
+      where.items = {
+        some: {
+          // At least one item without a print task
+          printTasks: {
+            none: {}
+          }
         }
       }
     }
@@ -65,7 +69,7 @@ export async function getOrdersToProcess(
     where,
     include: orderWithItemsAndProductsInclude.include,
     orderBy: {
-      order_date: 'asc', // Process older orders first
+      order_date: 'desc', // Process MOST RECENT orders first
     },
   }
 

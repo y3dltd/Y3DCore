@@ -1,48 +1,50 @@
 # Code Structure
 
-This document provides a detailed explanation of the Y3DHub codebase structure after refactoring, focusing on the organization of modules, scripts, and their interactions.
+This document provides a detailed explanation of the Y3DHub codebase structure, focusing on the organization of modules, scripts, and their interactions.
 
 ## Directory Structure Overview
 
-The refactored codebase follows a clear directory structure that separates concerns and promotes maintainability:
+The codebase follows a clear directory structure that separates concerns and promotes maintainability:
 
 ```
 src/
 ├── lib/               # Core library modules
 │   ├── orders/        # Order-related functionality
-│   │   ├── amazon/    # Amazon-specific order handling
-│   │   ├── sync.ts    # Order synchronization logic
-│   │   ├── mappers.ts # Data mapping functions
-│   │   ├── metrics.ts # Order-related metrics
-│   │   └── status.ts  # Order status reporting
+│   │   ├── amazon/    # Amazon-specific order handling (customization fetching)
+│   │   ├── sync.ts    # Order synchronization logic (fetching from ShipStation, upserting orders/items)
+│   │   ├── mappers.ts # Data mapping functions (ShipStation -> Prisma)
+│   │   ├── metrics.ts # Order-related metrics (Placeholder)
+│   │   └── status.ts  # Order status reporting (Placeholder)
 │   ├── print-tasks/   # Print task functionality
-│   │   ├── create.ts  # Task creation logic
-│   │   ├── update.ts  # Task update logic
-│   │   ├── cleanup.ts # Task cleanup logic
-│   │   ├── metrics.ts # Task-related metrics
-│   │   └── status.ts  # Task status reporting
-│   ├── utils/         # Utility functions
+│   │   ├── creation.ts # Task creation logic (Moved from populate-print-queue.ts) - TODO: Create this file
+│   │   ├── update.ts  # Task update logic (Placeholder)
+│   │   ├── cleanup.ts # Task cleanup logic (Placeholder)
+│   │   ├── metrics.ts # Task-related metrics (Placeholder)
+│   │   └── status.ts  # Task status reporting (Placeholder)
+│   ├── utils/         # Utility functions (Placeholder/TBD)
 │   │   ├── check.ts   # System verification
 │   │   ├── fix.ts     # Issue remediation
 │   │   ├── backup.ts  # Backup functionality
 │   │   └── stats.ts   # Statistics generation
-│   └── shared/        # Shared utilities
-│       ├── shipstation.ts # ShipStation API client
-│       ├── database.ts    # Database client wrapper
-│       ├── logging.ts     # Logging utilities
-│       ├── metrics.ts     # Metrics collection
-│       └── date-utils.ts  # Date handling utilities
-├── scripts/           # Command-line scripts
-│   ├── order-sync.ts  # Unified order sync script
-│   ├── print-tasks.ts # Unified print tasks script
-│   └── utils.ts       # Utility script
+│   ├── shared/        # Shared utilities
+│   │   ├── shipstation.ts # ShipStation API client
+│   │   ├── database.ts    # Database client wrapper (Prisma)
+│   │   ├── logging.ts     # Logging utilities (Pino)
+│   │   ├── metrics.ts     # Metrics collection
+│   │   └── date-utils.ts  # Date handling utilities (date-fns, date-fns-tz)
+│   └── prisma.ts      # Prisma client instance
+├── scripts/           # Command-line scripts (Entry points)
+│   ├── order-sync.ts  # Script for syncing orders from ShipStation
+│   ├── populate-print-queue.ts # Script for populating print tasks (uses AI, Amazon URL)
+│   ├── utils.ts       # Utility script (Placeholder/TBD)
+│   └── ...            # Other scripts (e.g., user management)
 ├── app/               # Next.js application
 │   ├── api/           # API routes
 │   ├── orders/        # Order pages
 │   ├── print-queue/   # Print queue pages
 │   └── ...            # Other application pages
 └── components/        # React components
-    ├── ui/            # UI components
+    ├── ui/            # UI components (shadcn/ui)
     └── ...            # Other components
 ```
 
@@ -50,265 +52,141 @@ src/
 
 ### Orders Module (`lib/orders/`)
 
-The orders module handles all order-related functionality, including synchronization with ShipStation, order processing, and status reporting.
+The orders module handles order synchronization with ShipStation and related data mapping.
 
 #### Key Files:
 
-- **`sync.ts`**: Core order synchronization logic
-
-  - `syncAllOrders(options)`: Synchronizes all orders from ShipStation
-  - `syncRecentOrders(options)`: Synchronizes recent orders based on a time window
-  - `syncSingleOrder(orderId, options)`: Synchronizes a specific order
-  - `syncShipStationTags(options)`: Synchronizes ShipStation tags
-
-- **`mappers.ts`**: Functions for mapping data between different formats
-
-  - `mapOrderToPrisma(order)`: Maps ShipStation order data to Prisma schema
-  - `mapCustomerToPrisma(customer)`: Maps customer data to Prisma schema
-  - `convertShipStationDateToUTC(date)`: Converts ShipStation dates from Pacific Time to UTC
-
-- **`metrics.ts`**: Order metrics collection and reporting
-
-  - `recordOrderMetric(name, value, tags)`: Records a metric related to orders
-  - `getOrderMetrics(options)`: Retrieves order-related metrics
-
-- **`status.ts`**: Order status reporting
-  - `getOrderSyncStatus(options)`: Gets the status of order synchronization
-  - `generateOrderSyncReport(options)`: Generates a report on order synchronization
+- **`sync.ts`**: Core order synchronization logic.
+  - `syncAllPaginatedOrders(options)`: Synchronizes all orders from ShipStation based on modification date, handling pagination and retries. Uses `upsertOrderWithItems`.
+  - `syncRecentOrders(options)`: Synchronizes recent orders based on a time window (handles timezone conversion for ShipStation). Uses `syncAllPaginatedOrders`.
+  - `syncSingleOrder(orderId, options)`: Synchronizes a specific order by ShipStation ID. Uses `upsertOrderWithItems`.
+  - `syncShipStationTags(options)`: Synchronizes ShipStation tags.
+  - `upsertOrderWithItems(orderData, progressId, options)`: Upserts a single order, its customer, products, and items into the database.
+  - `upsertCustomerFromOrder(ssOrder, options)`: Upserts customer based on email.
+  - `upsertProductFromItem(tx, ssItem, options)`: Upserts product based on SKU or ShipStation Product ID within a transaction.
+- **`mappers.ts`**: Functions for mapping data between ShipStation API format and Prisma schema.
+  - `mapAddressToCustomerFields(addr)`
+  - `mapSsItemToProductData(ssItem)`
+  - `mapSsItemToOrderItemData(ssItem, productId)`
+  - `mapOrderToPrisma(ssOrder, dbCustomerId?)`
+  - Includes timezone conversion for dates (`convertShipStationDateToUTC`).
+- **`metrics.ts`**: (Placeholder) Intended for order metrics collection.
+- **`status.ts`**: (Placeholder) Intended for order status reporting.
 
 #### Amazon Submodule (`lib/orders/amazon/`)
 
-The Amazon submodule handles Amazon-specific order processing, including customization file handling.
+Handles fetching and processing Amazon-specific customization data.
 
-- **`customization.ts`**: Core Amazon customization functionality
-
-  - `extractPersonalizationData(jsonData)`: Extracts personalization data from Amazon customization files
-
-- **`sync.ts`**: Amazon customization file synchronization
-
-  - `syncCustomizationFiles(options)`: Downloads and processes Amazon customization files
-
-- **`update.ts`**: Order item updating with personalization data
-
-  - `updateOrderItems(options)`: Updates order items with personalization data
-  - `updateShipStation(options)`: Updates ShipStation with personalization data
-
-- **`fix.ts`**: Fixing orders with missing personalization
-
-  - `findMissingPersonalization(options)`: Finds orders with missing personalization data
-  - `fixMissingPersonalization(options)`: Fixes orders with missing personalization data
-
-- **`workflow.ts`**: Orchestration of the entire Amazon workflow
-  - `runWorkflow(options)`: Runs the entire Amazon customization workflow
+- **`customization.ts`**:
+  - `fetchAndProcessAmazonCustomization(url)`: Fetches the zip file from the `CustomizedURL`, extracts the JSON, and parses it (parsing logic might need refinement based on actual JSON structure).
+- **`sync.ts`**: Contains the library logic for finding Amazon orders needing customization sync and orchestrating the fetch/process/store flow (used by `populate-print-queue.ts` now, but intended for `order-sync.ts amazon sync` command).
+  - `syncCustomizationFiles(options)`: Finds items with URLs and calls `processOrderItem`.
+  - `findOrderItemsToProcess(options)`: Finds eligible Amazon order items.
+  - `processOrderItem(item, options)`: Handles fetching/processing for a single item and updates `AmazonCustomizationFile` table.
+- **`update.ts`**: (Placeholder) Intended for logic to update order items/tasks _after_ customization data is fetched.
+- **`fix.ts`**: (Placeholder) Intended for fixing orders with missing personalization.
+- **`workflow.ts`**: (Skeleton) Intended to orchestrate the full Amazon workflow (sync, update).
 
 ### Print Tasks Module (`lib/print-tasks/`)
 
-The print tasks module handles all print task-related functionality, including task creation, updating, and cleanup.
+Handles print task creation and potentially other task-related logic.
 
 #### Key Files:
 
-- **`create.ts`**: Print task creation logic
-
-  - `createPrintTasks(options)`: Creates print tasks from orders
-  - `findOrdersNeedingTasks(options)`: Finds orders that need print tasks
-
-- **`update.ts`**: Print task updating logic
-
-  - `updatePrintTasks(options)`: Updates print tasks with personalization data
-  - `updateFromOrderItems(options)`: Updates print tasks from order items
-  - `updateFromAmazon(options)`: Updates print tasks from Amazon customization data
-
-- **`cleanup.ts`**: Print task cleanup logic
-
-  - `cleanupTasks(options)`: Cleans up completed/shipped tasks
-  - `clearCompletedTasks(options)`: Clears completed tasks
-  - `fixPendingTasks(options)`: Fixes tasks for shipped/cancelled orders
-
-- **`metrics.ts`**: Print task metrics collection and reporting
-
-  - `recordTaskMetric(name, value, tags)`: Records a metric related to print tasks
-  - `getTaskMetrics(options)`: Retrieves print task-related metrics
-
-- **`status.ts`**: Print task status reporting
-  - `getTaskStatus(options)`: Gets the status of print tasks
-  - `generateTaskReport(options)`: Generates a report on print tasks
+- **`creation.ts`**: (To be created) Will contain the core logic moved from `populate-print-queue.ts` for creating tasks, including AI extraction and database interaction.
+  - `extractOrderPersonalization(...)`: (To be moved here) Handles AI call for personalization.
+  - `createOrUpdateTasksInTransaction(...)`: (To be moved here) Handles DB upsert logic for tasks.
+- **`update.ts`**: (Placeholder) Intended for task update logic.
+- **`cleanup.ts`**: (Placeholder) Intended for task cleanup logic.
+- **`metrics.ts`**: (Placeholder) Intended for task metrics.
+- **`status.ts`**: (Placeholder) Intended for task status reporting.
 
 ### Utilities Module (`lib/utils/`)
 
-The utilities module provides general utility functions for system maintenance and diagnostics.
+(Placeholder/TBD) Intended for general utility functions for system maintenance and diagnostics.
 
-#### Key Files:
+#### Key Files (Examples):
 
-- **`check.ts`**: System verification
-
-  - `checkDatabase(options)`: Checks database status and consistency
-  - `checkOrder(orderId, options)`: Checks order details
-
-- **`fix.ts`**: Issue remediation
-
-  - `fixInconsistencies(options)`: Fixes data inconsistencies
-  - `fixOrphanedTasks(options)`: Fixes orphaned print tasks
-
-- **`backup.ts`**: Backup functionality
-
-  - `backupDatabase(options)`: Backs up the database
-  - `backupLogs(options)`: Backs up log files
-
-- **`stats.ts`**: Statistics generation
-  - `generateOrderStats(options)`: Generates order statistics
-  - `generateTaskStats(options)`: Generates print task statistics
+- **`check.ts`**: System verification.
+- **`fix.ts`**: Issue remediation.
+- **`backup.ts`**: Backup functionality.
+- **`stats.ts`**: Statistics generation.
 
 ### Shared Module (`lib/shared/`)
 
-The shared module provides utilities that are used across multiple modules.
+Provides utilities used across multiple modules.
 
 #### Key Files:
 
-- **`shipstation.ts`**: ShipStation API client
+- **`shipstation.ts`**: ShipStation API client (Axios instance, helper functions like `listTags`).
+- **`database.ts`**: Prisma client wrapper/instance.
+- **`logging.ts`**: Logging utilities (Pino setup).
+- **`metrics.ts`**: Metrics collection helpers (`recordMetric`).
+- **`date-utils.ts`**: Date handling utilities (using `date-fns` and `date-fns-tz`).
 
-  - `createShipStationClient(options)`: Creates a ShipStation API client
-  - `getOrder(orderId)`: Gets an order from ShipStation
-  - `updateOrder(orderId, data)`: Updates an order in ShipStation
+## Command-Line Scripts (`scripts/`)
 
-- **`database.ts`**: Database client wrapper
-
-  - `createPrismaClient()`: Creates a Prisma client
-  - `withTransaction(fn)`: Runs a function within a transaction
-
-- **`logging.ts`**: Logging utilities
-
-  - `createLogger(options)`: Creates a logger
-  - `info(message, data)`: Logs an info message
-  - `error(message, data)`: Logs an error message
-
-- **`metrics.ts`**: Metrics collection
-
-  - `recordMetric(name, value, tags)`: Records a metric
-  - `getMetrics(options)`: Retrieves metrics
-
-- **`date-utils.ts`**: Date handling utilities
-  - `convertShipStationDateToUTC(dateString)`: Converts ShipStation dates from Pacific Time to UTC
-  - `formatDateWithTimezone(date, formatStr)`: Formats dates with timezone information
-  - `formatRelativeTime(date)`: Formats relative time
-
-## Command-Line Scripts
+Entry points for running backend processes.
 
 ### Order Sync Script (`scripts/order-sync.ts`)
 
-This script provides a command-line interface for order synchronization and related operations.
+Provides a command-line interface for triggering order synchronization from ShipStation. Uses functions from `lib/orders/sync.ts`. The `amazon` subcommands are currently placeholders and do not function.
 
-#### Commands:
+### Populate Print Queue Script (`scripts/populate-print-queue.ts`)
 
-- **`sync`**: Syncs orders from ShipStation
+Provides a command-line interface for generating print tasks.
 
-  - `--skip-tags`: Skip syncing ShipStation tags
-  - `--order-id=<id>`: Process a specific order by ID
-
-- **`amazon`**: Processes Amazon customization
-
-  - `sync`: Downloads and processes Amazon customization files
-  - `update`: Updates order items with personalization data
-  - `fix`: Finds and fixes orders with missing personalization data
-  - `workflow`: Runs the entire Amazon customization workflow
-
-- **`status`**: Shows sync status and statistics
-
-  - `--days-back=<days>`: Number of days to look back for statistics
-
-- **`metrics`**: Reports on sync performance and issues
-  - `--format=<format>`: Output format (json, table, csv)
-  - `--output=<file>`: Output file
-
-### Print Tasks Script (`scripts/print-tasks.ts`)
-
-This script provides a command-line interface for print task operations.
-
-#### Commands:
-
-- **`create`**: Creates print tasks from orders
-
-  - `--create-placeholder`: Create placeholder tasks for orders without personalization data
-
-- **`update`**: Updates print tasks with personalization data
-
-  - `--update-from-amazon`: Update tasks from Amazon customization data
-
-- **`cleanup`**: Cleans up completed/shipped tasks
-
-  - `--fix-pending`: Fix tasks for shipped/cancelled orders
-
-- **`status`**: Shows print queue status and statistics
-
-  - `--days-back=<days>`: Number of days to look back for statistics
-
-- **`metrics`**: Reports on print task performance and issues
-  - `--format=<format>`: Output format (json, table, csv)
-  - `--output=<file>`: Output file
+- Fetches eligible orders using `lib/order-processing.ts`.
+- Handles Amazon `CustomizedURL` fetching directly using `lib/orders/amazon/customization.ts`.
+- Uses AI (via `extractOrderPersonalization`) as a fallback or for non-Amazon orders.
+- Creates/updates tasks in the database using `createOrUpdateTasksInTransaction`.
+- Includes options for targeting specific orders (`--order-id`), forcing recreation (`--force-recreate`), and clearing all tasks (`--clear-all`).
 
 ### Utilities Script (`scripts/utils.ts`)
 
-This script provides a command-line interface for utility operations.
-
-#### Commands:
-
-- **`check`**: Checks system status
-
-  - `database`: Checks database status and consistency
-
-- **`fix`**: Fixes common issues
-
-  - `missing-data`: Finds and fixes missing data
-
-- **`backup`**: Backs up database or files
-
-  - `logs`: Backs up logs
-
-- **`stats`**: Generates statistics and reports
-  - `orders`: Generates order statistics
-  - `ai-usage`: Generates AI usage statistics
+(Placeholder/TBD) Intended as an entry point for various utility functions defined in `lib/utils/`.
 
 ## Module Interactions
 
 The modules interact with each other in a structured manner:
 
-1. **Scripts** use **lib modules** to perform their operations
-2. **Order modules** interact with **ShipStation** via the shared ShipStation client
-3. **Print task modules** use order data to create and update tasks
-4. **All modules** use **shared utilities** for common operations like logging and database access
-
-The diagram below illustrates these interactions:
+1.  **Scripts** act as entry points, parse arguments, and call functions within **lib modules**.
+2.  **`lib/orders/sync.ts`** interacts with **ShipStation API** (via `lib/shared/shipstation.ts`) and the **database** (via `lib/shared/database.ts` and mappers) to sync order data.
+3.  **`scripts/populate-print-queue.ts`** uses **`lib/order-processing.ts`** to find orders, **`lib/orders/amazon/customization.ts`** to fetch Amazon data, its own internal AI logic (`extractOrderPersonalization`), and database logic (`createOrUpdateTasksInTransaction`) to manage print tasks.
+4.  **All modules** utilize **shared utilities** (`lib/shared/`) for common operations like logging, metrics, and date handling.
 
 ```
-[scripts] ---> [lib modules] ---> [external APIs]
-               |
-               v
-            [database]
+[scripts/order-sync.ts] ---> [lib/orders/sync.ts] ---> [lib/shared/*] ---> [ShipStation API]
+                                     |                     |
+                                     v                     v
+                                [Database (Order, Item, etc.)]
+
+[scripts/populate-print-queue.ts] ---> [lib/order-processing.ts] ---> [Database]
+              |                                  |
+              |-----> [lib/orders/amazon/customization.ts] ---> [Amazon URL Fetch]
+              |                                  |
+              |-----> [AI Extraction (Internal)] ---------> [OpenAI API]
+              |                                  |
+              |-----> [Task Creation (Internal)] ---------> [Database (PrintTask)]
 ```
 
 ## Error Handling Strategy
 
-The refactored codebase implements a consistent error handling strategy:
+The codebase implements a consistent error handling strategy:
 
-1. **Try-catch blocks** in all modules with proper error propagation
-2. **Retries** for transient errors, especially during external API calls
-3. **Transaction rollbacks** for database operations in case of failure
-4. **Detailed error logging** with context information
-5. **Graceful degradation** for non-critical errors
+1.  **Try-catch blocks** in key functions.
+2.  **Retries** for transient errors in ShipStation API calls (`getShipstationOrders`).
+3.  **Transaction rollbacks** for database operations using `prisma.$transaction`.
+4.  **Detailed error logging** using Pino, including context.
+5.  **Graceful degradation** (e.g., creating placeholder tasks on failure).
 
 ## Global Options
 
-Most scripts and commands support the following global options:
-
-- **`--verbose`**: Shows verbose output
-- **`--dry-run`**: Doesn't make any changes to the database or external systems
-- **`--order-id=<id>`**: Processes a specific order by ID
-- **`--days-back=<days>`**: Processes data from the last N days
-- **`--hours=<hours>`**: Processes data from the last N hours
-- **`--limit=<limit>`**: Limits the number of items to process
+Most scripts and commands support common options like `--dry-run`, `--limit`, `--order-id`, and logging controls. Refer to `docs/COMMAND_REFERENCE.md` for specifics per script.
 
 ## Conclusion
 
-The refactored code structure provides a clear separation of concerns, with modular components that interact through well-defined interfaces. This organization improves maintainability, testability, and extensibility of the system.
+This structure aims for separation of concerns, with library modules containing core reusable logic and scripts acting as entry points. The integration of Amazon URL fetching into `populate-print-queue.ts` deviates slightly from a pure modular approach but achieves the desired single-step task creation workflow.
 
 For more details on specific aspects of the system, see:
 
