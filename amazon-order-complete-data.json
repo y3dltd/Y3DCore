@@ -1,0 +1,487 @@
+{
+  "amazonOrderId": "026-5585200-4785105",
+  "timestamp": "2025-04-16T13:33:33.030Z",
+  "orderDetails": {
+    "BuyerInfo": {
+      "BuyerEmail": "2ptwt8bm2dvt2mb@marketplace.amazon.co.uk"
+    },
+    "AmazonOrderId": "026-5585200-4785105",
+    "EarliestDeliveryDate": "2025-04-21T23:00:00Z",
+    "EarliestShipDate": "2025-04-16T23:00:00Z",
+    "SalesChannel": "Amazon.co.uk",
+    "AutomatedShippingSettings": {
+      "AutomatedCarrier": "Royal Mail",
+      "HasAutomatedShippingSettings": true,
+      "AutomatedShipMethod": "Royal Mail 48 (Parcel) (CRL)"
+    },
+    "OrderStatus": "Unshipped",
+    "NumberOfItemsShipped": 0,
+    "OrderType": "StandardOrder",
+    "IsPremiumOrder": false,
+    "IsPrime": false,
+    "FulfillmentChannel": "MFN",
+    "NumberOfItemsUnshipped": 8,
+    "HasRegulatedItems": false,
+    "IsReplacementOrder": false,
+    "IsSoldByAB": false,
+    "LatestShipDate": "2025-04-22T22:59:59Z",
+    "ShipServiceLevel": "Std UK Dom_1",
+    "DefaultShipFromLocationAddress": {
+      "AddressLine2": "HUDDERSFIELD",
+      "StateOrRegion": "West Yorkshire",
+      "AddressLine1": "53 WOODLEA AVENUE",
+      "PostalCode": "HD3 4EF",
+      "City": "HUDDERSFIELD",
+      "CountryCode": "GB",
+      "Name": "Yorkshire3D"
+    },
+    "IsISPU": false,
+    "MarketplaceId": "A1F83G8C2ARO7P",
+    "LatestDeliveryDate": "2025-04-25T22:59:59Z",
+    "PurchaseDate": "2025-04-16T06:42:30Z",
+    "ShippingAddress": {
+      "PostalCode": "TN26 3QB",
+      "City": "ASHFORD",
+      "CountryCode": "GB"
+    },
+    "IsAccessPointOrder": false,
+    "PaymentMethod": "Other",
+    "IsBusinessOrder": false,
+    "OrderTotal": {
+      "CurrencyCode": "GBP",
+      "Amount": "25.41"
+    },
+    "PaymentMethodDetails": [
+      "Standard"
+    ],
+    "IsGlobalExpressEnabled": false,
+    "LastUpdateDate": "2025-04-16T07:10:30Z",
+    "ShipmentServiceLevelCategory": "Standard"
+  },
+  "orderItems": {
+    "OrderItems": [
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851362"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.16"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851202"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851322"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851082"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851282"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851162"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851122"
+      },
+      {
+        "ProductInfo": {
+          "NumberOfItems": "1"
+        },
+        "BuyerInfo": {},
+        "ItemTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.50"
+        },
+        "QuantityShipped": 0,
+        "BuyerRequestedCancel": {
+          "IsBuyerRequestedCancel": "false",
+          "BuyerCancelReason": ""
+        },
+        "ItemPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "2.99"
+        },
+        "ASIN": "B0CVJSLFC3",
+        "SellerSKU": "PER-KEY3D-STY3-Y3D",
+        "Title": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers",
+        "ShippingTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.03"
+        },
+        "IsGift": "false",
+        "ShippingPrice": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.19"
+        },
+        "ConditionSubtypeId": "New",
+        "ShippingDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ShippingDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "IsTransparency": false,
+        "QuantityOrdered": 1,
+        "PromotionDiscountTax": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "ConditionId": "New",
+        "PromotionDiscount": {
+          "CurrencyCode": "GBP",
+          "Amount": "0.00"
+        },
+        "OrderItemId": "48258072851242"
+      }
+    ],
+    "AmazonOrderId": "026-5585200-4785105"
+  },
+  "databaseOrderItems": null,
+  "notes": {
+    "databaseQuery": "To check for print_settings in the database, run: await prisma.orderItem.findFirst({ where: { orderId: <order_id> }, select: { print_settings: true } })",
+    "customizationData": "The customization data may be stored in the print_settings field of the OrderItem model in the database, and not directly available from the Amazon API"
+  }
+}

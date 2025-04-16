@@ -1,0 +1,268 @@
+Looking for order with number: 026-5585200-4785105
+Found order ID: 616 in database
+Database order data saved to amazon-order-database-data.json
+
+=== Order Summary ===
+Order ID: 616
+ShipStation Order Number: 026-5585200-4785105
+Marketplace: amazon
+Customer: Sharon Lawrence
+Total Items: 8
+
+=== Order Items ===
+
+Item ID: 816, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Katy"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Purple"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Pink"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1108
+  Text: "Katy"
+  Color 1: "Purple"
+  Color 2: "Pink"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 817, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Courtney"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Blue"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Pink"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1109
+  Text: "Courtney"
+  Color 1: "Blue"
+  Color 2: "Pink"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 818, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Tom"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Green"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Yellow"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1110
+  Text: "Tom"
+  Color 1: "Green"
+  Color 2: "Yellow"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 819, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Jack"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Blue"
+  },
+  {
+    "name": "Colour 2",
+    "value": "White"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1111
+  Text: "Jack"
+  Color 1: "Blue"
+  Color 2: "White"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 820, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Phoenix"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Red"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Gold"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1112
+  Text: "Phoenix"
+  Color 1: "Red"
+  Color 2: "Gold"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 821, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Sharon"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Pink"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Silver"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1113
+  Text: "Sharon"
+  Color 1: "Pink"
+  Color 2: "Silver"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 822, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Buddy"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Blue"
+  },
+  {
+    "name": "Colour 2",
+    "value": "Green"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1114
+  Text: "Buddy"
+  Color 1: "Blue"
+  Color 2: "Green"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry
+
+Item ID: 823, Product: 2-Colour Keyring
+Quantity: 1, Unit Price: 2.99
+Print Settings:
+[
+  {
+    "name": "Name or Text",
+    "value": "Paul"
+  },
+  {
+    "name": "Colour 1",
+    "value": "Black"
+  },
+  {
+    "name": "Colour 2",
+    "value": "White"
+  }
+]
+Amazon Customization:
+  URL: undefined
+  Custom Text: None
+  Color 1: None
+  Color 2: None
+  Status: undefined
+Print Tasks:
+  Task ID: 1115
+  Text: "Paul"
+  Color 1: "Black"
+  Color 2: "White"
+  Status: pending
+  Needs Review: No
+  Annotation: Updated from manual entry

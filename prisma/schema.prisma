@@ -123,19 +123,19 @@ model Customer {
 }
 
 model OrderItem {
-  id                       Int                       @id @default(autoincrement())
+  id                       Int                      @id @default(autoincrement())
   orderId                  Int
-  quantity                 Int                       @default(1)
-  unit_price               Decimal                   @db.Decimal(10, 2)
+  quantity                 Int                      @default(1)
+  unit_price               Decimal                  @db.Decimal(10, 2)
   print_settings           Json?
-  created_at               DateTime                  @default(now()) @db.Timestamp(0)
-  updated_at               DateTime?                 @updatedAt @db.Timestamp(0)
-  shipstationLineItemKey   String?                   @unique @db.VarChar(50)
+  created_at               DateTime                 @default(now()) @db.Timestamp(0)
+  updated_at               DateTime?                @updatedAt @db.Timestamp(0)
+  shipstationLineItemKey   String?                  @unique @db.VarChar(50)
   productId                Int
-  order                    Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product                  Product                   @relation(fields: [productId], references: [id])
+  amazonCustomizationFiles AmazonCustomizationFile?
+  order                    Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                  Product                  @relation(fields: [productId], references: [id])
   printTasks               PrintOrderTask[]
-  amazonCustomizationFiles AmazonCustomizationFile[] // Add relation
 
   @@index([orderId])
   @@index([productId])
@@ -154,13 +154,13 @@ model PrintOrderTask {
   status                   PrintTaskStatus @default(pending)
   needs_review             Boolean         @default(false)
   review_reason            String?         @db.Text
-  annotation               String?         @db.Text // Added annotation field
   created_at               DateTime        @default(now()) @db.Timestamp(0)
   updated_at               DateTime?       @updatedAt @db.Timestamp(0)
   orderItemId              Int
   taskIndex                Int
   productId                Int
   shorthandProductName     String?         @db.VarChar(100)
+  annotation               String?         @db.Text
   customer                 Customer?       @relation(fields: [customerId], references: [id])
   order                    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem                OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
@@ -178,37 +178,34 @@ model PrintOrderTask {
 
 model AmazonCustomizationFile {
   id               Int       @id @default(autoincrement())
-  orderItemId      Int       @unique // Each order item should have only one customization record
-  originalUrl      String    @db.VarChar(1024) // Store the URL from print_settings
-  localFilePath    String?   @db.VarChar(512) // Path to the downloaded JSON file
-  downloadStatus   String    @default("pending") @db.VarChar(50) // e.g., pending, downloaded, failed
-  processingStatus String    @default("pending") @db.VarChar(50) // e.g., pending, processed, failed
+  orderItemId      Int       @unique
+  originalUrl      String    @db.VarChar(1024)
+  localFilePath    String?   @db.VarChar(512)
+  downloadStatus   String    @default("pending") @db.VarChar(50)
+  processingStatus String    @default("pending") @db.VarChar(50)
   customText       String?   @db.Text
   color1           String?   @db.VarChar(50)
   color2           String?   @db.VarChar(50)
-  rawJsonData      Json? // Store the full parsed JSON
-  errorMessage     String?   @db.Text // Store errors during download or processing
+  rawJsonData      Json?
+  errorMessage     String?   @db.Text
   retryCount       Int       @default(0)
   lastProcessedAt  DateTime? @db.Timestamp(0)
   createdAt        DateTime  @default(now()) @db.Timestamp(0)
   updatedAt        DateTime  @updatedAt @db.Timestamp(0)
-
-  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([orderItemId])
   @@index([downloadStatus])
   @@index([processingStatus])
 }
 
-// Add the system_logs table (assuming basic structure based on drift message)
 model system_logs {
   id        Int      @id @default(autoincrement())
   message   String?  @db.Text
   level     String?  @db.VarChar(50)
   timestamp DateTime @default(now())
 
-  // Add other fields if you know them
-  @@map("system_logs") // Explicitly map to the table name if needed
+  @@map("system_logs")
 }
 
 model Tag {
@@ -309,12 +306,11 @@ model AiCallLog {
   @@index([modelUsed])
 }
 
-// Add new model for generic metrics
 model Metric {
   id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(255)
-  value     Float // Use Float for potentially non-integer values
-  tags      Json? // Store tags as JSON
+  value     Float
+  tags      Json?
   timestamp DateTime @default(now())
 
   @@index([name])

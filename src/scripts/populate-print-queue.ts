@@ -11,7 +11,7 @@ import path from 'path';
 import util from 'util';
 import { getShipstationOrders } from '../lib/shared/shipstation'; // Import ShipStation order fetch function
 import { updateOrderItemOptions } from '../lib/shared/shipstation'; // Import ShipStation item update function
-// Removed unused import: addInternalOrderNote
+// Removed unused import: addInternalOrder
 // import OpenAI from 'openai'; // Import OpenAI - Use dynamically below
 import readline from 'readline/promises'; // Keep for confirmExecution
 import fsSync from 'fs'; // Keep for logStream
@@ -105,6 +105,8 @@ interface ProcessingOptions {
   confirm?: boolean;
   clearAll?: boolean;
   dryRun?: boolean;
+  preserveText?: boolean; // Added flag to preserve existing text values
+  shipstationSyncOnly?: boolean; // Added flag to only sync ShipStation without changing DB
 }
 
 // --- Helper Functions ---
@@ -426,6 +428,13 @@ async function createOrUpdateTasksInTransaction(
   const tasksSkippedCount = 0; // This variable seems unused, consider removing if not needed later
   let itemsNeedReviewCount = 0;
 
+  // Load existing task data if we need to preserve text
+  let existingTaskData: Record<number, Array<{ custom_text: string | null; color_1: string | null; color_2: string | null }>> = {};
+  if (options.preserveText) {
+    logger.info(`[DB][Order ${order.id}] Preserve text flag enabled. Loading existing task data...`);
+    existingTaskData = await getExistingTaskData(tx, order.id);
+  }
+
   for (const item of order.items) {
     const orderItemId = item.id;
     const productId = item.productId;
@@ -526,16 +535,29 @@ async function createOrUpdateTasksInTransaction(
             }
             // --- End ShipStation Item Options Update ---
             logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Successfully processed Amazon URL.`);
+
+            // Check if we need to preserve existing text
+            let customText = amazonData.customText;
+            if (options.preserveText && existingTaskData[orderItemId] && existingTaskData[orderItemId].length > 0) {
+              const existingTask = existingTaskData[orderItemId][0];
+              if (existingTask.custom_text) {
+                customText = existingTask.custom_text;
+                logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text: "${customText}" instead of "${amazonData.customText}"`);
+              }
+            }
+
             // Use Amazon data directly - Assuming single task per item from URL for now
             taskDetailsToCreate.push({
-              custom_text: amazonData.customText,
+              custom_text: customText, // Use preserved text if available
               color_1: amazonData.color1,
               color_2: amazonData.color2,
               quantity: item.quantity, // Use original item quantity
               needs_review: false,
               review_reason: null,
               status: PrintTaskStatus.pending,
-              annotation: "Data from Amazon CustomizedURL"
+              annotation: options.preserveText && customText !== amazonData.customText
+                ? "Data from Amazon CustomizedURL (text preserved from existing task)"
+                : "Data from Amazon CustomizedURL"
             });
             dataSource = 'AmazonURL';
           } else {
@@ -585,16 +607,29 @@ async function createOrUpdateTasksInTransaction(
         const itemIndex = order.items.findIndex(i => i.id === orderItemId);
         if (itemIndex >= 0 && itemIndex < personalizations.length) {
           const personalization = personalizations[itemIndex];
+
+          // Check if we need to preserve existing text
+          let customText = personalization.text;
+          if (options.preserveText && existingTaskData[orderItemId] && existingTaskData[orderItemId].length > 0) {
+            const existingTask = existingTaskData[orderItemId][0];
+            if (existingTask.custom_text) {
+              customText = existingTask.custom_text;
+              logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text: "${customText}" instead of "${personalization.text}"`);
+            }
+          }
+
           logger.info(`[Order ${order.id}][Item ${orderItemId}] eBay Special Case: Matched personalization by position.`);
           taskDetailsToCreate.push({
-            custom_text: personalization.text,
+            custom_text: customText, // Use preserved text if available
             color_1: itemColor,
             color_2: null,
             quantity: item.quantity,
             needs_review: false,
             review_reason: null,
             status: PrintTaskStatus.pending,
-            annotation: "Data from eBay Customer Notes (Special Case)"
+            annotation: options.preserveText && customText !== personalization.text
+              ? "Data from eBay Customer Notes (Special Case, text preserved from existing task)"
+              : "Data from eBay Customer Notes (Special Case)"
           });
           dataSource = 'eBaySpecial';
         }
@@ -631,25 +666,40 @@ async function createOrUpdateTasksInTransaction(
         }
 
         // ShipStation update logic moved below, after successful task upsert
-        for (const detail of itemResult.personalizations) {
+        for (let i = 0; i < itemResult.personalizations.length; i++) {
+          const detail = itemResult.personalizations[i];
           const combinedNeedsReview = itemRequiresReview || detail.needsReview;
           const detailReason = detail.needsReview ? detail.reviewReason : null;
           const annotationReason = combinedNeedsReview && detail.annotation ? `Annotation: ${detail.annotation}` : null;
           const reviewReasonCombined = Array.from(new Set([...itemReviewReasons, ...(detailReason ? [detailReason] : []), ...(annotationReason ? [annotationReason] : [])])).filter(Boolean).join('; ').substring(0, 1000) || null;
+
+          // Check if we need to preserve existing text
+          let customText = detail.customText;
+          let annotation = detail.annotation;
+
+          if (options.preserveText && existingTaskData[orderItemId] && i < existingTaskData[orderItemId].length) {
+            const existingTask = existingTaskData[orderItemId][i];
+            if (existingTask.custom_text) {
+              customText = existingTask.custom_text;
+              const preservedTextMessage = `Preserved original text: "${customText}" instead of AI-suggested: "${detail.customText}"`;
+              logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] ${preservedTextMessage}`);
+              annotation = annotation ? `${annotation}; ${preservedTextMessage}` : preservedTextMessage;
+            }
+          }
 
           if (detail.annotation) {
             logger.info(`[AI Annotation][Order ${order.id}][Item ${orderItemId}]: ${detail.annotation}`);
           }
 
           taskDetailsToCreate.push({
-            custom_text: detail.customText,
+            custom_text: customText, // Use preserved text if available
             color_1: detail.color1,
             color_2: detail.color2,
             quantity: detail.quantity,
             needs_review: combinedNeedsReview,
             review_reason: reviewReasonCombined,
             status: PrintTaskStatus.pending,
-            annotation: detail.annotation
+            annotation: annotation // Use updated annotation that includes the preserved text info
           });
           if (combinedNeedsReview) itemsNeedReviewCount++;
         }
@@ -657,7 +707,29 @@ async function createOrUpdateTasksInTransaction(
       }
     } else if (dataSource === 'Placeholder' && taskDetailsToCreate.length === 0) {
       // Ensure placeholder is created if Amazon fetch failed and no AI fallback occurred
-      taskDetailsToCreate.push({ custom_text: "Placeholder - Review Needed", color_1: null, color_2: null, quantity: item.quantity, needs_review: true, review_reason: finalReviewReason ?? "Placeholder due to processing error", status: PrintTaskStatus.pending, annotation: null });
+
+      // Check if we need to preserve existing text even for placeholder
+      let customText = "Placeholder - Review Needed";
+      if (options.preserveText && existingTaskData[orderItemId] && existingTaskData[orderItemId].length > 0) {
+        const existingTask = existingTaskData[orderItemId][0];
+        if (existingTask.custom_text) {
+          customText = existingTask.custom_text;
+          logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text for placeholder: "${customText}"`);
+        }
+      }
+
+      taskDetailsToCreate.push({
+        custom_text: customText,
+        color_1: null,
+        color_2: null,
+        quantity: item.quantity,
+        needs_review: true,
+        review_reason: finalReviewReason ?? "Placeholder due to processing error",
+        status: PrintTaskStatus.pending,
+        annotation: options.preserveText && customText !== "Placeholder - Review Needed"
+          ? "Placeholder with preserved text from existing task"
+          : null
+      });
       itemsNeedReviewCount++;
       itemDebugEntry.status = 'Placeholder Created';
     } else if (dataSource === 'AmazonURL' || dataSource === 'eBaySpecial') {
@@ -786,6 +858,198 @@ async function createOrUpdateTasksInTransaction(
   return { tasksCreatedCount, tasksSkippedCount, itemsNeedReviewCount };
 }
 
+// --- Adding new helper function to store task data ---
+async function getExistingTaskData(tx: Prisma.TransactionClient, orderId: number): Promise<Record<number, Array<{ custom_text: string | null; color_1: string | null; color_2: string | null }>>> {
+  const existingTasks = await tx.printOrderTask.findMany({
+    where: { orderId },
+    select: {
+      id: true,
+      orderItemId: true,
+      custom_text: true,
+      color_1: true,
+      color_2: true
+    }
+  });
+
+  // Create a map of item ID to existing values
+  return existingTasks.reduce((acc, task) => {
+    if (!acc[task.orderItemId]) acc[task.orderItemId] = [];
+    acc[task.orderItemId].push({
+      custom_text: task.custom_text,
+      color_1: task.color_1,
+      color_2: task.color_2
+    });
+    return acc;
+  }, {} as Record<number, Array<{ custom_text: string | null; color_1: string | null; color_2: string | null }>>);
+}
+
+// --- Add new function to sync existing tasks to ShipStation ---
+async function syncExistingTasksToShipstation(
+  orderId: number,
+  options: ProcessingOptions
+): Promise<{ updatedCount: number, failedCount: number }> {
+  logger.info(`[ShipStation Sync] Starting sync of existing tasks for order ${orderId}...`);
+  let updatedCount = 0;
+  let failedCount = 0;
+
+  try {
+    // Fetch order details first to ensure we have shipstation_order_id
+    const orderDetails = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        shipstation_order_id: true,
+        shipstation_order_number: true,
+        items: {
+          select: {
+            id: true,
+            shipstationLineItemKey: true,
+            product: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            // Fixed field name from printOrderTasks to printTasks
+            printTasks: {
+              select: {
+                id: true,
+                custom_text: true,
+                color_1: true,
+                color_2: true,
+                taskIndex: true
+              },
+              orderBy: {
+                taskIndex: 'asc'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!orderDetails) {
+      throw new Error(`Order with ID ${orderId} not found in database`);
+    }
+
+    if (!orderDetails.shipstation_order_id) {
+      throw new Error(`Order ${orderId} missing ShipStation order ID`);
+    }
+
+    logger.info(`[ShipStation Sync] Found order ${orderId} with ShipStation order ID ${orderDetails.shipstation_order_id} and order number ${orderDetails.shipstation_order_number}`);
+
+    // Fetch the full order details from ShipStation
+    const ssOrderResponse = await getShipstationOrders({ orderId: Number(orderDetails.shipstation_order_id) });
+    if (!ssOrderResponse || !ssOrderResponse.orders || ssOrderResponse.orders.length === 0) {
+      throw new Error(`Failed to fetch order ${orderDetails.shipstation_order_id} details from ShipStation`);
+    }
+
+    const ssOrder = ssOrderResponse.orders[0];
+    logger.debug({ fetchedSsOrder: ssOrder }, `[ShipStation Sync] Fetched ShipStation order details.`);
+
+    // Check if order is shipped - ADD WARNING FOR SHIPPED ORDERS
+    if (ssOrder.orderStatus && (ssOrder.orderStatus.toLowerCase() === 'shipped' || ssOrder.orderStatus.toLowerCase() === 'fulfilled')) {
+      logger.warn(`[ShipStation Sync] ⚠️ WARNING: Order ${orderId} (${orderDetails.shipstation_order_number}) is already marked as "${ssOrder.orderStatus}" in ShipStation.`);
+      logger.warn(`[ShipStation Sync] ShipStation usually prevents modifications to shipped orders. Updates may not take effect.`);
+
+      // If not running in confirm mode, ask for confirmation
+      if (!options.confirm && !options.dryRun) {
+        if (!await confirmExecution(`Continue attempting to update shipped order ${orderDetails.shipstation_order_number}? Updates may not take effect.`)) {
+          logger.info(`[ShipStation Sync] Skipping shipped order ${orderId} by user request.`);
+          return { updatedCount: 0, failedCount: 0 };
+        }
+        logger.info(`[ShipStation Sync] Proceeding with shipped order ${orderId} sync as requested.`);
+      }
+    }
+
+    // Process each item that has tasks and shipstation line item key
+    for (const item of orderDetails.items) {
+      if (!item.shipstationLineItemKey) {
+        logger.warn(`[ShipStation Sync] Item ${item.id} missing ShipStation line item key. Skipping.`);
+        failedCount++;
+        continue;
+      }
+
+      if (item.printTasks.length === 0) {
+        logger.warn(`[ShipStation Sync] Item ${item.id} has no print tasks. Skipping.`);
+        failedCount++;
+        continue;
+      }
+
+      // Use the first task's data (most items only have one task)
+      // If there are multiple tasks, we currently can't represent that in ShipStation
+      // so we use the first task's data
+      const task = item.printTasks[0];
+
+      // Construct options from the task data
+      const ssOptions = [];
+      if (task.custom_text !== null) {
+        logger.info(`[ShipStation Sync] Item ${item.id} task ${task.id} has custom_text: "${task.custom_text}"`);
+        ssOptions.push({ name: "Name or Text", value: task.custom_text });
+      } else {
+        logger.warn(`[ShipStation Sync] Item ${item.id} task ${task.id} has null custom_text`);
+      }
+
+      if (task.color_1 !== null) {
+        logger.info(`[ShipStation Sync] Item ${item.id} task ${task.id} has color_1: "${task.color_1}"`);
+        ssOptions.push({ name: "Colour 1", value: task.color_1 });
+      }
+
+      if (task.color_2 !== null) {
+        logger.info(`[ShipStation Sync] Item ${item.id} task ${task.id} has color_2: "${task.color_2}"`);
+        ssOptions.push({ name: "Colour 2", value: task.color_2 });
+      }
+
+      if (ssOptions.length === 0) {
+        logger.warn(`[ShipStation Sync] Item ${item.id} task ${task.id} has no data to sync. Skipping.`);
+        failedCount++;
+        continue;
+      }
+
+      // Log the actual options being sent to ShipStation
+      logger.info(`[ShipStation Sync] Will send options for item ${item.id} (line item key: ${item.shipstationLineItemKey}): ${JSON.stringify(ssOptions)}`);
+
+      if (options.dryRun) {
+        logger.info(`[Dry Run][ShipStation Sync] Would update ShipStation item ${item.id} with options: ${JSON.stringify(ssOptions)}`);
+        updatedCount++;
+        continue;
+      }
+
+      // Update ShipStation
+      logger.info(`[ShipStation Sync] Updating ShipStation item ${item.id} (task ${task.id}) with options: ${JSON.stringify(ssOptions)}`);
+      try {
+        const updateSuccess = await updateOrderItemOptions(
+          item.shipstationLineItemKey,
+          ssOptions,
+          ssOrder
+        );
+
+        if (updateSuccess) {
+          // Add note about shipped order updates
+          if (ssOrder.orderStatus && (ssOrder.orderStatus.toLowerCase() === 'shipped' || ssOrder.orderStatus.toLowerCase() === 'fulfilled')) {
+            logger.info(`[ShipStation Sync] API reported success for item ${item.id}, but changes may not be applied since order is ${ssOrder.orderStatus}`);
+          } else {
+            logger.info(`[ShipStation Sync] Successfully updated ShipStation item ${item.id}`);
+          }
+          updatedCount++;
+        } else {
+          logger.warn(`[ShipStation Sync] Failed to update ShipStation item ${item.id}`);
+          failedCount++;
+        }
+      } catch (error) {
+        logger.error(`[ShipStation Sync] Error updating ShipStation item ${item.id}: ${error instanceof Error ? error.message : String(error)}`);
+        failedCount++;
+      }
+    }
+
+    logger.info(`[ShipStation Sync] Completed sync for order ${orderId}. Updated: ${updatedCount}, Failed: ${failedCount}`);
+    return { updatedCount, failedCount };
+  } catch (error) {
+    logger.error(`[ShipStation Sync] Failed to sync order ${orderId}: ${error instanceof Error ? error.message : String(error)}`);
+    return { updatedCount, failedCount: failedCount + 1 };
+  }
+}
+
 // --- Main Execution ---
 async function main() {
   const SCRIPT_NAME = 'populate-print-queue';
@@ -830,6 +1094,8 @@ async function main() {
       .option('-y, --confirm', 'Skip confirmation prompts', false) // Boolean flag (presence implies true) - Added default false
       .option('--clear-all', 'Delete ALL tasks first (requires confirm)', false) // Boolean flag (presence implies true) - Added default false
       .option('--dry-run', 'Simulate without DB changes', false) // Boolean flag (presence implies true) - Added default false
+      .option('--preserve-text', 'Keep existing custom text/names when recreating tasks', false) // New flag to prevent overwriting existing text
+      .option('--shipstation-sync-only', 'Only sync existing DB tasks to ShipStation without changing DB', false) // New flag for ShipStation-only updates
       .option('--debug-file <path>', 'Path for detailed debug log file (requires --order-id)')
 
     // Log raw argv before parsing (use info level to ensure visibility regardless of logger level)
@@ -944,6 +1210,22 @@ async function main() {
     for (const order of ordersToProcess) {
       totalOrdersProcessed++;
       logger.info(`--- Processing Order ${order.id} (${order.shipstation_order_number}) ---`);
+
+      // Handle ShipStation sync-only mode
+      if (cmdOptions.shipstationSyncOnly) {
+        logger.info(`[Order ${order.id}] ShipStation sync-only mode enabled. Skipping AI extraction and DB updates.`);
+        try {
+          const { updatedCount, failedCount } = await syncExistingTasksToShipstation(order.id, cmdOptions);
+          logger.info(`[Order ${order.id}] ShipStation sync completed. Updated: ${updatedCount}, Failed: ${failedCount}`);
+          continue; // Skip the rest of the processing for this order
+        } catch (error) {
+          logger.error(`[Order ${order.id}] ShipStation sync failed: ${error instanceof Error ? error.message : String(error)}`);
+          totalOrdersFailed++;
+          failedOrderIds.push(order.id);
+          continue; // Skip the rest of the processing for this order
+        }
+      }
+
       const effectiveModelUsed = cmdOptions.openaiModel;
 
       const orderDebugInfo: OrderDebugInfo = {
@@ -990,6 +1272,7 @@ async function main() {
             logLevel: cmdOptions.logLevel,
             debugFile: cmdOptions.debugFile,
             createPlaceholder: cmdOptions.createPlaceholder,
+            preserveText: cmdOptions.preserveText, // Pass the preserveText flag to the transaction
           };
           const { tasksCreatedCount, /* tasksSkippedCount, itemsNeedReviewCount */ } = await prisma.$transaction(async (tx) => {
             return await createOrUpdateTasksInTransaction(tx, order, extractionResult.success ? extractionResult.data : { itemPersonalizations: {} }, transactionOptions, orderDebugInfo);
@@ -1038,6 +1321,39 @@ async function main() {
     if (logStream) logStream.end();
     process.exit(scriptRunSuccess ? 0 : 1);
   }
+}
+
+// Display help if requested
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`
+Usage:
+  npx tsx src/scripts/populate-print-queue.ts [options]
+
+Options:
+  --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
+  --limit <number>          Limit orders fetched (default: 10)
+  --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
+  --openai-model <model>    OpenAI model (default: gpt-4o-mini)
+  --debug                   Enable debug logging
+  --log-level <level>       Set log level (default: info)
+  -f, --force-recreate      Delete existing tasks first
+  --create-placeholder      Create placeholder on AI fail (default: true)
+  -y, --confirm             Skip confirmation prompts
+  --clear-all               Delete ALL tasks first (requires confirm)
+  --dry-run                 Simulate without DB changes
+  --preserve-text           Keep existing custom text/names when recreating tasks
+                            (prevents AI from overwriting correct names)
+  --shipstation-sync-only   Only sync existing DB tasks to ShipStation without changing DB
+  --debug-file <path>       Path for detailed debug log file (requires --order-id)
+  
+Examples:
+  # Process specific order with force recreate but preserve existing text
+  npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f --preserve-text
+  
+  # Process latest 5 orders in dry run mode
+  npx tsx src/scripts/populate-print-queue.ts --limit 5 --dry-run
+  `);
+  process.exit(0);
 }
 
 void main();

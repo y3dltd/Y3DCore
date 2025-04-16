@@ -1,46 +1,6 @@
 {
   "results": [
     {
-      "itemId": 489,
-      "updatedTasks": 0,
-      "newData": {
-        "customText": "MUSA",
-        "color1": "Olive Green",
-        "color2": "Bone White"
-      },
-      "source": "manual-entry"
-    },
-    {
-      "itemId": 483,
-      "updatedTasks": 0,
-      "newData": {
-        "customText": "Elliot",
-        "color1": "Dark Blue",
-        "color2": "White"
-      },
-      "source": "manual-entry"
-    },
-    {
-      "itemId": 484,
-      "updatedTasks": 0,
-      "newData": {
-        "customText": "Albert",
-        "color1": "Dark Blue",
-        "color2": "White"
-      },
-      "source": "manual-entry"
-    },
-    {
-      "itemId": 799,
-      "updatedTasks": 0,
-      "newData": {
-        "customText": "Leo.T.",
-        "color1": "Dark Blue",
-        "color2": "Gold"
-      },
-      "source": "manual-entry"
-    },
-    {
       "itemId": 187,
       "updatedTasks": 0,
       "newData": {
@@ -59,24 +19,14 @@
         "color2": "Pink"
       },
       "source": "amazon-url"
-    },
-    {
-      "itemId": 824,
-      "updatedTasks": 1,
-      "newData": {
-        "customText": "GEOFF",
-        "color1": "Blue",
-        "color2": "Red"
-      },
-      "source": "manual-entry"
     }
   ],
   "summary": {
     "total": {
-      "processed": 7,
+      "processed": 2,
       "amazonUrl": 2,
-      "manualEntry": 5,
-      "skipped": 59
+      "manualEntry": 0,
+      "skipped": 64
     },
     "skippedItems": [
       {
@@ -102,6 +52,24 @@
         "orderNumber": "202-9124397-4634701",
         "itemId": 490,
         "productName": "1-Colour Keyring (Prime)"
+      },
+      {
+        "orderId": 460,
+        "orderNumber": "204-6585836-4459555",
+        "itemId": 489,
+        "productName": "Personalised Keyring - Custom 3D Name Tag with 24 Colours for Kids' Bags & Party Favours | Unique Personalised Gifts for Kids | 2-Colour Design Keychain for School Bags & Stocking Fillers"
+      },
+      {
+        "orderId": 455,
+        "orderNumber": "204-7539439-5889959",
+        "itemId": 483,
+        "productName": "2-Colour Keyring"
+      },
+      {
+        "orderId": 455,
+        "orderNumber": "204-7539439-5889959",
+        "itemId": 484,
+        "productName": "2-Colour Keyring"
       },
       {
         "orderId": 456,
@@ -296,6 +264,12 @@
         "productName": "1-Colour Keyring"
       },
       {
+        "orderId": 615,
+        "orderNumber": "203-4543683-6449169",
+        "itemId": 799,
+        "productName": "2-Colour Keyring"
+      },
+      {
         "orderId": 616,
         "orderNumber": "026-5585200-4785105",
         "itemId": 816,
@@ -341,6 +315,12 @@
         "orderId": 616,
         "orderNumber": "026-5585200-4785105",
         "itemId": 823,
+        "productName": "2-Colour Keyring"
+      },
+      {
+        "orderId": 617,
+        "orderNumber": "204-0816355-6207508",
+        "itemId": 824,
         "productName": "2-Colour Keyring"
       },
       {

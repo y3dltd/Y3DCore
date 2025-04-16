@@ -59,7 +59,7 @@ npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-fil
 npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json
 
 # Process specific order
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json --order-id 123
+npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 123
 ```
 
 ### 3. Amazon Customization Parser
@@ -115,6 +115,97 @@ For processing a single order:
 npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 617
 ```
 
+## Troubleshooting
+
+### Common Issues
+
+1. **ShipStation Not Updating**
+
+   If you notice the database is updated but ShipStation doesn't reflect the changes:
+
+   - **Problem**: ShipStation's API has rate limits and occasional sync delays
+   - **Solution**: Use the populate-print-queue script with force-recreate to sync the data:
+     ```bash
+     npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
+     ```
+     The `-f` flag (force-recreate) will rebuild print tasks and push the changes to ShipStation
+
+2. **Order Not Found**
+
+   If `reprocess-amazon-colors.ts` can't find an order:
+
+   - **Problem**: The script uses `--order-id` which refers to the internal database ID
+   - **Solution**: Use the finder script to identify the internal ID first:
+     ```bash
+     # Look up the internal ID
+     grep "202-7013581-4597156" amazon-orders-missing-colors.json
+     
+     # Then use the internal ID with the reprocessor
+     npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 617
+     ```
+
+3. **Missing CustomizedURL**
+
+   For orders completely missing the CustomizedURL field:
+
+   - **Problem**: No way to automatically extract color data
+   - **Solution**: Create a manual entries file with the correct color data, then:
+     ```bash
+     # Use manual entries
+     npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json
+     
+     # For stubborn orders, try the complete populate process
+     npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
+     ```
+
+4. **Shipped Orders Not Updating**
+
+   If already shipped orders aren't updating in ShipStation:
+
+   - **Problem**: ShipStation limits modifications to shipped orders
+   - **Solution**: Document the missing colors for future reference, but focus on processing current orders
+
+### When to Regenerate Print Tasks
+
+In some cases, completely regenerating print tasks may be necessary:
+
+```bash
+# Clear existing tasks and recreate them
+npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --force-recreate
+
+# For orders with marketplace numbers, use the order number directly
+npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --force-recreate
+```
+
+This approach is more aggressive than the color reprocessing script but can help with stubborn orders that aren't updating properly.
+
+### ⚠️ CRITICAL WARNING: AI-Based Name Extraction ⚠️
+
+When using the `populate-print-queue.ts` script with `-f` or `--force-recreate` flag, be aware of the following serious issue:
+
+- **Problem**: The script uses OpenAI to extract customization data and may OVERWRITE existing names in the database and ShipStation with incorrect values!
+- **Example**: An order with name "Nick" may be erroneously changed to "Thomas" by the AI extraction process.
+
+**Recommended Approach for Name Updates:**
+
+1. **Never use `populate-print-queue.ts` to update just name information**
+   ```bash
+   # DANGEROUS - may overwrite correct names with AI guesses
+   npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
+   ```
+
+2. **Use the specialized scripts for color updates only**
+   ```bash
+   # SAFER - only updates color information, preserves names
+   npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json
+   ```
+
+3. **If you must recreate print tasks, verify ALL data after processing**
+   - Double-check all name/text values in ShipStation after using the populate script
+   - Immediately correct any erroneous name changes in both the database and ShipStation
+
+This issue needs to be addressed in future development to prevent data loss and customer errors.
+
 ## Future Improvements
 
 1. **Prevention**:
@@ -140,6 +231,12 @@ npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-fil
    - Add direct integration with ShipStation's API for real-time order updates
    - Develop a system to batch process color updates during off-peak hours
    - Create reporting tools to track all manual interventions
+
+6. **Fix AI Name Extraction Issues**:
+   - Modify `populate-print-queue.ts` to preserve existing names and only extract missing data
+   - Add validation checks to prevent AI from overwriting existing order data 
+   - Implement a "preserve fields" option to selectively update only specified fields
+   - Create an audit system that flags potential AI errors for human review
 
 ## Conclusion
 
