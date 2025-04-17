@@ -4,7 +4,8 @@ import { Sha256 } from '@aws-crypto/sha256-js'; // Use JS implementation for bro
 import { SignatureV4 } from '@aws-sdk/signature-v4';
 import { HttpRequest } from '@smithy/protocol-http';
 import { parseUrl } from '@smithy/url-parser';
-import axios, { AxiosRequestConfig, Method } from 'axios';
+import { AxiosRequestConfig, Method } from 'axios';
+import { createSecureApiClient } from '../api/secure-client';
 
 // --- Configuration from Environment Variables ---
 
@@ -63,7 +64,9 @@ async function getLwaAccessToken(): Promise<string> {
 
   console.log('Refreshing LWA token...');
   try {
-    const response = await axios.post(
+    // Use secure client for LWA token refresh
+    const secureClient = createSecureApiClient();
+    const response = await secureClient.post(
       LWA_TOKEN_ENDPOINT,
       {
         grant_type: 'refresh_token',
@@ -92,16 +95,14 @@ async function getLwaAccessToken(): Promise<string> {
   } catch (error: unknown) {
     let message = 'Unknown error refreshing LWA token';
     if (error instanceof Error) {
-      // Check if it's an Axios error to potentially access response data
-      if (axios.isAxiosError(error)) {
-        // Check if it's an AxiosError first
-        if (error.response) {
-          // Now safely access response
-          message = `Error refreshing LWA token: ${JSON.stringify(error.response.data)} (Status: ${error.response.status})`;
-        } else {
-          // Axios error without a response (e.g., network error)
-          message = `Error refreshing LWA token: ${error.message}`;
-        }
+      // Check for axios error properties
+      const axiosError = error as any;
+      if (axiosError.isAxiosError && axiosError.response) {
+        // It's an Axios error with a response
+        message = `Error refreshing LWA token: ${JSON.stringify(axiosError.response.data)} (Status: ${axiosError.response.status})`;
+      } else if (axiosError.isAxiosError) {
+        // Axios error without a response (e.g., network error)
+        message = `Error refreshing LWA token: ${axiosError.message}`;
       } else {
         // Not an Axios error, just use the standard Error message
         message = `Error refreshing LWA token: ${error.message}`;
@@ -237,29 +238,36 @@ export async function makeSpapiRequest<T = unknown>( // Default generic to unkno
     };
 
     console.log(`Making SP-API request (${useRdt ? 'RDT' : 'LWA'}): ${method} ${config.url}`);
-    const response = await axios(config);
+    // Use secure client for SP-API requests
+    const secureClient = createSecureApiClient();
+    const response = await secureClient(config);
     return response.data as T;
   } catch (error: unknown) {
     console.error(`SP-API Request Failed: ${method} ${path}`);
     let errorMessage = `SP-API request failed: Unknown error`;
 
-    if (axios.isAxiosError(error)) {
-      console.error('Axios Config:', JSON.stringify(error.config, null, 2));
-      if (error.response) {
+    // Handle error appropriately with type checking
+    const axiosError = error as any;
+    if (axiosError.isAxiosError) {
+      if (axiosError.config) {
+        console.error('Axios Config:', JSON.stringify(axiosError.config, null, 2));
+      }
+      
+      if (axiosError.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error('Error Status:', error.response.status);
-        console.error('Error Headers:', JSON.stringify(error.response.headers, null, 2));
-        console.error('Error Data:', JSON.stringify(error.response.data, null, 2));
-        errorMessage = `SP-API request failed: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
-      } else if (error.request) {
+        console.error('Error Status:', axiosError.response.status);
+        console.error('Error Headers:', JSON.stringify(axiosError.response.headers, null, 2));
+        console.error('Error Data:', JSON.stringify(axiosError.response.data, null, 2));
+        errorMessage = `SP-API request failed: ${axiosError.response.status} - ${JSON.stringify(axiosError.response.data)}`;
+      } else if (axiosError.request) {
         // The request was made but no response was received
-        console.error('Error Request:', error.request);
+        console.error('Error Request:', axiosError.request);
         errorMessage = `SP-API request failed: No response received`;
       } else {
         // Something happened in setting up the request that triggered an Error
-        console.error('Error Message:', error.message);
-        errorMessage = `SP-API request failed: ${error.message}`;
+        console.error('Error Message:', axiosError.message);
+        errorMessage = `SP-API request failed: ${axiosError.message}`;
       }
     } else if (error instanceof Error) {
       console.error('Error Message:', error.message);

@@ -23,8 +23,12 @@ export const sessionOptions = {
 
 if (!sessionOptions.password || sessionOptions.password.length < 32) {
   console.error(
-    'CRITICAL SECURITY WARNING: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
+    'CRITICAL SECURITY ERROR: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
   );
+  // Fail hard instead of just logging
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
+  }
 }
 
 // Function to get the current session

@@ -16,6 +16,36 @@ module.exports = {
     },
   },
   rules: {
+    'import/order': ['error', {
+      groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
+      'newlines-between': 'always',
+      alphabetize: {
+        order: 'asc',
+        caseInsensitive: true
+      },
+      pathGroups: [
+        {
+          pattern: '@/**',
+          group: 'internal',
+          position: 'before'
+        },
+        {
+          pattern: '@components/**',
+          group: 'internal',
+          position: 'before'
+        },
+        {
+          pattern: '@lib/**',
+          group: 'internal',
+          position: 'before'
+        },
+        {
+          pattern: '@hooks/**',
+          group: 'internal',
+          position: 'before'
+        }
+      ]
+    }],
     'no-unused-vars': 'warn',
     '@typescript-eslint/explicit-function-return-type': 'warn', 
     '@typescript-eslint/no-explicit-any': 'warn',

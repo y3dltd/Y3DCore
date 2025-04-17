@@ -1,12 +1,15 @@
 // Use correct enum name PrintTaskStatus
 import { Prisma, Customer, Product, Order, OrderItem, PrintTaskStatus } from '@prisma/client';
 
-import { prisma } from '@/lib/prisma';
+// Use relative import instead of path alias to fix module resolution
+import { prisma } from '../prisma';
+import { extractStringValue } from '../prisma/utils';
 
 import type { ShipStationOrder, ShipStationOrderItem, ShipStationTag } from './types';
 import logger from '../logger';
 import { listTags } from './api';
 import type { SyncOptions } from './index'; // Import SyncOptions
+import { generateSecureMockId } from '../utils/crypto'; // Import secure crypto utils
 import {
   mapAddressToCustomerFields,
   mapSsItemToProductData,
@@ -178,7 +181,7 @@ export const upsertCustomerFromOrder = async (
         );
         // Return a mock customer object in dry run
         // Use a negative number for mock ID
-        const mockId = -Math.floor(Math.random() * 1000000);
+        const mockId = generateSecureMockId();
         // Ensure mock object matches Customer schema exactly, adding potentially expected null fields
         customer = {
           id: mockId, // Use numeric mock ID
@@ -298,19 +301,10 @@ export const upsertProductFromItem = async (
           return {
             id: existingBySku.id, // Use existing ID (number)
             // Use simple string/null types from updateData
-            name: typeof updateData.name === 'string' ? updateData.name : existingBySku.name,
-            sku:
-              typeof updateData.sku === 'string' || updateData.sku === null
-                ? updateData.sku
-                : existingBySku.sku,
-            shipstation_product_id:
-              typeof updateData.shipstation_product_id === 'string'
-                ? updateData.shipstation_product_id
-                : existingBySku.shipstation_product_id,
-            imageUrl:
-              typeof updateData.imageUrl === 'string' || updateData.imageUrl === null
-                ? updateData.imageUrl
-                : existingBySku.imageUrl,
+            name: extractStringValue(updateData.name, existingBySku.name),
+            sku: extractStringValue(updateData.sku, existingBySku.sku),
+            shipstation_product_id: existingBySku.shipstation_product_id,
+            imageUrl: extractStringValue(updateData.imageUrl, existingBySku.imageUrl),
             createdAt: existingBySku.createdAt, // Keep original creation date
             updatedAt: updateData.updatedAt,
             // Add required fields with null or default values
@@ -383,25 +377,17 @@ export const upsertProductFromItem = async (
         return {
           id: mockId, // Use mock number ID
           // Use simple string/null types from createInput/updateInput and ensure we extract actual values
-          name:
-            typeof createInput.name === 'string'
-              ? createInput.name
-              : typeof updateInput.name === 'string'
-                ? updateInput.name
-                : 'Unknown Product',
-          sku:
-            typeof createInput.sku === 'string' || createInput.sku === null
-              ? createInput.sku
-              : typeof updateInput.sku === 'string' || updateInput.sku === null
-                ? updateInput.sku
-                : null,
-          shipstation_product_id: shipstationProductId,
-          imageUrl:
-            typeof createInput.imageUrl === 'string' || createInput.imageUrl === null
-              ? createInput.imageUrl
-              : typeof updateInput.imageUrl === 'string' || updateInput.imageUrl === null
-                ? updateInput.imageUrl
-                : null,
+          name: extractStringValue(createInput.name) || 
+                extractStringValue(updateInput.name) || 
+                'Unknown Product',
+          sku: extractStringValue(createInput.sku) || 
+               extractStringValue(updateInput.sku),
+          // Convert string ID to number or keep as is if already a number
+          shipstation_product_id: typeof shipstationProductId === 'string' 
+              ? parseInt(shipstationProductId, 10) 
+              : shipstationProductId,
+          imageUrl: extractStringValue(createInput.imageUrl) || 
+                    extractStringValue(updateInput.imageUrl),
           createdAt: existingProductById?.createdAt ?? new Date(), // Use existing or new date
           updatedAt: new Date(),
           // Add required fields with null or default values
@@ -434,7 +420,7 @@ export const upsertProductFromItem = async (
           createInput
         );
         // Use a negative number for mock ID
-        const mockId = -Math.floor(Math.random() * 1000000); // Use numeric mock ID
+        const mockId = generateSecureMockId(); // Use numeric mock ID
         // Return a mock product object
         return {
           id: mockId, // Use numeric mock ID

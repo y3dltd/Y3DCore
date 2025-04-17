@@ -1,0 +1,40 @@
+# Y3DHub Crontab Configuration - Updated with Enhanced Print Tasks
+# Last updated: April 7, 2025
+
+# ========= ENVIRONMENT VARIABLES =========
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Y3D_DIR=/home/jayson/y3dhub
+LOG_DIR=/home/jayson/y3dhub/logs
+
+# ========= ORDER SYNC SCHEDULES =========
+
+# Sync orders every 15 minutes
+*/15 * * * * cd $Y3D_DIR && npm run sync-orders -- --hours=2 >> $LOG_DIR/cron_sync_orders_`date +\%Y\%m\%d`.log 2>&1
+
+# Sync orders once a day with a longer lookback period (7 days) to catch any missed orders
+0 3 * * * cd $Y3D_DIR && npm run sync-orders -- --days=7 >> $LOG_DIR/cron_sync_orders_full_`date +\%Y\%m\%d`.log 2>&1
+
+# ========= PRINT TASKS SCHEDULES =========
+
+# Process print tasks for new orders every 15 minutes
+*/15 * * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/populate-print-queue.ts --limit=20 >> $LOG_DIR/cron_populate_queue_`date +\%Y\%m\%d`.log 2>&1
+
+# Run daily cleanup for completed/shipped order print tasks at 2 AM
+0 2 * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/populate-print-queue.ts --clear-all >> $LOG_DIR/cron_cleanup_queue_`date +\%Y\%m\%d`.log 2>&1
+
+# ========= MAINTENANCE SCHEDULES =========
+
+# Run daily cleanup at 2 AM
+0 2 * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/clean.ts >> $LOG_DIR/cleanup_`date +\%Y\%m\%d`.log 2>&1
+
+# Log rotation - rotate logs older than 7 days
+0 0 * * * find $LOG_DIR -name "*.log" -type f -mtime +7 -delete
+
+# Create log directory structure
+0 0 * * * mkdir -p $LOG_DIR
+
+# ========= STATS & MONITORING =========
+
+# Run AI usage stats once a day at 6am
+0 6 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/ai-usage-stats.ts > $LOG_DIR/ai_usage_stats_`date +\%Y\%m\%d`.log 2>&1
