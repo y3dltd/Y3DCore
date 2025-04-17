@@ -139,3 +139,4 @@ amazon-spapi-credentials.md
 /playwright-report/
 /playwright/.cache/
 /node_modules/.cache/
+dev.log
