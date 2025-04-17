@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+
+[build.processing]
+  skip_processing = true
+
+[build.environment]
+  NODE_VERSION = "18" # Match your development Node version
+  NPM_FLAGS = "--no-audit --no-fund"
+  SESSION_PASSWORD = "s8n7q3p9w2d5g1h6k0j4m5r1t0z9x3v8c2b4n7m6l9k0j3h5g1f8d2s4"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "netlify-plugin-cache"
+  [plugins.inputs]
+    paths = [
+      "node_modules/.cache",
+      ".next/cache",
+      "node_modules/.pnpm", # If using pnpm
+      ".eslintcache"
+    ]

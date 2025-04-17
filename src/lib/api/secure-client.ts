@@ -7,8 +7,9 @@
  * - Adds timeout and request limiting
  */
 
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import https from 'https';
+
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 /**
  * Creates an axios client with secure defaults

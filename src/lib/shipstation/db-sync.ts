@@ -3,19 +3,18 @@ import { Prisma, Customer, Product, Order, OrderItem, PrintTaskStatus } from '@p
 
 // Use relative import instead of path alias to fix module resolution
 import { prisma } from '../prisma';
-import { extractStringValue } from '../prisma/utils';
-
 import type { ShipStationOrder, ShipStationOrderItem, ShipStationTag } from './types';
 import logger from '../logger';
 import { listTags } from './api';
 import type { SyncOptions } from './index'; // Import SyncOptions
-import { generateSecureMockId } from '../utils/crypto'; // Import secure crypto utils
 import {
   mapAddressToCustomerFields,
   mapSsItemToProductData,
   mapSsItemToOrderItemData,
   mapOrderToPrisma,
 } from './mappers';
+import { extractStringValue } from '../prisma/utils';
+import { generateSecureMockId } from '../utils/crypto'; // Import secure crypto utils
 
 // Define the type based on Prisma schema and usage
 type OrderWithItemsAndProduct = Order & {
@@ -301,7 +300,8 @@ export const upsertProductFromItem = async (
           return {
             id: existingBySku.id, // Use existing ID (number)
             // Use simple string/null types from updateData
-            name: extractStringValue(updateData.name, existingBySku.name),
+            // Ensure name is always a string since it's required in the schema
+            name: extractStringValue(updateData.name, existingBySku.name) || '',
             sku: extractStringValue(updateData.sku, existingBySku.sku),
             shipstation_product_id: existingBySku.shipstation_product_id,
             imageUrl: extractStringValue(updateData.imageUrl, existingBySku.imageUrl),

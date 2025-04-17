@@ -29,7 +29,7 @@ export function extractStringValue(
   // Handle Prisma update operations
   if (typeof value === 'object') {
     if ('set' in value) {
-      return value.set;
+      return value.set === undefined ? defaultValue : value.set;
     }
   }
   

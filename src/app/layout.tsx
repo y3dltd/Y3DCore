@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
-import './globals.css';
-import '../styles/color-badges.css';
 import { Footer } from '@/components/layout/footer'; // Import Footer
 import Navbar from '@/components/layout/navbar';
 import { cn } from '@/lib/utils'; // Import cn utility
+import '../styles/color-badges.css';
+import './globals.css';
 
 // Initialize Inter font
 const inter = Inter({
@@ -35,7 +35,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/fav/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/fav/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/fav/apple-icon-180x180.png" />
-        <link rel="manifest" href="/fav/manifest.json" />
+        <link rel="manifest" href="/manifest.json" />
         {/* Add other sizes/types as needed from your public/fav directory */}
       </head>
       {/* Apply Inter font class using its variable or className */}

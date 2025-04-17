@@ -102,5 +102,59 @@
     "*.json": "jsonc"
   },
   "editor.linkedEditing": true,
-  "terminal.integrated.defaultProfile.linux": "bash"
+  "terminal.integrated.defaultProfile.linux": "bash",
+
+  // Performance optimizations
+  "js/ts.implicitProjectConfig.checkJs": false,
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  "typescript.tsserver.watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriorityPolling"
+  },
+  "editor.inlineSuggest.suppressSuggestions": false,
+
+  // Code Spell Checker settings
+  "cSpell.enabled": true,
+  "cSpell.words": [
+    "cmdk",
+    "dhub",
+    "ehthumbs",
+    "embla",
+    "jspm",
+    "keyrings",
+    "lmstudio",
+    "LMSTUDIO",
+    "lookback",
+    "multistream",
+    "nextui",
+    "nuxt",
+    "ollama",
+    "OLLAMA",
+    "openrouter",
+    "participations",
+    "Participations",
+    "pycache",
+    "qodo",
+    "scaleleap",
+    "shadcn",
+    "Shadcn",
+    "shipstation",
+    "Shipstation",
+    "SHIPSTATION",
+    "sonner",
+    "Sonner",
+    "spapi",
+    "Spapi",
+    "SPAPI",
+    "upserted",
+    "Upserted",
+    "upserting",
+    "Upserting",
+    "upserts",
+    "Upserts",
+    "vaul",
+    "vercel",
+    "vuepress"
+  ]
 }
