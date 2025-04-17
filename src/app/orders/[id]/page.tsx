@@ -1,17 +1,31 @@
-import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ArrowLeft, User, MapPin, Truck, Package as PackageIcon, AlertCircle, ShoppingCart, StickyNote } from 'lucide-react';
-import { CURRENCY_SYMBOL } from '@/lib/constants';
-import { formatRelativeTime, formatDateTime } from '@/lib/shared/date-utils';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
-import { MoreDetailsCard } from '@/components/orders/more-details-card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tag, Prisma, Customer, OrderItem, Product, PrintOrderTask } from '@prisma/client';
+import {
+  ArrowLeft,
+  User,
+  MapPin,
+  Truck,
+  Package as PackageIcon,
+  AlertCircle,
+  ShoppingCart,
+  StickyNote,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { MoreDetailsCard } from '@/components/orders/more-details-card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { CURRENCY_SYMBOL } from '@/lib/constants';
 import {
   formatCarrierCode,
   formatServiceCode,
@@ -19,8 +33,11 @@ import {
   formatConfirmation,
   formatBooleanYN,
   formatWarehouseId,
-  formatCountryCode
+  formatCountryCode,
 } from '@/lib/formatting';
+import { prisma } from '@/lib/prisma';
+import { formatRelativeTime, formatDateTime } from '@/lib/shared/date-utils';
+import { cn } from '@/lib/utils';
 
 // --- Define Serializable Types --- START
 
@@ -38,7 +55,8 @@ type OrderDataFromPrisma = Prisma.OrderGetPayload<{
 }>;
 
 // Interface for the serialized Product
-interface SerializableProductForDetails extends Omit<Product, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
+interface SerializableProductForDetails
+  extends Omit<Product, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
   weight: string | null;
   item_weight_value: string | null;
   createdAt: string;
@@ -46,16 +64,19 @@ interface SerializableProductForDetails extends Omit<Product, 'weight' | 'item_w
 }
 
 // Interface for the serialized OrderItem
-interface SerializableOrderItemForDetails extends Omit<OrderItem, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
+interface SerializableOrderItemForDetails
+  extends Omit<OrderItem, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
   unit_price: string;
   created_at: string;
   updated_at: string | null;
   product: SerializableProductForDetails | null; // Product can be null
-  printTasks: Array<Omit<PrintOrderTask, 'created_at' | 'updated_at' | 'ship_by_date'> & {
-    created_at: string;
-    updated_at: string | null;
-    ship_by_date: string | null;
-  }>;
+  printTasks: Array<
+    Omit<PrintOrderTask, 'created_at' | 'updated_at' | 'ship_by_date'> & {
+      created_at: string;
+      updated_at: string | null;
+      ship_by_date: string | null;
+    }
+  >;
 }
 
 // Interface for the serialized Customer
@@ -64,16 +85,33 @@ interface SerializableCustomerForDetails extends Omit<Customer, 'created_at' | '
   updated_at: string | null;
 }
 
-
 // Explicitly define the serializable version of the main Order data
-interface SerializableOrderDetailsData extends Omit<OrderDataFromPrisma,
-  | 'shipping_price' | 'tax_amount' | 'discount_amount' | 'shipping_amount_paid'
-  | 'shipping_tax' | 'total_price' | 'amount_paid' | 'order_weight_value'
-  | 'dimensions_height' | 'dimensions_length' | 'dimensions_width' | 'insurance_insured_value'
-  | 'order_date' | 'created_at' | 'updated_at' | 'payment_date' | 'ship_by_date'
-  | 'shipped_date' | 'last_sync_date' | 'void_date'
-  | 'items' | 'customer' // Omit relations that will be replaced
-> {
+interface SerializableOrderDetailsData
+  extends Omit<
+    OrderDataFromPrisma,
+    | 'shipping_price'
+    | 'tax_amount'
+    | 'discount_amount'
+    | 'shipping_amount_paid'
+    | 'shipping_tax'
+    | 'total_price'
+    | 'amount_paid'
+    | 'order_weight_value'
+    | 'dimensions_height'
+    | 'dimensions_length'
+    | 'dimensions_width'
+    | 'insurance_insured_value'
+    | 'order_date'
+    | 'created_at'
+    | 'updated_at'
+    | 'payment_date'
+    | 'ship_by_date'
+    | 'shipped_date'
+    | 'last_sync_date'
+    | 'void_date'
+    | 'items'
+    | 'customer' // Omit relations that will be replaced
+  > {
   // Re-define Decimal fields as string | null
   shipping_price: string | null;
   tax_amount: string | null;
@@ -133,13 +171,15 @@ function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDet
       unit_price: item.unit_price.toString(),
       created_at: item.created_at.toISOString(),
       updated_at: item.updated_at?.toISOString() ?? null,
-      product: item.product ? {
-        ...item.product,
-        weight: item.product.weight?.toString() ?? null,
-        item_weight_value: item.product.item_weight_value?.toString() ?? null,
-        createdAt: item.product.createdAt.toISOString(),
-        updatedAt: item.product.updatedAt.toISOString(),
-      } : null,
+      product: item.product
+        ? {
+            ...item.product,
+            weight: item.product.weight?.toString() ?? null,
+            item_weight_value: item.product.item_weight_value?.toString() ?? null,
+            createdAt: item.product.createdAt.toISOString(),
+            updatedAt: item.product.updatedAt.toISOString(),
+          }
+        : null,
       printTasks: item.printTasks.map(task => ({
         ...task,
         ship_by_date: task.ship_by_date?.toISOString() ?? null,
@@ -147,18 +187,22 @@ function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDet
         updated_at: task.updated_at?.toISOString() ?? null,
       })),
     })),
-    customer: order.customer ? {
-      ...order.customer,
-      created_at: order.customer.created_at.toISOString(),
-      updated_at: order.customer.updated_at?.toISOString() ?? null,
-    } : null,
+    customer: order.customer
+      ? {
+          ...order.customer,
+          created_at: order.customer.created_at.toISOString(),
+          updated_at: order.customer.updated_at?.toISOString() ?? null,
+        }
+      : null,
     tag_ids: order.tag_ids,
   };
 }
 // --- End Serialization Helper ---
 
 // Use the explicit SerializableOrderDetailsData type for the return value
-async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDetailsData; allTags: Tag[] }> {
+async function getOrderDetails(
+  id: number
+): Promise<{ order: SerializableOrderDetailsData; allTags: Tag[] }> {
   const [orderData, allTags] = await Promise.all([
     prisma.order.findUnique({
       where: { id },
@@ -220,13 +264,13 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
           include: {
             product: true,
             printTasks: {
-              orderBy: { taskIndex: 'asc' }
-            }
-          }
+              orderBy: { taskIndex: 'asc' },
+            },
+          },
         },
       },
     }),
-    prisma.tag.findMany()
+    prisma.tag.findMany(),
   ]);
 
   if (!orderData) {
@@ -239,53 +283,63 @@ async function getOrderDetails(id: number): Promise<{ order: SerializableOrderDe
 
 // +++ Add Color Map and Helper +++
 const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
-  black: { bg: "bg-black", textColor: "text-white" },
-  grey: { bg: "bg-gray-400", textColor: "text-white" },
-  gray: { bg: "bg-gray-400", textColor: "text-white" },
-  "light blue": { bg: "bg-blue-400", textColor: "text-white" },
-  blue: { bg: "bg-blue-500", textColor: "text-white" },
-  "dark blue": { bg: "bg-blue-900", textColor: "text-white" },
-  brown: { bg: "bg-yellow-800", textColor: "text-white" },
-  orange: { bg: "bg-orange-500", textColor: "text-white" },
-  "matt orange": { bg: "bg-orange-600", textColor: "text-white" },
-  "silk orange": { bg: "bg-orange-400", textColor: "text-black" },
-  red: { bg: "bg-red-600", textColor: "text-white" },
-  "fire engine red": { bg: "bg-red-700", textColor: "text-white" },
-  "rose gold": { bg: "bg-pink-300", textColor: "text-black" },
-  magenta: { bg: "bg-fuchsia-700", textColor: "text-white" },
-  white: { bg: "bg-white", textColor: "text-black" },
-  "cold white": { bg: "bg-slate-50 border border-gray-300", textColor: "text-black" },
-  yellow: { bg: "bg-yellow-400", textColor: "text-black" },
-  silver: { bg: "bg-gray-300", textColor: "text-black" },
-  "silk silver": { bg: "bg-gray-200", textColor: "text-black" },
-  purple: { bg: "bg-purple-500", textColor: "text-white" },
-  pink: { bg: "bg-pink-400", textColor: "text-white" },
-  "matt pink": { bg: "bg-pink-500", textColor: "text-white" },
-  "silk pink": { bg: "bg-pink-300", textColor: "text-black" },
-  gold: { bg: "bg-yellow-500", textColor: "text-black" },
-  skin: { bg: "bg-orange-200", textColor: "text-black" },
-  "peak green": { bg: "bg-green-400", textColor: "text-white" },
-  green: { bg: "bg-green-500", textColor: "text-white" },
-  "olive green": { bg: "bg-green-700", textColor: "text-white" },
-  "pine green": { bg: "bg-green-800", textColor: "text-white" },
-  "glow in the dark": { bg: "bg-lime-300", textColor: "text-black" },
-  bronze: { bg: "bg-amber-700", textColor: "text-white" },
-  beige: { bg: "bg-amber-100", textColor: "text-black" },
-  turquoise: { bg: "bg-teal-400", textColor: "text-black" },
+  black: { bg: 'bg-black', textColor: 'text-white' },
+  grey: { bg: 'bg-gray-400', textColor: 'text-white' },
+  gray: { bg: 'bg-gray-400', textColor: 'text-white' },
+  'light blue': { bg: 'bg-blue-400', textColor: 'text-white' },
+  blue: { bg: 'bg-blue-500', textColor: 'text-white' },
+  'dark blue': { bg: 'bg-blue-900', textColor: 'text-white' },
+  brown: { bg: 'bg-yellow-800', textColor: 'text-white' },
+  orange: { bg: 'bg-orange-500', textColor: 'text-white' },
+  'matt orange': { bg: 'bg-orange-600', textColor: 'text-white' },
+  'silk orange': { bg: 'bg-orange-400', textColor: 'text-black' },
+  red: { bg: 'bg-red-600', textColor: 'text-white' },
+  'fire engine red': { bg: 'bg-red-700', textColor: 'text-white' },
+  'rose gold': { bg: 'bg-pink-300', textColor: 'text-black' },
+  magenta: { bg: 'bg-fuchsia-700', textColor: 'text-white' },
+  white: { bg: 'bg-white', textColor: 'text-black' },
+  'cold white': { bg: 'bg-slate-50 border border-gray-300', textColor: 'text-black' },
+  yellow: { bg: 'bg-yellow-400', textColor: 'text-black' },
+  silver: { bg: 'bg-gray-300', textColor: 'text-black' },
+  'silk silver': { bg: 'bg-gray-200', textColor: 'text-black' },
+  purple: { bg: 'bg-purple-500', textColor: 'text-white' },
+  pink: { bg: 'bg-pink-400', textColor: 'text-white' },
+  'matt pink': { bg: 'bg-pink-500', textColor: 'text-white' },
+  'silk pink': { bg: 'bg-pink-300', textColor: 'text-black' },
+  gold: { bg: 'bg-yellow-500', textColor: 'text-black' },
+  skin: { bg: 'bg-orange-200', textColor: 'text-black' },
+  'peak green': { bg: 'bg-green-400', textColor: 'text-white' },
+  green: { bg: 'bg-green-500', textColor: 'text-white' },
+  'olive green': { bg: 'bg-green-700', textColor: 'text-white' },
+  'pine green': { bg: 'bg-green-800', textColor: 'text-white' },
+  'glow in the dark': { bg: 'bg-lime-300', textColor: 'text-black' },
+  bronze: { bg: 'bg-amber-700', textColor: 'text-white' },
+  beige: { bg: 'bg-amber-100', textColor: 'text-black' },
+  turquoise: { bg: 'bg-teal-400', textColor: 'text-black' },
 };
 
 const getColorInfo = (
   colorName: string | null | undefined
 ): { bgClass: string; textClass: string } => {
-  const defaultColor = { bgClass: "bg-gray-200", textClass: "text-black" };
-  if (!colorName)
-    return { bgClass: "bg-transparent", textClass: "text-foreground" };
+  const defaultColor = { bgClass: 'bg-gray-200', textClass: 'text-black' };
+  if (!colorName) return { bgClass: 'bg-transparent', textClass: 'text-foreground' };
   const lowerColorName = colorName.toLowerCase();
-  if (lowerColorName.includes("peak green")) return { bgClass: colorMapInternal["peak green"].bg, textClass: colorMapInternal["peak green"].textColor };
-  if (lowerColorName.includes("light blue")) return { bgClass: colorMapInternal["light blue"].bg, textClass: colorMapInternal["light blue"].textColor };
-  if (lowerColorName.includes("dark grey") || lowerColorName.includes("dark gray")) return { bgClass: "bg-gray-600", textClass: "text-white" };
-  if (lowerColorName.includes("magenta")) return { bgClass: colorMapInternal.magenta.bg, textClass: colorMapInternal.magenta.textColor };
-  if (lowerColorName.includes("white")) return { bgClass: colorMapInternal.white.bg, textClass: colorMapInternal.white.textColor };
+  if (lowerColorName.includes('peak green'))
+    return {
+      bgClass: colorMapInternal['peak green'].bg,
+      textClass: colorMapInternal['peak green'].textColor,
+    };
+  if (lowerColorName.includes('light blue'))
+    return {
+      bgClass: colorMapInternal['light blue'].bg,
+      textClass: colorMapInternal['light blue'].textColor,
+    };
+  if (lowerColorName.includes('dark grey') || lowerColorName.includes('dark gray'))
+    return { bgClass: 'bg-gray-600', textClass: 'text-white' };
+  if (lowerColorName.includes('magenta'))
+    return { bgClass: colorMapInternal.magenta.bg, textClass: colorMapInternal.magenta.textColor };
+  if (lowerColorName.includes('white'))
+    return { bgClass: colorMapInternal.white.bg, textClass: colorMapInternal.white.textColor };
   const exactMatch = colorMapInternal[lowerColorName];
   if (exactMatch) return { bgClass: exactMatch.bg, textClass: exactMatch.textColor };
   const entries = Object.entries(colorMapInternal).sort((a, b) => b[0].length - a[0].length);
@@ -307,7 +361,7 @@ const orderStatusColors: Record<string, string> = {
   on_hold: 'bg-yellow-500 text-white dark:bg-yellow-600 dark:text-yellow-100',
   cancelled: 'bg-red-600 text-white dark:bg-red-700 dark:text-red-100',
   default: 'bg-gray-500 text-white dark:bg-gray-600 dark:text-gray-100',
-}
+};
 
 const internalStatusColors: Record<string, string> = {
   new: 'bg-sky-500 text-white dark:bg-sky-600 dark:text-sky-100',
@@ -316,7 +370,7 @@ const internalStatusColors: Record<string, string> = {
   completed: 'bg-emerald-500 text-white dark:bg-emerald-600 dark:text-emerald-100',
   cancelled: 'bg-rose-500 text-white dark:bg-rose-600 dark:text-rose-100',
   default: 'bg-stone-500 text-white dark:bg-stone-600 dark:text-stone-100',
-}
+};
 
 function getStatusClass(status: string | null | undefined, type: 'order' | 'internal'): string {
   const map = type === 'order' ? orderStatusColors : internalStatusColors;
@@ -358,7 +412,10 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   const tagMap = new Map(allTags.map(tag => [tag.shipstation_tag_id, tag]));
 
   // Use explicit type for item in reduce
-  const totalItems = order.items.reduce((sum: number, item: SerializableOrderItemForDetails) => sum + item.quantity, 0);
+  const totalItems = order.items.reduce(
+    (sum: number, item: SerializableOrderItemForDetails) => sum + item.quantity,
+    0
+  );
 
   return (
     <div>
@@ -395,7 +452,11 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                           style={{
                             backgroundColor: tag.color_hex || '#cccccc',
                             // Basic contrast check - might need refinement
-                            color: tag.color_hex && parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2 ? '#000' : '#fff'
+                            color:
+                              tag.color_hex &&
+                              parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2
+                                ? '#000'
+                                : '#fff',
                           }}
                           className="text-xs border border-black/10"
                         >
@@ -403,7 +464,11 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                         </Badge>
                       );
                     }
-                    return <Badge key={tagId} variant="secondary">ID: {tagId}</Badge>;
+                    return (
+                      <Badge key={tagId} variant="secondary">
+                        ID: {tagId}
+                      </Badge>
+                    );
                   })
                 ) : (
                   <span className="text-muted-foreground ml-1">-</span>
@@ -413,11 +478,21 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           </div>
           <div className="flex items-center gap-4">
             {/* Use dynamic status badge */}
-            <Badge className={cn("text-sm font-semibold px-3 py-1", getStatusClass(order.order_status, 'order'))}>
-              {order.order_status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) ?? 'N/A'}
+            <Badge
+              className={cn(
+                'text-sm font-semibold px-3 py-1',
+                getStatusClass(order.order_status, 'order')
+              )}
+            >
+              {order.order_status
+                ?.replace(/_/g, ' ')
+                .replace(/\b\w/g, (l: string) => l.toUpperCase()) ?? 'N/A'}
             </Badge>
             <Link href="/orders">
-              <Button variant="outline" className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+              <Button
+                variant="outline"
+                className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
+              >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Orders
               </Button>
@@ -440,22 +515,43 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-3 pt-4">
-              <p><strong>Order #:</strong> <span className="font-semibold text-base bg-muted/50 px-1.5 py-0.5 rounded">{order.shipstation_order_number ?? 'N/A'}</span></p>
-              <p><strong>Internal ID:</strong> {order.id}</p>
-              <p><strong>Marketplace:</strong> {order.marketplace ?? 'N/A'}</p>
-              <p><strong>Status (Ext):</strong>
-                <Badge className={cn("ml-2 text-xs", getStatusClass(order.order_status, 'order'))}>
+              <p>
+                <strong>Order #:</strong>{' '}
+                <span className="font-semibold text-base bg-muted/50 px-1.5 py-0.5 rounded">
+                  {order.shipstation_order_number ?? 'N/A'}
+                </span>
+              </p>
+              <p>
+                <strong>Internal ID:</strong> {order.id}
+              </p>
+              <p>
+                <strong>Marketplace:</strong> {order.marketplace ?? 'N/A'}
+              </p>
+              <p>
+                <strong>Status (Ext):</strong>
+                <Badge className={cn('ml-2 text-xs', getStatusClass(order.order_status, 'order'))}>
                   {order.order_status?.replace(/_/g, ' ') ?? 'N/A'}
                 </Badge>
               </p>
-              <p><strong>Status (Int):</strong>
-                <Badge className={cn("ml-2 text-xs", getStatusClass(order.internal_status, 'internal'))}>
+              <p>
+                <strong>Status (Int):</strong>
+                <Badge
+                  className={cn('ml-2 text-xs', getStatusClass(order.internal_status, 'internal'))}
+                >
                   {order.internal_status?.replace(/_/g, ' ') ?? 'N/A'}
                 </Badge>
               </p>
-              <p><strong>Total Items:</strong> {totalItems}</p>
-              <p><strong>Order Date:</strong> {order.order_date ? formatDateTime(new Date(order.order_date)) : 'N/A'}</p>
-              <p><strong>Ship By Date:</strong> {order.ship_by_date ? formatDateTime(new Date(order.ship_by_date)) : 'N/A'}</p>
+              <p>
+                <strong>Total Items:</strong> {totalItems}
+              </p>
+              <p>
+                <strong>Order Date:</strong>{' '}
+                {order.order_date ? formatDateTime(new Date(order.order_date)) : 'N/A'}
+              </p>
+              <p>
+                <strong>Ship By Date:</strong>{' '}
+                {order.ship_by_date ? formatDateTime(new Date(order.ship_by_date)) : 'N/A'}
+              </p>
             </CardContent>
             <CardFooter className="text-sm">
               <div className="flex flex-col space-y-1 w-full">
@@ -470,7 +566,11 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                             key={tag.id}
                             style={{
                               backgroundColor: tag.color_hex || '#cccccc',
-                              color: tag.color_hex && parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2 ? '#000' : '#fff'
+                              color:
+                                tag.color_hex &&
+                                parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2
+                                  ? '#000'
+                                  : '#fff',
                             }}
                             className="text-xs border border-black/10"
                           >
@@ -478,13 +578,20 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                           </Badge>
                         );
                       }
-                      return <Badge key={tagId} variant="secondary">ID: {tagId}</Badge>;
+                      return (
+                        <Badge key={tagId} variant="secondary">
+                          ID: {tagId}
+                        </Badge>
+                      );
                     })
                   ) : (
                     <span className="text-muted-foreground ml-1">-</span>
                   )}
                 </div>
-                <div className="font-bold text-lg pt-1">Total: {CURRENCY_SYMBOL}{order.total_price ?? '0.00'}</div>
+                <div className="font-bold text-lg pt-1">
+                  Total: {CURRENCY_SYMBOL}
+                  {order.total_price ?? '0.00'}
+                </div>
               </div>
             </CardFooter>
           </Card>
@@ -500,7 +607,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm pt-4">
-                <p className="font-medium">{order.customer?.name || order.customer_name || 'N/A'}</p>
+                <p className="font-medium">
+                  {order.customer?.name || order.customer_name || 'N/A'}
+                </p>
                 <div className="text-muted-foreground">
                   <p>Customer ID: {order.customer?.shipstation_customer_id || 'N/A'}</p>
                   <p>Email: {order.customer?.email || 'N/A'}</p>
@@ -513,10 +622,27 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                     <p className="font-medium text-foreground">Shipping Address</p>
                     {order.customer?.street1 || order.customer?.city ? (
                       <address className="not-italic bg-muted/40 p-2 rounded text-foreground/90 text-sm">
-                        {order.customer?.company && <span>{order.customer.company}<br /></span>}
-                        {order.customer?.street1 && <span>{order.customer.street1}<br /></span>}
-                        {order.customer?.street2 && <span>{order.customer.street2}<br /></span>}
-                        {order.customer?.city}, {order.customer?.state} {order.customer?.postal_code}<br />
+                        {order.customer?.company && (
+                          <span>
+                            {order.customer.company}
+                            <br />
+                          </span>
+                        )}
+                        {order.customer?.street1 && (
+                          <span>
+                            {order.customer.street1}
+                            <br />
+                          </span>
+                        )}
+                        {order.customer?.street2 && (
+                          <span>
+                            {order.customer.street2}
+                            <br />
+                          </span>
+                        )}
+                        {order.customer?.city}, {order.customer?.state}{' '}
+                        {order.customer?.postal_code}
+                        <br />
                         {formatCountryCode(order.customer?.country_code)}
                       </address>
                     ) : (
@@ -536,7 +662,11 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                             key={tag.id}
                             style={{
                               backgroundColor: tag.color_hex || '#cccccc',
-                              color: tag.color_hex && parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2 ? '#000' : '#fff'
+                              color:
+                                tag.color_hex &&
+                                parseInt(tag.color_hex.substring(1), 16) > 0xffffff / 2
+                                  ? '#000'
+                                  : '#fff',
                             }}
                             className="text-xs border border-black/10"
                           >
@@ -597,13 +727,17 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </div>
                 <div>
                   <dt className="font-medium">Shipped Date:</dt>
-                  <dd>{order.shipped_date ? formatDateTime(new Date(order.shipped_date)) : 'N/A'}</dd>
+                  <dd>
+                    {order.shipped_date ? formatDateTime(new Date(order.shipped_date)) : 'N/A'}
+                  </dd>
                 </div>
                 <div className="md:col-span-2">
                   <dt className="font-medium">Tracking #:</dt>
                   <dd>
                     {order.tracking_number ? (
-                      <span className="font-semibold text-base bg-muted/50 px-1.5 py-0.5 rounded font-mono">{order.tracking_number}</span>
+                      <span className="font-semibold text-base bg-muted/50 px-1.5 py-0.5 rounded font-mono">
+                        {order.tracking_number}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground">N/A</span>
                     )}
@@ -612,7 +746,10 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <div>
                   <dt className="font-medium">Voided:</dt>
                   <dd>
-                    <Badge variant={order.is_voided ? 'destructive' : 'secondary'} className="text-xs">
+                    <Badge
+                      variant={order.is_voided ? 'destructive' : 'secondary'}
+                      className="text-xs"
+                    >
                       {formatBooleanYN(order.is_voided)}
                     </Badge>
                   </dd>
@@ -624,7 +761,10 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <div>
                   <dt className="font-medium">Marketplace Notified:</dt>
                   <dd>
-                    <Badge variant={order.marketplace_notified ? 'default' : 'secondary'} className="text-xs">
+                    <Badge
+                      variant={order.marketplace_notified ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
                       {formatBooleanYN(order.marketplace_notified)}
                     </Badge>
                   </dd>
@@ -649,7 +789,10 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               {order.items.length > 0 ? (
                 // Use explicit type for item in map
                 order.items.map((item: SerializableOrderItemForDetails) => (
-                  <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-md bg-muted/30">
+                  <div
+                    key={item.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-md bg-muted/30"
+                  >
                     {/* Item Image */}
                     <div className="flex-shrink-0 w-20 h-20 bg-muted rounded-md overflow-hidden relative border">
                       {item.product?.imageUrl ? (
@@ -669,15 +812,24 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
 
                     {/* Item Details */}
                     <div className="flex-grow space-y-1 text-sm">
-                      <p className="font-semibold text-base">{item.product?.name || 'Product Name Missing'}</p>
+                      <p className="font-semibold text-base">
+                        {item.product?.name || 'Product Name Missing'}
+                      </p>
                       <p className="text-muted-foreground">SKU: {item.product?.sku || 'N/A'}</p>
-                      <p className="text-muted-foreground">Price per unit: {CURRENCY_SYMBOL}{Number(item.unit_price).toFixed(2)}</p>
-                      <p className="text-muted-foreground">Weight: {item.product?.weight ? `${item.product.weight} units` : 'N/A'}</p>
+                      <p className="text-muted-foreground">
+                        Price per unit: {CURRENCY_SYMBOL}
+                        {Number(item.unit_price).toFixed(2)}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Weight: {item.product?.weight ? `${item.product.weight} units` : 'N/A'}
+                      </p>
                     </div>
 
                     {/* Print Task Personalization Details */}
                     <div className="flex-grow space-y-2 mt-2 sm:mt-0 border-t sm:border-t-0 sm:border-l pt-2 sm:pt-0 sm:pl-4 border-dashed border-muted/50">
-                      <p className="text-xs font-medium text-muted-foreground">Personalization Details:</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Personalization Details:
+                      </p>
                       {item.printTasks && item.printTasks.length > 0 ? (
                         <Table className="mt-2">
                           <TableHeader>
@@ -695,15 +847,30 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                             {item.printTasks.map((task: SerializedPrintTask) => (
                               <TableRow key={task.id} className="text-xs">
                                 <TableCell className="px-2 py-1">{task.id}</TableCell>
-                                <TableCell className="px-2 py-1"><Badge variant="secondary" className="text-xs px-1 py-0">{task.status}</Badge></TableCell>
+                                <TableCell className="px-2 py-1">
+                                  <Badge variant="secondary" className="text-xs px-1 py-0">
+                                    {task.status}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell className="px-2 py-1">
                                   {task.needs_review ? (
-                                    <Badge variant="destructive" title={task.review_reason ?? ''} className="cursor-help text-xs px-1 py-0">
+                                    <Badge
+                                      variant="destructive"
+                                      title={task.review_reason ?? ''}
+                                      className="cursor-help text-xs px-1 py-0"
+                                    >
                                       <AlertCircle className="h-3 w-3 mr-1" /> Yes
                                     </Badge>
-                                  ) : <span className="text-muted-foreground">No</span>}
+                                  ) : (
+                                    <span className="text-muted-foreground">No</span>
+                                  )}
                                 </TableCell>
-                                <TableCell className="font-mono max-w-[15ch] truncate px-2 py-1" title={task.custom_text ?? ''}>{task.custom_text ?? '-'}</TableCell>
+                                <TableCell
+                                  className="font-mono max-w-[15ch] truncate px-2 py-1"
+                                  title={task.custom_text ?? ''}
+                                >
+                                  {task.custom_text ?? '-'}
+                                </TableCell>
                                 <TableCell className="px-2 py-1">
                                   {task.color_1 ? (
                                     (() => {
@@ -712,10 +879,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                                         <div className="flex items-center gap-1">
                                           <span
                                             className={cn(
-                                              "px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center",
+                                              'px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center',
                                               bgClass,
                                               textClass,
-                                              task.color_1.toLowerCase() === 'white' ? "border-2 border-gray-400" : "border border-gray-700"
+                                              task.color_1.toLowerCase() === 'white'
+                                                ? 'border-2 border-gray-400'
+                                                : 'border border-gray-700'
                                             )}
                                             title={task.color_1}
                                           >
@@ -736,10 +905,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                                         <div className="flex items-center gap-1">
                                           <span
                                             className={cn(
-                                              "px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center",
+                                              'px-2 py-1 rounded-md text-xs font-medium inline-block min-w-[80px] text-center',
                                               bgClass,
                                               textClass,
-                                              task.color_2.toLowerCase() === 'white' ? "border-2 border-gray-400" : "border border-gray-700"
+                                              task.color_2.toLowerCase() === 'white'
+                                                ? 'border-2 border-gray-400'
+                                                : 'border border-gray-700'
                                             )}
                                             title={task.color_2}
                                           >
@@ -757,19 +928,28 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                           </TableBody>
                         </Table>
                       ) : (
-                        <p className="text-xs text-muted-foreground italic">No personalization tasks found.</p>
+                        <p className="text-xs text-muted-foreground italic">
+                          No personalization tasks found.
+                        </p>
                       )}
                     </div>
 
                     {/* Quantity & Total Price */}
                     <div className="flex flex-col items-end text-right space-y-1 ml-auto sm:ml-4">
-                      <Badge variant="secondary" className="px-3 py-1 text-lg font-semibold">{item.quantity}</Badge>
-                      <p className="text-base font-semibold">{CURRENCY_SYMBOL}{(item.quantity * Number(item.unit_price)).toFixed(2)}</p>
+                      <Badge variant="secondary" className="px-3 py-1 text-lg font-semibold">
+                        {item.quantity}
+                      </Badge>
+                      <p className="text-base font-semibold">
+                        {CURRENCY_SYMBOL}
+                        {(item.quantity * Number(item.unit_price)).toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-4">No items found for this order.</p>
+                <p className="text-center text-muted-foreground py-4">
+                  No items found for this order.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -785,39 +965,44 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.customer_notes}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {order.customer_notes}
+                </p>
               </CardContent>
             </Card>
           )}
 
           {/* More Details Card */}
-          <MoreDetailsCard className="border-l-4 border-gray-500" orderData={{
-            payment_date: order.payment_date,
-            order_key: order.order_key,
-            shipstation_store_id: order.shipstation_store_id,
-            payment_method: order.payment_method,
-            amount_paid: order.amount_paid,
-            shipping_price: order.shipping_price,
-            tax_amount: order.tax_amount,
-            discount_amount: order.discount_amount,
-            shipping_amount_paid: order.shipping_amount_paid,
-            shipping_tax: order.shipping_tax,
-            gift: order.gift,
-            gift_message: order.gift_message,
-            internal_notes: order.internal_notes,
-            last_sync_date: order.last_sync_date,
-            order_weight_value: order.order_weight_value,
-            order_weight_units: order.order_weight_units,
-            dimensions_units: order.dimensions_units,
-            dimensions_length: order.dimensions_length,
-            dimensions_width: order.dimensions_width,
-            dimensions_height: order.dimensions_height,
-            insurance_provider: order.insurance_provider,
-            insurance_insure_shipment: order.insurance_insure_shipment,
-            insurance_insured_value: order.insurance_insured_value,
-            gift_email: order.gift_email,
-            notes: order.notes,
-          }} />
+          <MoreDetailsCard
+            className="border-l-4 border-gray-500"
+            orderData={{
+              payment_date: order.payment_date,
+              order_key: order.order_key,
+              shipstation_store_id: order.shipstation_store_id,
+              payment_method: order.payment_method,
+              amount_paid: order.amount_paid,
+              shipping_price: order.shipping_price,
+              tax_amount: order.tax_amount,
+              discount_amount: order.discount_amount,
+              shipping_amount_paid: order.shipping_amount_paid,
+              shipping_tax: order.shipping_tax,
+              gift: order.gift,
+              gift_message: order.gift_message,
+              internal_notes: order.internal_notes,
+              last_sync_date: order.last_sync_date,
+              order_weight_value: order.order_weight_value,
+              order_weight_units: order.order_weight_units,
+              dimensions_units: order.dimensions_units,
+              dimensions_length: order.dimensions_length,
+              dimensions_width: order.dimensions_width,
+              dimensions_height: order.dimensions_height,
+              insurance_provider: order.insurance_provider,
+              insurance_insure_shipment: order.insurance_insure_shipment,
+              insurance_insured_value: order.insurance_insured_value,
+              gift_email: order.gift_email,
+              notes: order.notes,
+            }}
+          />
         </div>
       </div>
     </div>

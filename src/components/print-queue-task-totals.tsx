@@ -1,9 +1,10 @@
 'use client';
 
 import { PrintTaskStatus } from '@prisma/client';
-import { PrintTaskData } from './print-queue-table';
-import { StatsCard } from './dashboard/stats-card';
 import { CheckCircle2, Clock, AlertCircle, Package } from 'lucide-react';
+
+import { StatsCard } from './dashboard/stats-card';
+import { PrintTaskData } from './print-queue-table';
 
 interface PrintQueueTaskTotalsProps {
   tasks: PrintTaskData[];

@@ -1,26 +1,27 @@
-'use client'
+'use client';
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
+import Link from 'next/link';
+
+import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import Link from "next/link"
+} from '@/components/ui/select';
 
 interface OrdersSearchFormProps {
-  currentSearch?: string
-  currentStatus?: string
-  currentMarketplace?: string
-  currentOrderDateStart?: string
-  currentOrderDateEnd?: string
-  statuses: string[]
-  marketplaces: string[]
+  currentSearch?: string;
+  currentStatus?: string;
+  currentMarketplace?: string;
+  currentOrderDateStart?: string;
+  currentOrderDateEnd?: string;
+  statuses: string[];
+  marketplaces: string[];
 }
 
 export function OrdersSearchForm({
@@ -30,14 +31,16 @@ export function OrdersSearchForm({
   currentOrderDateStart,
   currentOrderDateEnd,
   statuses,
-  marketplaces
+  marketplaces,
 }: OrdersSearchFormProps) {
   return (
     <form method="GET" className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         {/* Search Input */}
         <div className="lg:col-span-2">
-          <Label htmlFor="search" className="block text-sm font-medium text-muted-foreground mb-1">Search</Label>
+          <Label htmlFor="search" className="block text-sm font-medium text-muted-foreground mb-1">
+            Search
+          </Label>
           <div className="space-y-1">
             <Input
               id="search"
@@ -45,25 +48,28 @@ export function OrdersSearchForm({
               placeholder="Order # or Customer Name..."
               className="w-full"
               defaultValue={currentSearch || ''}
-              onBlur={(e) => {
+              onBlur={e => {
                 e.target.value = e.target.value.trim();
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Search by order ID, customer name, or marketplace order number (Amazon: 123-1234567-1234567, eBay: 12-12345-12345, Etsy: 1234567890)
+              Search by order ID, customer name, or marketplace order number (Amazon:
+              123-1234567-1234567, eBay: 12-12345-12345, Etsy: 1234567890)
             </p>
           </div>
         </div>
         {/* Status Filter */}
         <div>
-          <Label htmlFor="status" className="block text-sm font-medium text-muted-foreground mb-1">Status</Label>
+          <Label htmlFor="status" className="block text-sm font-medium text-muted-foreground mb-1">
+            Status
+          </Label>
           <Select name="status" defaultValue={currentStatus || 'all'}>
             <SelectTrigger id="status">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              {statuses.map((status) => (
+              {statuses.map(status => (
                 <SelectItem key={status} value={status}>
                   {status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </SelectItem>
@@ -73,14 +79,19 @@ export function OrdersSearchForm({
         </div>
         {/* Marketplace Filter */}
         <div>
-          <Label htmlFor="marketplace" className="block text-sm font-medium text-muted-foreground mb-1">Marketplace</Label>
+          <Label
+            htmlFor="marketplace"
+            className="block text-sm font-medium text-muted-foreground mb-1"
+          >
+            Marketplace
+          </Label>
           <Select name="marketplace" defaultValue={currentMarketplace || 'all'}>
             <SelectTrigger id="marketplace">
               <SelectValue placeholder="All Marketplaces" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Marketplaces</SelectItem>
-              {marketplaces.map((market) => (
+              {marketplaces.map(market => (
                 <SelectItem key={market} value={market}>
                   {market.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </SelectItem>
@@ -90,12 +101,22 @@ export function OrdersSearchForm({
         </div>
         {/* Order Date Start Filter */}
         <div className="lg:col-start-1">
-          <Label htmlFor="orderDateStart" className="block text-sm font-medium text-muted-foreground mb-1">Order Date From</Label>
+          <Label
+            htmlFor="orderDateStart"
+            className="block text-sm font-medium text-muted-foreground mb-1"
+          >
+            Order Date From
+          </Label>
           <DatePicker name="orderDateStart" value={currentOrderDateStart} />
         </div>
         {/* Order Date End Filter */}
         <div>
-          <Label htmlFor="orderDateEnd" className="block text-sm font-medium text-muted-foreground mb-1">Order Date To</Label>
+          <Label
+            htmlFor="orderDateEnd"
+            className="block text-sm font-medium text-muted-foreground mb-1"
+          >
+            Order Date To
+          </Label>
           <DatePicker name="orderDateEnd" value={currentOrderDateEnd} />
         </div>
 
@@ -110,5 +131,5 @@ export function OrdersSearchForm({
         </div>
       </div>
     </form>
-  )
+  );
 }

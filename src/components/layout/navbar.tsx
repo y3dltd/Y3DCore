@@ -1,8 +1,10 @@
-import Link from 'next/link';
-import { Button } from '../ui/button';
-import { getCurrentUser } from '@/lib/auth';
-import LogoutButton from './logout-button'; // Import the client component
 import Image from 'next/image'; // Import the Image component
+import Link from 'next/link';
+
+import { getCurrentUser } from '@/lib/auth';
+
+import LogoutButton from './logout-button'; // Import the client component
+import { Button } from '../ui/button';
 
 // Make Navbar an async component to fetch user server-side
 export default async function Navbar() {
@@ -22,19 +24,29 @@ export default async function Navbar() {
                 height={40}
                 className="object-contain"
                 priority
+                unoptimized
               />
             </Link>
           </div>
 
           {/* Center: Navigation Links (optional) */}
           <div className="hidden md:flex md:space-x-8">
-            <Link href="/" className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium">
+            <Link
+              href="/"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium"
+            >
               Dashboard
             </Link>
-            <Link href="/orders" className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium">
+            <Link
+              href="/orders"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium"
+            >
               Orders
             </Link>
-            <Link href="/print-queue" className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium">
+            <Link
+              href="/print-queue"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center px-1 pt-1 text-sm font-medium"
+            >
               Print Queue
             </Link>
             {/* Add other links as needed */}
@@ -45,11 +57,13 @@ export default async function Navbar() {
             {user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-muted-foreground">{user.email}</span>
-                <LogoutButton /> { /* Use the client component for logout */}
+                <LogoutButton /> {/* Use the client component for logout */}
               </div>
             ) : (
               <Link href="/login">
-                <Button variant="outline" size="sm">Login</Button>
+                <Button variant="outline" size="sm">
+                  Login
+                </Button>
               </Link>
             )}
           </div>

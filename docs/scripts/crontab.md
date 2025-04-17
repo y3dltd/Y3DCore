@@ -2,186 +2,102 @@
 
 This document provides the recommended cron job configuration for the Y3DHub system. These cron jobs ensure that the database is kept up-to-date with the latest orders and that print tasks are generated and cleaned up as needed.
 
-## Environment Variables
+## Key Points & FAQ (Why npm run full-workflow runs >1 hour? Timezone issues?)
 
-The cron jobs use the following environment variables:
+**Q: Why does `npm run full-workflow -- --mode recent --hours 1 --skip-tags` appear to pull much more than 1 hour's worth of data?**
 
-```bash
-# Set these in your environment or in a .env file
-Y3D_DIR=/home/jayson/y3dhub
-LOG_DIR=/home/jayson/y3dhub/logs
+### A: Timezone Mismatch (ShipStation uses Pacific Time, You specify UTC/Local)
+
+- **Root Cause:**
+  - ShipStation API expects `modifyDateStart` in Pacific Time (`America/Los_Angeles`), while the workflow (`sync-orders` and background scripts) often interpret or calculate `--hours 1` as local server time (likely UTC in your environment).
+  - **This results in the system fetching a wider time range**: for example, 1 hour back _in UTC_ actually covers up to 8 extra hours (or 7 during daylight savings) because Pacific Time is behind UTC.
+
+**_Example_**:
+  - If it is 10:00 UTC (server time) and you specify `--hours 1` (i.e. 09:00 UTC), the API request for ShipStation becomes `modifyDateStart=09:00 UTC`, but **ShipStation interprets this as 09:00 Pacific!**
+  - ShipStation thinks you want all orders _since 09:00 Pacific Time_, so it returns far more data (08:00 or 07:00 hours difference).
+
+**_Consequences_**:
+  - Your script then pulls up to 8 hours of orders instead of 1 hour.
+  - If run in a loop or successive cron, it overlaps or duplicates work, and appears to take much longer, especially when using small ranges (1 hour).
+
+**Q: Is it a bug in the script?**
+- **Not a fundamental bug, but a timezone awareness pitfall.** The code base tries to handle timezones carefully (see `docs/timezone-handling.md`), but if you specify UTC times, ShipStation expects Pacific Time for `.modifyDateStart` and interprets all date params as such.
+
+## How to Fix or Mitigate
+
+**1. Always consider timezones when supplying --hours/--days-back or modifyDateStart!**
+  - When you pass `--hours N` to the workflow, double-check how your script computes the actual filter time sent to ShipStation.
+  - Consider adjusting the code to convert UTC/local time → Pacific Time before setting `modifyDateStart`, or explicitly use a wider window (e.g., with a buffer).
+
+**2. What does the workflow do?**  (Relates to resource/time usage)
+The `npm run full-workflow` command, by default, performs these steps:
+  1. Syncs orders from ShipStation (using `src/scripts/sync-orders.ts`). If you specify `--hours 1`, see above for possible over-pulling.
+  2. Populates the print queue (AI & Amazon customization extraction).
+  3. (Optionally) Cleans up print tasks.
+
+**3. Adjust for ShipStation's Pacific Time**
+  - If editing code or manually syncing, use a time window in Pacific (e.g., `date -d '1 hour ago PDT' +%Y-%m-%dT%H:%M:%SZ`).
+  - **Or**, use a slightly larger window for reliability and filter duplicate orders _after_ fetching, but be aware you may process more than the expected number of orders.
+  - For guaranteed incremental sync: always store the last ShipStation order’s `.modifyDate` (in UTC) after each run, and use it as the next `.modifyDateStart` but **convert to Pacific Time** before querying.
+
+## Reference Snippet from the sync script
+You’ll see logic similar to:
+```js
+const SHIPSTATION_TIMEZONE = "America/Los_Angeles";
+modifyDateStart = format(tz(sub(new Date(), { hours: N }), SHIPSTATION_TIMEZONE), "yyyy-MM-dd'T'HH:mm:ss")
+```
+But if your code only does UTC math, it will pull an unexpectedly large window.
+
+## Quick TL;DR (for production operations)
+- If you specify `--hours 1` (with UTC), ShipStation gives all orders since "that Pacific hour" (which is currently 7 or 8 hours behind UTC), resulting in over-pulling orders.
+- **Convert your intended window to Pacific before running when using manual or one-off runs.**
+- The best practice is always store and use the last processed ShipStation `.modifyDate` from the API, and use that (in Pacific) as your next filter.
+
+## Example Config Correction (in crontab/new_crontab.txt):
+```
+# Sync recent orders every 10 minutes (looking back 2 hours)
+*/10 * * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/sync-orders.ts --hours=2 >> $LOG_DIR/cron_sync_orders_recent_`date +\%Y\%m\%d`.log 2>&1
+```
+**This approach uses a _wider window (2 hours)_ per 10-minute interval, which covers timezone mismatches, API delays, and ShipStation idiosyncrasies.**
+Any duplicated orders are de-duplicated by upsert logic in the sync script.
+
+**Avoid running with strictly small `--hours N` values (e.g., 1) unless you are certain your server and ShipStation operate in the same timezone.**
+
+## See Also
+- [docs/timezone-handling.md] -- Full explanation of date handling in Y3DHub
+- [docs/COMMAND_REFERENCE.md] -- Details of all flags and sync script
+- [src/scripts/sync-orders.ts] -- Source code for main sync script
+
+---
+
+# Original Sample Crontab Block (for reference)
+
+```
+# Sync recent orders every 10 minutes (looking back 2 hours)
+*/10 * * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/sync-orders.ts --hours=2 >> $LOG_DIR/cron_sync_orders_recent_`date +\%Y\%m\%d`.log 2>&1
+
+# Sync orders from the past day, three times daily (6am, 2pm, 10pm)
+0 6,14,22 * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/sync-orders.ts --days=1 >> $LOG_DIR/cron_sync_orders_daily_`date +\%Y\%m\%d`.log 2>&1
 ```
 
-## Order Synchronization
+This configuration deliberately uses a larger window (`--hours=2` or `--days=1`) than your cron interval, to ensure any drift or overlap is covered.
 
-```bash
-# Sync recent orders every 10 minutes
-*/10 * * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/sync-orders-wrapper.ts sync-recent --hours=2 >> $LOG_DIR/cron_sync_orders_recent_`date +\%Y\%m\%d`.log 2>&1
+---
 
-# Sync orders from the last 2 days once per hour
-0 * * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/sync-orders-wrapper.ts sync-recent --days=2 >> $LOG_DIR/cron_sync_orders_daily_`date +\%Y\%m\%d`.log 2>&1
+# See also
+- [docs/timezone-handling.md] for full details on ShipStation/UTC/Pacific Time logic
+- [docs/COMMAND_REFERENCE.md] for flags explanation
+- [src/scripts/sync-orders.ts] for sync logic
+- [src/lib/orders/sync.ts] for time window calculation logic
 
-# Sync all orders once per day at 1 AM
-0 1 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/sync-orders-wrapper.ts sync-all >> $LOG_DIR/cron_sync_orders_all_`date +\%Y\%m\%d`.log 2>&1
+---
 
-# Sync ShipStation tags once per day at 1:30 AM
-30 1 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/sync-orders-wrapper.ts sync-tags >> $LOG_DIR/cron_sync_tags_`date +\%Y\%m\%d`.log 2>&1
-```
+# Summary Table
 
-## Print Queue Management
+| Option/Flag         | Meaning in Y3DHub Script                               | Effect re: ShipStation     |
+|---------------------|--------------------------------------------------------|----------------------------|
+| `--hours N`         | Fetch orders back to N hours in your system time/UTC   | ShipStation interprets it as Pacific, so actual window is wider |
+| `--days-back N`     | Fetch back N days in system time                       | Same as above, but with days |
+| `--force-start-date`| Force fetch from a specific date/time                  | Should use Pacific timezone |
+| *Recommended*       | Use a buffer (fetch a wider window than your cron period), and always upsert/deduplicate in your sync step |
 
-```bash
-# Populate print queue for new orders every 10 minutes
-*/10 * * * * cd $Y3D_DIR && /usr/bin/npx tsx src/scripts/populate-print-queue.ts --recent >> $LOG_DIR/cron_populate_queue_recent_`date +\%Y\%m\%d`.log 2>&1
-
-# Run daily cleanup for completed/shipped order print tasks at 2 AM
-0 2 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/cleanup.ts fix-pending-tasks --execute >> $LOG_DIR/cron_cleanup_queue_`date +\%Y\%m\%d`.log 2>&1
-
-# Process Amazon customization files every 15 minutes (chained execution)
-*/15 * * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/amazon-customization-sync.ts && /usr/bin/npx tsx scripts/analysis/update-order-items-from-amazon.ts --create-print-tasks --update-shipstation && /usr/bin/npx tsx scripts/update-print-tasks-from-order-items.ts --days-back=1 >> $LOG_DIR/cron_amazon_sync_`date +\%Y\%m\%d`.log 2>&1
-
-# Find and fix orders with missing personalization every 2 hours
-0 */2 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/find-amazon-orders-needing-personalization.ts --days-back=2 --fix >> $LOG_DIR/cron_fix_missing_personalization_`date +\%Y\%m\%d`.log 2>&1
-
-# Update print task review status every 15 minutes
-*/15 * * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/update-print-task-review-status.ts --days-back=1 >> $LOG_DIR/cron_update_print_task_review_`date +\%Y\%m\%d`.log 2>&1
-```
-
-## Stats & Monitoring
-
-```bash
-# Run AI usage stats once a day at 6am
-0 6 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/utils/ai-usage-stats.ts > $LOG_DIR/ai_usage_stats_`date +\%Y\%m\%d`.log 2>&1
-
-# Check for inconsistencies in the database once a day at 3am
-0 3 * * * cd $Y3D_DIR && /usr/bin/npx tsx scripts/analysis/cleanup.ts find-inconsistencies > $LOG_DIR/inconsistencies_`date +\%Y\%m\%d`.log 2>&1
-```
-
-## Log Rotation
-
-```bash
-# Rotate logs older than 7 days at 4 AM
-0 4 * * * find $LOG_DIR -name "*.log" -type f -mtime +7 -delete
-```
-
-## Installation
-
-To install these cron jobs, save the configuration to a file and use the `crontab` command:
-
-```bash
-# Save the cron jobs to a file
-crontab -l > current_crontab
-cat crontab.txt >> current_crontab
-crontab current_crontab
-rm current_crontab
-```
-
-## Verification
-
-To verify that the cron jobs are installed correctly, use the following command:
-
-```bash
-crontab -l
-```
-
-This should display the cron jobs listed above.
-
-## Script Dependencies and Order
-
-Some scripts depend on others to run correctly. Here's the dependency order for the Amazon customization scripts:
-
-1. `amazon-customization-sync.ts`: Downloads and processes Amazon customization files
-2. `update-order-items-from-amazon.ts`: Updates order items with personalization data and sends it to ShipStation
-3. `update-print-tasks-from-order-items.ts`: Updates print tasks with personalization data
-4. `find-amazon-orders-needing-personalization.ts`: Finds and fixes orders with missing personalization data
-
-As of April 2025, we've implemented a chained execution approach for the Amazon customization scripts. This ensures that all steps of the process run in sequence, and if one step fails, the subsequent steps won't run. This helps maintain data consistency and reduces the chance of orders being processed incompletely.
-
-The chained execution runs every 15 minutes and includes:
-
-1. `amazon-customization-sync.ts`: Downloads and processes Amazon customization files
-2. `update-order-items-from-amazon.ts --create-print-tasks --update-shipstation`: Updates order items, creates print tasks, and updates ShipStation
-3. `update-print-tasks-from-order-items.ts`: Updates print tasks with personalization data
-
-Additionally, the `find-amazon-orders-needing-personalization.ts` script runs every 2 hours as a backup mechanism to catch and fix any orders that might have been missed by the regular process.
-
-## Common Challenges
-
-The cron jobs can face several challenges:
-
-1. **Timing Issues**: If the scripts run too close together, they might not have the latest data from the previous script
-2. **Error Recovery**: If a script fails, it might leave the system in an inconsistent state
-3. **Resource Contention**: If multiple scripts run at the same time, they might compete for resources
-
-To address these challenges, we've implemented the following solutions:
-
-1. **Chained Execution**: The Amazon customization scripts now run in sequence using the `&&` operator, ensuring that each step completes before the next one starts.
-2. **Backup Mechanism**: The `find-amazon-orders-needing-personalization.ts` script runs every 2 hours as a backup to catch and fix any missed orders.
-3. **Appropriate Intervals**: The cron jobs are scheduled with appropriate intervals to avoid resource contention.
-4. **Comprehensive Logging**: All scripts log their output to dedicated log files for troubleshooting.
-
-## Troubleshooting
-
-If the cron jobs are not running as expected, check the following:
-
-1. Ensure that the environment variables are set correctly
-2. Check the log files for any errors
-3. Verify that the scripts exist in the specified locations
-4. Make sure the user running the cron jobs has the necessary permissions
-5. Check the system logs for any cron-related errors: `sudo grep CRON /var/log/syslog`
-
-### Common Issues and Solutions
-
-#### 1. Missing Personalization Data
-
-If orders are missing personalization data, it could be due to:
-
-- The amazon-customization-sync.ts script failed to download or process the customization files
-- The update-order-items-from-amazon.ts script failed to update the order items
-- The update-print-tasks-from-order-items.ts script failed to update the print tasks
-
-Solution:
-
-- Run the find-amazon-orders-needing-personalization.ts script with the --fix flag:
-
-  ```bash
-  npx tsx scripts/find-amazon-orders-needing-personalization.ts --days-back=2 --fix
-  ```
-
-- Alternatively, run the chained execution manually for a specific order:
-  ```bash
-  cd $Y3D_DIR && \
-  npx tsx scripts/analysis/amazon-customization-sync.ts --order-id=YOUR_ORDER_ID && \
-  npx tsx scripts/analysis/update-order-items-from-amazon.ts --order-id=YOUR_ORDER_ID --create-print-tasks --update-shipstation && \
-  npx tsx scripts/update-print-tasks-from-order-items.ts --order-id=YOUR_ORDER_ID
-  ```
-
-#### 2. ShipStation Integration Issues
-
-If ShipStation is not showing the correct personalization data, it could be due to:
-
-- The update-order-items-from-amazon.ts script failed to update ShipStation
-- The ShipStation API rate limits were exceeded
-- The ShipStation API returned an error
-
-Solution:
-
-- Check the logs for specific error messages
-- Run the update-order-items-from-amazon.ts script with the --update-shipstation flag for specific orders
-- Verify that the ShipStation API credentials are correct
-
-#### 3. Cron Job Timing Issues
-
-If the cron jobs are not running at the expected times, it could be due to:
-
-- The system time is incorrect
-- The cron service is not running
-- The cron jobs are conflicting with each other
-
-Solution:
-
-- Check the system time: `date`
-- Check if the cron service is running: `systemctl status cron`
-- Adjust the cron job schedule to avoid conflicts
-
-See the [Amazon Customization Challenges](../Amazon/AMAZON_CUSTOMIZATION_CHALLENGES.md) document for more details on these challenges and their solutions.

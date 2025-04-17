@@ -1,14 +1,15 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+
+import { Label } from '@/components/ui/label'; // Corrected path if needed, removed extra quotes
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Corrected path if needed, removed extra quotes
-import { Label } from "@/components/ui/label"; // Corrected path if needed, removed extra quotes
+} from '@/components/ui/select'; // Corrected path if needed, removed extra quotes
 
 interface LimitSelectorProps {
   currentLimit: number;
@@ -18,10 +19,7 @@ interface LimitSelectorProps {
 // Updated options as per NEWFEATURES.md
 const defaultOptions = [50, 100, 250, 500, 1000];
 
-export function LimitSelector({
-  currentLimit,
-  options = defaultOptions,
-}: LimitSelectorProps) {
+export function LimitSelector({ currentLimit, options = defaultOptions }: LimitSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -35,22 +33,24 @@ export function LimitSelector({
   };
 
   // Ensure the currentLimit is a valid option, otherwise default to the first option or 50
-  const validLimit = options.includes(currentLimit) ? currentLimit : (options.find(o => o === 50) || options[0]);
+  const validLimit = options.includes(currentLimit)
+    ? currentLimit
+    : options.find(o => o === 50) || options[0];
 
   return (
     <div className="flex items-center space-x-2">
-      <Label htmlFor="limit-select" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+      <Label
+        htmlFor="limit-select"
+        className="text-sm font-medium text-muted-foreground whitespace-nowrap"
+      >
         Items per page:
       </Label>
-      <Select
-        value={validLimit.toString()}
-        onValueChange={handleLimitChange}
-      >
+      <Select value={validLimit.toString()} onValueChange={handleLimitChange}>
         <SelectTrigger id="limit-select" className="w-[80px]">
           <SelectValue placeholder="Limit" />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
+          {options.map(option => (
             <SelectItem key={option} value={option.toString()}>
               {option}
             </SelectItem>

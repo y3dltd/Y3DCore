@@ -1,0 +1,10 @@
+.next
+node_modules
+.husky
+.git
+public
+build
+coverage
+*.min.js
+prisma/generated
+dist

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // Import the reusable Prisma client
+
 import { handleApiError } from '@/lib/errors';
+import { prisma } from '@/lib/prisma'; // Import the reusable Prisma client
 
 /**
  * Handles GET requests to fetch orders.

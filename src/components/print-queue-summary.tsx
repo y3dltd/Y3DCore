@@ -1,9 +1,10 @@
-"use client";
-import { motion } from "framer-motion";
-import { Card } from "@/components/ui/card";
-import { Clock, Palette, Layers, Hourglass, Repeat } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useState } from "react";
+'use client';
+import { motion } from 'framer-motion';
+import { Clock, Palette, Layers, Hourglass, Repeat } from 'lucide-react';
+import { useState } from 'react';
+
+import { Card } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface PrintQueueSummaryData {
   total_print_tasks: number;
@@ -31,19 +32,19 @@ interface StatCardProps {
 
 function StatCard({ title, value, tooltip, color, icon: Icon, delay }: StatCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ 
-        duration: 0.5, 
-        ease: "easeOut",
-        delay: delay 
+      transition={{
+        duration: 0.5,
+        ease: 'easeOut',
+        delay: delay,
       }}
-      whileHover={{ 
+      whileHover={{
         scale: 1.03,
-        transition: { duration: 0.2 } 
+        transition: { duration: 0.2 },
       }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
@@ -54,7 +55,7 @@ function StatCard({ title, value, tooltip, color, icon: Icon, delay }: StatCardP
           <TooltipTrigger asChild>
             <div className="flex-1 cursor-pointer">
               <div className="text-sm font-medium text-muted-foreground">{title}</div>
-              <motion.div 
+              <motion.div
                 className={`text-3xl font-bold text-${color}-500`}
                 initial={{ scale: 1 }}
                 animate={{ scale: isHovered ? 1.05 : 1 }}
@@ -70,10 +71,7 @@ function StatCard({ title, value, tooltip, color, icon: Icon, delay }: StatCardP
         </Tooltip>
       </TooltipProvider>
       <div className="flex-shrink-0">
-        <motion.div
-          animate={{ rotate: isHovered ? 360 : 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div animate={{ rotate: isHovered ? 360 : 0 }} transition={{ duration: 0.5 }}>
           <Icon className={`h-5 w-5 text-${color}-500`} />
         </motion.div>
       </div>
@@ -86,56 +84,56 @@ export function PrintQueueSummary({ summary }: { summary: PrintQueueSummaryData 
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.9, ease: "easeOut" }}
+      transition={{ duration: 0.9, ease: 'easeOut' }}
       className="mb-8"
     >
       <Card className="dark:bg-zinc-800/90 shadow-lg border-0 overflow-hidden backdrop-blur-sm">
-        <motion.div 
+        <motion.div
           className="w-full h-1.5 bg-gradient-to-r from-blue-500 via-pink-500 to-yellow-500"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
         ></motion.div>
         <div className="flex flex-wrap p-4 gap-4 justify-between items-stretch">
-          <StatCard 
-            title="Total Tasks" 
-            value={summary.total_print_tasks} 
+          <StatCard
+            title="Total Tasks"
+            value={summary.total_print_tasks}
             tooltip="Total number of print tasks in the queue"
             color="yellow"
             icon={Clock}
             delay={0.1}
           />
-          
-          <StatCard 
-            title="Distinct Colors" 
-            value={summary.distinct_colors} 
+
+          <StatCard
+            title="Distinct Colors"
+            value={summary.distinct_colors}
             tooltip="Different colors needed for all prints"
             color="blue"
             icon={Palette}
             delay={0.2}
           />
-          
-          <StatCard 
-            title="Plates Needed" 
-            value={summary.plates_needed} 
+
+          <StatCard
+            title="Plates Needed"
+            value={summary.plates_needed}
             tooltip="Estimated plates needed for all prints"
             color="pink"
             icon={Layers}
             delay={0.3}
           />
-          
-          <StatCard 
-            title="Est. Print Time" 
-            value={formatTime(summary.total_print_time)} 
+
+          <StatCard
+            title="Est. Print Time"
+            value={formatTime(summary.total_print_time)}
             tooltip={`Estimated total printing time: ${summary.total_print_time} minutes`}
             color="purple"
             icon={Hourglass}
             delay={0.4}
           />
-          
-          <StatCard 
-            title="Color Changes" 
-            value={summary.estimated_color_changes} 
+
+          <StatCard
+            title="Color Changes"
+            value={summary.estimated_color_changes}
             tooltip="Projected filament color changes needed"
             color="red"
             icon={Repeat}

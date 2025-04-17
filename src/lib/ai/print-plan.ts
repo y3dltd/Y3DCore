@@ -1,5 +1,6 @@
-import OpenAI from "openai";
-import { PrintTaskData } from "@/components/print-queue-table";
+import OpenAI from 'openai';
+
+import { PrintTaskData } from '@/components/print-queue-table';
 
 export interface PrintPlan {
   plan: string;
@@ -7,7 +8,7 @@ export interface PrintPlan {
     plate: number;
     color1: string;
     color2?: string;
-    tasks: Array<{ id: string; quantity: number; product: string; }>
+    tasks: Array<{ id: string; quantity: number; product: string }>;
     estimated_time: number;
     notes?: string;
   }>;
@@ -45,16 +46,16 @@ Instructions:
 NO extra text, only JSON.`;
 
 export async function getPrintPlan(tasks: PrintTaskData[]): Promise<PrintPlan | null> {
-  if (!process.env.OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY in environment");
+  if (!process.env.OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY in environment');
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const userPrompt = COMPLEX_PLAN_PROMPT.replace("TASKS_JSON", JSON.stringify(tasks, null, 2));
+  const userPrompt = COMPLEX_PLAN_PROMPT.replace('TASKS_JSON', JSON.stringify(tasks, null, 2));
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: 'gpt-4o',
     messages: [
-      { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: userPrompt },
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: userPrompt },
     ],
     temperature: 0.2,
     max_tokens: 1024,

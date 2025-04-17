@@ -1,27 +1,18 @@
-import { prisma } from "@/lib/prisma";
 // Use correct enum name PrintTaskStatus
-import {
-  Prisma,
-  Customer,
-  Product,
-  Order,
-  OrderItem,
-  PrintTaskStatus,
-} from "@prisma/client";
-import type {
-  ShipStationOrder,
-  ShipStationOrderItem,
-  ShipStationTag,
-} from "./types";
-import logger from "../logger";
+import { Prisma, Customer, Product, Order, OrderItem, PrintTaskStatus } from '@prisma/client';
+
+import { prisma } from '@/lib/prisma';
+
+import type { ShipStationOrder, ShipStationOrderItem, ShipStationTag } from './types';
+import logger from '../logger';
+import { listTags } from './api';
+import type { SyncOptions } from './index'; // Import SyncOptions
 import {
   mapAddressToCustomerFields,
   mapSsItemToProductData,
   mapSsItemToOrderItemData,
   mapOrderToPrisma,
-} from "./mappers";
-import { listTags } from "./api";
-import type { SyncOptions } from "./index"; // Import SyncOptions
+} from './mappers';
 
 // Define the type based on Prisma schema and usage
 type OrderWithItemsAndProduct = Order & {
@@ -36,7 +27,7 @@ type OrderWithItemsAndProduct = Order & {
  */
 export async function getLastSyncTimestamp(): Promise<Date | null> {
   const lastOrder = await prisma.order.findFirst({
-    orderBy: { updated_at: "desc" },
+    orderBy: { updated_at: 'desc' },
     select: { updated_at: true },
   });
   return lastOrder?.updated_at ?? null;
@@ -76,8 +67,7 @@ export const upsertCustomerFromOrder = async (
 
     let customer: Customer | null = null; // Initialize as null
     const customerDataBase = shipTo ? mapAddressToCustomerFields(shipTo) : {};
-    const customerName =
-      shipTo?.name ?? ssOrder.customerUsername ?? "Unknown Customer";
+    const customerName = shipTo?.name ?? ssOrder.customerUsername ?? 'Unknown Customer';
 
     if (existingCustomer) {
       logger.info(
@@ -95,21 +85,17 @@ export const upsertCustomerFromOrder = async (
           customerUpdateData.street2 = customerDataBase.street2;
         if (customerDataBase.street3 !== undefined)
           customerUpdateData.street3 = customerDataBase.street3;
-        if (customerDataBase.city !== undefined)
-          customerUpdateData.city = customerDataBase.city;
-        if (customerDataBase.state !== undefined)
-          customerUpdateData.state = customerDataBase.state;
+        if (customerDataBase.city !== undefined) customerUpdateData.city = customerDataBase.city;
+        if (customerDataBase.state !== undefined) customerUpdateData.state = customerDataBase.state;
         if (customerDataBase.postal_code !== undefined)
           customerUpdateData.postal_code = customerDataBase.postal_code;
         if (customerDataBase.country_code !== undefined)
           customerUpdateData.country_code = customerDataBase.country_code;
-        if (customerDataBase.phone !== undefined)
-          customerUpdateData.phone = customerDataBase.phone;
+        if (customerDataBase.phone !== undefined) customerUpdateData.phone = customerDataBase.phone;
         if (customerDataBase.is_residential !== undefined)
           customerUpdateData.is_residential = customerDataBase.is_residential;
         if (customerDataBase.address_verified_status !== undefined)
-          customerUpdateData.address_verified_status =
-            customerDataBase.address_verified_status;
+          customerUpdateData.address_verified_status = customerDataBase.address_verified_status;
       }
       customerUpdateData.name = customerName;
       if (shipstationCustomerIdStr !== undefined) {
@@ -139,8 +125,7 @@ export const upsertCustomerFromOrder = async (
           country_code: customerUpdateData.country_code as string | null,
           phone: customerUpdateData.phone as string | null,
           is_residential: customerUpdateData.is_residential as boolean | null,
-          address_verified_status:
-            customerUpdateData.address_verified_status as string | null,
+          address_verified_status: customerUpdateData.address_verified_status as string | null,
           created_at: new Date(), // Mock creation date
           updated_at: new Date(), // Mock update date
           customer_notes: null, // Required field
@@ -152,9 +137,7 @@ export const upsertCustomerFromOrder = async (
           where: { email: email },
           data: customerUpdateData,
         });
-        logger.info(
-          `[Sync] Updated customer ${customer.name} (ID: ${customer.id})`
-        );
+        logger.info(`[Sync] Updated customer ${customer.name} (ID: ${customer.id})`);
       }
     } else {
       logger.info(
@@ -175,21 +158,17 @@ export const upsertCustomerFromOrder = async (
           customerCreateData.street2 = customerDataBase.street2;
         if (customerDataBase.street3 !== undefined)
           customerCreateData.street3 = customerDataBase.street3;
-        if (customerDataBase.city !== undefined)
-          customerCreateData.city = customerDataBase.city;
-        if (customerDataBase.state !== undefined)
-          customerCreateData.state = customerDataBase.state;
+        if (customerDataBase.city !== undefined) customerCreateData.city = customerDataBase.city;
+        if (customerDataBase.state !== undefined) customerCreateData.state = customerDataBase.state;
         if (customerDataBase.postal_code !== undefined)
           customerCreateData.postal_code = customerDataBase.postal_code;
         if (customerDataBase.country_code !== undefined)
           customerCreateData.country_code = customerDataBase.country_code;
-        if (customerDataBase.phone !== undefined)
-          customerCreateData.phone = customerDataBase.phone;
+        if (customerDataBase.phone !== undefined) customerCreateData.phone = customerDataBase.phone;
         if (customerDataBase.is_residential !== undefined)
           customerCreateData.is_residential = customerDataBase.is_residential;
         if (customerDataBase.address_verified_status !== undefined)
-          customerCreateData.address_verified_status =
-            customerDataBase.address_verified_status;
+          customerCreateData.address_verified_status = customerDataBase.address_verified_status;
       }
 
       if (options?.dryRun) {
@@ -216,8 +195,7 @@ export const upsertCustomerFromOrder = async (
           country_code: customerCreateData.country_code ?? null,
           phone: customerCreateData.phone ?? null,
           is_residential: customerCreateData.is_residential ?? null,
-          address_verified_status:
-            customerCreateData.address_verified_status ?? null,
+          address_verified_status: customerCreateData.address_verified_status ?? null,
           created_at: new Date(),
           updated_at: new Date(),
           customer_notes: null, // Required field
@@ -234,10 +212,7 @@ export const upsertCustomerFromOrder = async (
 
     return customer;
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       logger.error(
         `[Sync][Order ${ssOrder.orderNumber}] Failed to upsert customer due to unique constraint. Email: ${email}, SS_ID: ${shipstationCustomerIdStr}. Fields: ${error.meta?.target}`,
         { error }
@@ -266,7 +241,7 @@ export const upsertProductFromItem = async (
 
   if (!trimmedSku && !shipstationProductId) {
     logger.warn(
-      `Product upsert skipped: Item missing SKU and SS Product ID. Name: ${ssItem.name || "(No Name)"}, LineItemKey: ${ssItem.lineItemKey}`
+      `Product upsert skipped: Item missing SKU and SS Product ID. Name: ${ssItem.name || '(No Name)'}, LineItemKey: ${ssItem.lineItemKey}`
     );
     return null;
   }
@@ -302,8 +277,8 @@ export const upsertProductFromItem = async (
         ) {
           logger.warn(
             `[Product Sync Conflict] SKU '${trimmedSku}' exists (DB ID: ${existingBySku.id}) but with different ShipStation Product ID. ` +
-            `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
-            `Attempting to update with incoming ID.`
+              `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
+              `Attempting to update with incoming ID.`
           );
         }
 
@@ -324,12 +299,18 @@ export const upsertProductFromItem = async (
             id: existingBySku.id, // Use existing ID (number)
             // Use simple string/null types from updateData
             name: typeof updateData.name === 'string' ? updateData.name : existingBySku.name,
-            sku: typeof updateData.sku === 'string' || updateData.sku === null ? updateData.sku : existingBySku.sku,
+            sku:
+              typeof updateData.sku === 'string' || updateData.sku === null
+                ? updateData.sku
+                : existingBySku.sku,
             shipstation_product_id:
-              typeof updateData.shipstation_product_id === 'string' ? updateData.shipstation_product_id :
-                existingBySku.shipstation_product_id,
-            imageUrl: typeof updateData.imageUrl === 'string' || updateData.imageUrl === null ?
-              updateData.imageUrl : existingBySku.imageUrl,
+              typeof updateData.shipstation_product_id === 'string'
+                ? updateData.shipstation_product_id
+                : existingBySku.shipstation_product_id,
+            imageUrl:
+              typeof updateData.imageUrl === 'string' || updateData.imageUrl === null
+                ? updateData.imageUrl
+                : existingBySku.imageUrl,
             createdAt: existingBySku.createdAt, // Keep original creation date
             updatedAt: updateData.updatedAt,
             // Add required fields with null or default values
@@ -355,13 +336,13 @@ export const upsertProductFromItem = async (
             // ... existing update error handling (P2002 conflict) ...
             if (
               updateError instanceof Prisma.PrismaClientKnownRequestError &&
-              updateError.code === "P2002" &&
-              updateError.meta?.target === "Product_shipstation_product_id_key"
+              updateError.code === 'P2002' &&
+              updateError.meta?.target === 'Product_shipstation_product_id_key'
             ) {
               logger.warn(
                 `[Product Sync Conflict] Update failed for SKU '${trimmedSku}' (ID: ${existingBySku.id}). ` +
-                `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
-                `Keeping existing product record without updating SS_ID.`
+                  `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
+                  `Keeping existing product record without updating SS_ID.`
               );
               return existingBySku as Product; // Return the original existing product
             } else {
@@ -374,9 +355,7 @@ export const upsertProductFromItem = async (
           }
         }
       }
-      logger.info(
-        `[Product Sync] SKU ${trimmedSku} not found. Proceeding with upsert logic...`
-      );
+      logger.info(`[Product Sync] SKU ${trimmedSku} not found. Proceeding with upsert logic...`);
     }
 
     // Upsert/Create logic
@@ -385,13 +364,13 @@ export const upsertProductFromItem = async (
 
     if (shipstationProductId) {
       logger.info(
-        `[Product Sync] Upserting by SS Product ID: ${shipstationProductId} (SKU: ${trimmedSku || "N/A"})...`
+        `[Product Sync] Upserting by SS Product ID: ${shipstationProductId} (SKU: ${trimmedSku || 'N/A'})...`
       );
       if (options?.dryRun) {
         logger.info(
           `[Product Sync][Dry Run] Would upsert product by SS_ID ${shipstationProductId}. Create data:`,
           createInput,
-          "Update data:",
+          'Update data:',
           updateInput
         );
         const existingProductById = await tx.product.findUnique({
@@ -399,27 +378,30 @@ export const upsertProductFromItem = async (
           select: { id: true, createdAt: true },
         });
         // Use a negative number for mock ID
-        const mockId =
-          existingProductById?.id ?? -Math.floor(Math.random() * 1000000);
+        const mockId = existingProductById?.id ?? -Math.floor(Math.random() * 1000000);
         // Ensure mock object matches Product schema exactly
         return {
           id: mockId, // Use mock number ID
           // Use simple string/null types from createInput/updateInput and ensure we extract actual values
           name:
-            typeof createInput.name === "string"
+            typeof createInput.name === 'string'
               ? createInput.name
-              : typeof updateInput.name === "string"
+              : typeof updateInput.name === 'string'
                 ? updateInput.name
-                : "Unknown Product",
+                : 'Unknown Product',
           sku:
-            typeof createInput.sku === "string" || createInput.sku === null
+            typeof createInput.sku === 'string' || createInput.sku === null
               ? createInput.sku
-              : typeof updateInput.sku === "string" || updateInput.sku === null
+              : typeof updateInput.sku === 'string' || updateInput.sku === null
                 ? updateInput.sku
                 : null,
           shipstation_product_id: shipstationProductId,
-          imageUrl: typeof createInput.imageUrl === 'string' || createInput.imageUrl === null ? createInput.imageUrl :
-            typeof updateInput.imageUrl === 'string' || updateInput.imageUrl === null ? updateInput.imageUrl : null,
+          imageUrl:
+            typeof createInput.imageUrl === 'string' || createInput.imageUrl === null
+              ? createInput.imageUrl
+              : typeof updateInput.imageUrl === 'string' || updateInput.imageUrl === null
+                ? updateInput.imageUrl
+                : null,
           createdAt: existingProductById?.createdAt ?? new Date(), // Use existing or new date
           updatedAt: new Date(),
           // Add required fields with null or default values
@@ -457,7 +439,7 @@ export const upsertProductFromItem = async (
         return {
           id: mockId, // Use numeric mock ID
           // Use simple string/null types from createInput
-          name: createInput.name ?? "Unknown Product",
+          name: createInput.name ?? 'Unknown Product',
           sku: trimmedSku,
           shipstation_product_id: null, // Explicitly null as it's missing
           imageUrl: createInput.imageUrl ?? null,
@@ -483,7 +465,7 @@ export const upsertProductFromItem = async (
       }
     } else {
       logger.error(
-        "[Product Sync] Logical error: No identifier (SKU or SS Product ID) for upsert."
+        '[Product Sync] Logical error: No identifier (SKU or SS Product ID) for upsert.'
       );
       return null;
     }
@@ -521,9 +503,7 @@ export const upsertOrderWithItems = async (
     `[Sync] Starting upsert process for Order SS_ID: ${shipstationOrderIdStr} (Number: ${ssOrder.orderNumber})`
   );
   if (options?.dryRun) {
-    logger.info(
-      `[Sync][Dry Run][Order ${ssOrder.orderNumber}] Running in dry run mode.`
-    );
+    logger.info(`[Sync][Dry Run][Order ${ssOrder.orderNumber}] Running in dry run mode.`);
   }
   const errors: { itemId: string; error: string }[] = [];
   let previousOrderStatus: string | undefined; // To track status changes
@@ -558,8 +538,7 @@ export const upsertOrderWithItems = async (
       );
 
       // Simulate Order Upsert
-      const mockOrderId =
-        existingOrder?.id ?? `dry-run-order-${shipstationOrderIdStr}`;
+      const mockOrderId = existingOrder?.id ?? `dry-run-order-${shipstationOrderIdStr}`;
       if (existingOrder) {
         logger.info(
           `[Sync][Dry Run][Order ${ssOrder.orderNumber}] Would update order (ID: ${mockOrderId}) with data:`,
@@ -573,7 +552,7 @@ export const upsertOrderWithItems = async (
       }
 
       // Simulate Item Processing
-      const incomingSsItems = ssOrder.items.filter((item) => !item.adjustment);
+      const incomingSsItems = ssOrder.items.filter(item => !item.adjustment);
       logger.info(
         `[Sync][Dry Run][Order ${ssOrder.orderNumber}] Simulating processing ${incomingSsItems.length} items...`
       );
@@ -583,11 +562,9 @@ export const upsertOrderWithItems = async (
       for (const ssItem of incomingSsItems) {
         if (!ssItem.lineItemKey) {
           const errorMsg = `Skipping incoming item due to missing lineItemKey. SKU: ${ssItem.sku}, Name: ${ssItem.name}`;
-          logger.warn(
-            `[Sync][Dry Run][Order ${ssOrder.orderNumber}] ${errorMsg}`
-          );
+          logger.warn(`[Sync][Dry Run][Order ${ssOrder.orderNumber}] ${errorMsg}`);
           errors.push({
-            itemId: ssItem.orderItemId?.toString() || "unknown",
+            itemId: ssItem.orderItemId?.toString() || 'unknown',
             error: errorMsg,
           });
           itemsFailed++;
@@ -615,13 +592,9 @@ export const upsertOrderWithItems = async (
           }
 
           // Simulate OrderItem Upsert
-          const orderItemMappedData = mapSsItemToOrderItemData(
-            ssItem,
-            dbProduct.id
-          ); // Use mock product ID
+          const orderItemMappedData = mapSsItemToOrderItemData(ssItem, dbProduct.id); // Use mock product ID
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { productId: _ignoredProductId, ...dataForUpsert } =
-            orderItemMappedData;
+          const { productId: _ignoredProductId, ...dataForUpsert } = orderItemMappedData;
           const createData = {
             ...dataForUpsert,
             shipstationLineItemKey: lineItemKey,
@@ -653,8 +626,7 @@ export const upsertOrderWithItems = async (
           }
           itemsProcessed++;
         } catch (itemError) {
-          const errorMsg =
-            itemError instanceof Error ? itemError.message : String(itemError);
+          const errorMsg = itemError instanceof Error ? itemError.message : String(itemError);
           logger.error(
             `[Sync][Dry Run][Order ${ssOrder.orderNumber}][Item ${lineItemKey}] Failed to simulate item processing: ${errorMsg}`,
             { error: itemError }
@@ -669,23 +641,12 @@ export const upsertOrderWithItems = async (
       );
 
       // Simulate Auto-complete print tasks
-      if (
-        ssOrder.orderStatus === "shipped" ||
-        ssOrder.orderStatus === "cancelled"
-      ) {
+      if (ssOrder.orderStatus === 'shipped' || ssOrder.orderStatus === 'cancelled') {
         // Only update tasks if the status actually changed
-        if (
-          previousOrderStatus &&
-          previousOrderStatus !== ssOrder.orderStatus
-        ) {
+        if (previousOrderStatus && previousOrderStatus !== ssOrder.orderStatus) {
           // Check if previous status was one we should auto-complete from
-          const validPreviousStatuses = [
-            "awaiting_shipment",
-            "awaiting_shipping",
-            "on_hold",
-          ];
-          const shouldAutoComplete =
-            validPreviousStatuses.includes(previousOrderStatus);
+          const validPreviousStatuses = ['awaiting_shipment', 'awaiting_shipping', 'on_hold'];
+          const shouldAutoComplete = validPreviousStatuses.includes(previousOrderStatus);
 
           if (shouldAutoComplete) {
             logger.info(
@@ -696,7 +657,7 @@ export const upsertOrderWithItems = async (
             const orderIdToCheck = existingOrder?.id ?? mockOrderId;
 
             // Only query if the order ID is a real number
-            if (typeof orderIdToCheck === "number") {
+            if (typeof orderIdToCheck === 'number') {
               const pendingTasks = await prisma.printOrderTask.findMany({
                 // Use correct enum PrintTaskStatus
                 where: {
@@ -742,11 +703,9 @@ export const upsertOrderWithItems = async (
 
     // --- Actual Transaction ---
     const result = await prisma.$transaction(
-      async (tx) => {
+      async tx => {
         // 1. Upsert Order
-        logger.info(
-          `[Sync][Order ${ssOrder.orderNumber}] Upserting order record...`
-        );
+        logger.info(`[Sync][Order ${ssOrder.orderNumber}] Upserting order record...`);
         const dbOrder = await tx.order.upsert({
           where: { shipstation_order_id: shipstationOrderIdStr },
           update: orderInputData as Prisma.OrderUpdateInput,
@@ -756,9 +715,7 @@ export const upsertOrderWithItems = async (
         const dbOrderId = dbOrder.id;
 
         // Process Incoming Items using Upsert
-        const incomingSsItems = ssOrder.items.filter(
-          (item) => !item.adjustment
-        );
+        const incomingSsItems = ssOrder.items.filter(item => !item.adjustment);
         logger.info(
           `[Sync][Order ${ssOrder.orderNumber}] Processing ${incomingSsItems.length} incoming items using upsert...`
         );
@@ -770,7 +727,7 @@ export const upsertOrderWithItems = async (
             const errorMsg = `Skipping incoming item due to missing lineItemKey. SKU: ${ssItem.sku}, Name: ${ssItem.name}`;
             logger.warn(`[Sync][Order ${ssOrder.orderNumber}] ${errorMsg}`);
             errors.push({
-              itemId: ssItem.orderItemId?.toString() || "unknown",
+              itemId: ssItem.orderItemId?.toString() || 'unknown',
               error: errorMsg,
             });
             itemsFailed++;
@@ -783,22 +740,16 @@ export const upsertOrderWithItems = async (
             const dbProduct = await upsertProductFromItem(tx, ssItem, options);
             if (!dbProduct) {
               const errorMsg = `Product could not be upserted. SKU: ${ssItem.sku}, Name: ${ssItem.name}`;
-              logger.warn(
-                `[Sync][Order ${ssOrder.orderNumber}][Item ${lineItemKey}] ${errorMsg}`
-              );
+              logger.warn(`[Sync][Order ${ssOrder.orderNumber}][Item ${lineItemKey}] ${errorMsg}`);
               errors.push({ itemId: lineItemKey, error: errorMsg });
               itemsFailed++;
               continue;
             }
 
             // Prepare Item Data
-            const orderItemMappedData = mapSsItemToOrderItemData(
-              ssItem,
-              dbProduct.id
-            );
+            const orderItemMappedData = mapSsItemToOrderItemData(ssItem, dbProduct.id);
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { productId: _ignoredProductId, ...dataForUpsert } =
-              orderItemMappedData;
+            const { productId: _ignoredProductId, ...dataForUpsert } = orderItemMappedData;
 
             // Use Upsert for the OrderItem
             await tx.orderItem.upsert({
@@ -818,10 +769,7 @@ export const upsertOrderWithItems = async (
             });
             itemsProcessed++;
           } catch (itemError) {
-            const errorMsg =
-              itemError instanceof Error
-                ? itemError.message
-                : String(itemError);
+            const errorMsg = itemError instanceof Error ? itemError.message : String(itemError);
             logger.error(
               `[Sync][Order ${ssOrder.orderNumber}][Item ${lineItemKey}] Failed to process item: ${errorMsg}`,
               { error: itemError }
@@ -837,23 +785,12 @@ export const upsertOrderWithItems = async (
         );
 
         // Auto-complete print tasks if order status changed to shipped or cancelled
-        if (
-          ssOrder.orderStatus === "shipped" ||
-          ssOrder.orderStatus === "cancelled"
-        ) {
+        if (ssOrder.orderStatus === 'shipped' || ssOrder.orderStatus === 'cancelled') {
           // Only update tasks if the status actually changed
-          if (
-            previousOrderStatus &&
-            previousOrderStatus !== ssOrder.orderStatus
-          ) {
+          if (previousOrderStatus && previousOrderStatus !== ssOrder.orderStatus) {
             // Check if previous status was one we should auto-complete from
-            const validPreviousStatuses = [
-              "awaiting_shipment",
-              "awaiting_shipping",
-              "on_hold",
-            ];
-            const shouldAutoComplete =
-              validPreviousStatuses.includes(previousOrderStatus);
+            const validPreviousStatuses = ['awaiting_shipment', 'awaiting_shipping', 'on_hold'];
+            const shouldAutoComplete = validPreviousStatuses.includes(previousOrderStatus);
 
             if (shouldAutoComplete) {
               logger.info(
@@ -864,18 +801,18 @@ export const upsertOrderWithItems = async (
               const pendingTasks = await tx.printOrderTask.findMany({
                 where: {
                   orderId: dbOrderId,
-                  status: { in: ["pending", "in_progress"] },
+                  status: { in: ['pending', 'in_progress'] },
                 },
                 select: { id: true },
               });
 
               if (pendingTasks.length > 0) {
                 // Update all tasks to completed
-                const taskIds = pendingTasks.map((task) => task.id);
+                const taskIds = pendingTasks.map(task => task.id);
                 await tx.printOrderTask.updateMany({
                   where: { id: { in: taskIds } },
                   data: {
-                    status: "completed",
+                    status: 'completed',
                     updated_at: new Date(),
                   },
                 });
@@ -925,16 +862,15 @@ export const upsertOrderWithItems = async (
     };
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error(
-      `[Sync] Failed to process order SS_ID ${shipstationOrderIdStr}: ${errorMsg}`,
-      { error }
-    );
+    logger.error(`[Sync] Failed to process order SS_ID ${shipstationOrderIdStr}: ${errorMsg}`, {
+      error,
+    });
     return {
       order: null,
       success: false,
       itemsProcessed: 0, // Assume 0 if transaction failed before item processing completed
       itemsFailed: ssOrder.items?.length || 0, // Assume all items failed if order processing failed
-      errors: [...errors, { itemId: "order", error: errorMsg }],
+      errors: [...errors, { itemId: 'order', error: errorMsg }],
     };
   }
 };
@@ -943,13 +879,11 @@ export const upsertOrderWithItems = async (
  * Fetches tags from ShipStation and upserts them into the local database.
  * Includes dry run logic.
  */
-export async function syncShipStationTags(
-  options?: SyncOptions
-): Promise<void> {
+export async function syncShipStationTags(options?: SyncOptions): Promise<void> {
   // Add options parameter
-  logger.info("[Sync Tags] Starting ShipStation tag synchronization...");
+  logger.info('[Sync Tags] Starting ShipStation tag synchronization...');
   if (options?.dryRun) {
-    logger.info("[Sync Tags][Dry Run] Dry run mode enabled.");
+    logger.info('[Sync Tags][Dry Run] Dry run mode enabled.');
   }
   try {
     const ssTags: ShipStationTag[] = await listTags();
@@ -997,10 +931,10 @@ export async function syncShipStationTags(
     }
 
     logger.info(
-      `[Sync Tags] Finished. ${options?.dryRun ? "Would have processed" : "Processed"} ${processedCount} tags from ShipStation.`
+      `[Sync Tags] Finished. ${options?.dryRun ? 'Would have processed' : 'Processed'} ${processedCount} tags from ShipStation.`
     );
   } catch (error) {
-    logger.error("[Sync Tags] Error synchronizing ShipStation tags:", {
+    logger.error('[Sync Tags] Error synchronizing ShipStation tags:', {
       error,
     });
     // Decide if error should be re-thrown based on context

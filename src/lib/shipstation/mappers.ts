@@ -1,32 +1,27 @@
-import { Prisma } from '@prisma/client'
-import type {
-  ShipStationAddress,
-  ShipStationOrderItem,
-  ShipStationOrder,
-} from './types'
-import { toDate } from 'date-fns-tz'
+import { Prisma } from '@prisma/client';
+import { toDate } from 'date-fns-tz';
+
+import type { ShipStationAddress, ShipStationOrderItem, ShipStationOrder } from './types';
 
 // Define a simpler interface for the mappable fields
 interface MappableCustomerFields {
-    name?: string | null;
-    company?: string | null;
-    street1?: string | null;
-    street2?: string | null;
-    street3?: string | null;
-    city?: string | null;
-    state?: string | null;
-    postal_code?: string | null;
-    country_code?: string | null;
-    phone?: string | null;
-    is_residential?: boolean | null;
-    address_verified_status?: string | null;
+  name?: string | null;
+  company?: string | null;
+  street1?: string | null;
+  street2?: string | null;
+  street3?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country_code?: string | null;
+  phone?: string | null;
+  is_residential?: boolean | null;
+  address_verified_status?: string | null;
 }
 
 // --- Mapping Functions ---
 
-export const mapAddressToCustomerFields = (
-  addr: ShipStationAddress
-): MappableCustomerFields => ({
+export const mapAddressToCustomerFields = (addr: ShipStationAddress): MappableCustomerFields => ({
   name: addr.name || null, // Use null instead of undefined for consistency?
   company: addr.company || null,
   street1: addr.street1 || null,
@@ -39,7 +34,7 @@ export const mapAddressToCustomerFields = (
   phone: addr.phone || null,
   is_residential: addr.residential ?? null,
   address_verified_status: addr.addressVerified ?? null,
-})
+});
 
 export const mapSsItemToProductData = (
   ssItem: ShipStationOrderItem
@@ -54,15 +49,12 @@ export const mapSsItemToProductData = (
   warehouse_location: ssItem.warehouseLocation,
   fulfillment_sku: ssItem.fulfillmentSku,
   upc: ssItem.upc,
-})
+});
 
 export const mapSsItemToOrderItemData = (
   ssItem: ShipStationOrderItem,
   productId: number
-): Omit<
-  Prisma.OrderItemUncheckedCreateInput,
-  'orderId' | 'id' | 'createdAt' | 'updatedAt'
-> => ({
+): Omit<Prisma.OrderItemUncheckedCreateInput, 'orderId' | 'id' | 'createdAt' | 'updatedAt'> => ({
   shipstationLineItemKey: ssItem.lineItemKey,
   productId: productId,
   quantity: ssItem.quantity,
@@ -72,7 +64,7 @@ export const mapSsItemToOrderItemData = (
     ssItem.options && ssItem.options.length > 0
       ? JSON.parse(JSON.stringify(ssItem.options)) // Simple clone for plain options array
       : Prisma.JsonNull,
-})
+});
 
 /**
  * Converts a ShipStation timestamp string to a Date object with proper timezone handling.
@@ -100,7 +92,7 @@ function convertShipStationDateToUTC(dateString: string | null | undefined): Dat
     // Fallback to the old method if there's an error
     const date = new Date(dateString);
     const pstOffsetHours = 8; // Approximate PST offset
-    return new Date(date.getTime() + (pstOffsetHours * 60 * 60 * 1000));
+    return new Date(date.getTime() + pstOffsetHours * 60 * 60 * 1000);
   }
 }
 
@@ -117,10 +109,7 @@ export const mapOrderToPrisma = (
   order_status: ssOrder.orderStatus,
   marketplace: ssOrder.advancedOptions?.source,
   customer_name:
-    ssOrder.shipTo?.name ||
-    ssOrder.billTo?.name ||
-    ssOrder.customerUsername ||
-    'Unknown Customer',
+    ssOrder.shipTo?.name || ssOrder.billTo?.name || ssOrder.customerUsername || 'Unknown Customer',
   total_price: ssOrder.orderTotal,
   shipping_price: ssOrder.shippingCost ?? null,
   shipping_amount_paid: ssOrder.shippingAmount,
@@ -161,4 +150,4 @@ export const mapOrderToPrisma = (
       ? JSON.parse(JSON.stringify(ssOrder.tagIds))
       : Prisma.JsonNull,
   ...(dbCustomerId && { customer: { connect: { id: dbCustomerId } } }),
-})
+});

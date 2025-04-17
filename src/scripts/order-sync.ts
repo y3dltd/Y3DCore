@@ -1,13 +1,14 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+
 import {
   syncAllPaginatedOrders,
   syncRecentOrders,
   syncSingleOrder,
   syncShipStationTags,
   type SyncOptions, // Import the options type
-} from "@/lib/orders/sync";
-import { logger } from "@/lib/shared/logging";
+} from '@/lib/orders/sync';
+import { logger } from '@/lib/shared/logging';
 
 // Helper function to handle async commands and logging
 async function runCommand(commandName: string, handler: () => Promise<unknown>) {
@@ -24,92 +25,82 @@ async function runCommand(commandName: string, handler: () => Promise<unknown>) 
 
 // Create and execute the CLI
 const cli = yargs(hideBin(process.argv))
-  .scriptName("order-sync")
+  .scriptName('order-sync')
   .command(
-    "sync",
-    "Sync orders from ShipStation",
-    (yargs) => {
+    'sync',
+    'Sync orders from ShipStation',
+    yargs => {
       return yargs
-        .option("mode", {
-          alias: "m",
-          describe: "Sync mode",
-          choices: ["all", "recent", "single"] as const,
-          default: "recent" as const,
+        .option('mode', {
+          alias: 'm',
+          describe: 'Sync mode',
+          choices: ['all', 'recent', 'single'] as const,
+          default: 'recent' as const,
         })
-        .option("order-id", {
-          alias: "id",
-          describe: "ShipStation Order ID to sync (for single mode)",
-          type: "string",
+        .option('order-id', {
+          alias: 'id',
+          describe: 'ShipStation Order ID to sync (for single mode)',
+          type: 'string',
         })
-        .option("days-back", {
-          alias: "d",
-          describe: "Number of days to look back (for recent mode)",
-          type: "number",
+        .option('days-back', {
+          alias: 'd',
+          describe: 'Number of days to look back (for recent mode)',
+          type: 'number',
           default: 2,
         })
-        .option("hours", {
-          alias: "h",
-          describe:
-            "Number of hours to look back (for recent mode, overrides days-back)",
-          type: "number",
+        .option('hours', {
+          alias: 'h',
+          describe: 'Number of hours to look back (for recent mode, overrides days-back)',
+          type: 'number',
         })
-        .option("force-start-date", {
-          alias: "f",
-          describe:
-            "Force sync to start from this ISO date (YYYY-MM-DDTHH:mm:ss.sssZ)",
-          type: "string",
+        .option('force-start-date', {
+          alias: 'f',
+          describe: 'Force sync to start from this ISO date (YYYY-MM-DDTHH:mm:ss.sssZ)',
+          type: 'string',
         })
-        .option("skip-tags", {
-          describe: "Skip syncing ShipStation tags",
-          type: "boolean",
+        .option('skip-tags', {
+          describe: 'Skip syncing ShipStation tags',
+          type: 'boolean',
           default: false,
         })
-        .option("verbose", {
-          alias: "v",
-          describe: "Show verbose output",
-          type: "boolean",
+        .option('verbose', {
+          alias: 'v',
+          describe: 'Show verbose output',
+          type: 'boolean',
           default: false,
         })
-        .option("dry-run", {
+        .option('dry-run', {
           describe: "Don't make any changes to the database or ShipStation",
-          type: "boolean",
+          type: 'boolean',
           default: false,
         })
-        .check((argv) => {
-          if (argv.mode === "single" && !argv.orderId) {
-            throw new Error(
-              "Missing required argument: --order-id is required for single mode"
-            );
+        .check(argv => {
+          if (argv.mode === 'single' && !argv.orderId) {
+            throw new Error('Missing required argument: --order-id is required for single mode');
           }
-          if (argv.mode !== "recent" && (argv.hours || argv.daysBack !== 2)) {
-            logger.warn(
-              "--hours and --days-back options are only used in recent mode."
-            );
+          if (argv.mode !== 'recent' && (argv.hours || argv.daysBack !== 2)) {
+            logger.warn('--hours and --days-back options are only used in recent mode.');
           }
-          if (argv.mode !== "all" && argv.forceStartDate) {
-            logger.warn(
-              "--force-start-date option is typically used in all mode."
-            );
+          if (argv.mode !== 'all' && argv.forceStartDate) {
+            logger.warn('--force-start-date option is typically used in all mode.');
           }
           return true;
         });
     },
-    async (argv) => {
-      await runCommand("Sync", async () => {
+    async argv => {
+      await runCommand('Sync', async () => {
         // Prepare options object
         const options: SyncOptions = {
           dryRun: argv.dryRun,
         };
 
-        logger.info(
-          `Starting sync with mode: ${argv.mode}${options.dryRun ? " (DRY RUN)" : ""}`
-        );
+        logger.info(`Starting sync with mode: ${argv.mode}${options.dryRun ? ' (DRY RUN)' : ''}`);
 
         if (!argv.skipTags) {
-          logger.info("Syncing ShipStation tags...");
+          logger.info('Syncing ShipStation tags...');
           // Pass options to syncShipStationTags
           await syncShipStationTags(options);
-          logger.info("Tag sync complete.");
+          logger.info('Tag sync complete.');
         }
 
         let result: {
@@ -120,16 +111,16 @@ const cli = yargs(hideBin(process.argv))
         };
 
         switch (argv.mode) {
-          case "all":
+          case 'all':
             // Pass options and forceStartDate to syncAllPaginatedOrders
             result = await syncAllPaginatedOrders(options, argv.forceStartDate);
             break;
-          case "recent":
+          case 'recent':
             const lookbackDays = argv.hours ? argv.hours / 24 : argv.daysBack;
             // Pass options to syncRecentOrders
             result = await syncRecentOrders(lookbackDays, options);
             break;
-          case "single":
+          case 'single':
             // Pass options to syncSingleOrder - convert orderId to number if needed
             result = await syncSingleOrder(Number(argv.orderId), options);
             break;
@@ -140,66 +131,62 @@ const cli = yargs(hideBin(process.argv))
 
         if (result.success) {
           logger.info(
-            `Sync finished successfully. Processed: ${result.ordersProcessed ?? "N/A"}, Failed: ${result.ordersFailed ?? "N/A"}${options.dryRun ? " (DRY RUN)" : ""}`
+            `Sync finished successfully. Processed: ${result.ordersProcessed ?? 'N/A'}, Failed: ${result.ordersFailed ?? 'N/A'}${options.dryRun ? ' (DRY RUN)' : ''}`
           );
         } else {
           logger.error(
-            `Sync failed. Error: ${result.error ?? "Unknown error"}. Processed: ${result.ordersProcessed ?? "N/A"}, Failed: ${result.ordersFailed ?? "N/A"}${options.dryRun ? " (DRY RUN)" : ""}`
+            `Sync failed. Error: ${result.error ?? 'Unknown error'}. Processed: ${result.ordersProcessed ?? 'N/A'}, Failed: ${result.ordersFailed ?? 'N/A'}${options.dryRun ? ' (DRY RUN)' : ''}`
           );
-          throw new Error(result.error || "Sync failed with unknown error");
+          throw new Error(result.error || 'Sync failed with unknown error');
         }
       });
     }
   )
   // Placeholder for amazon command
-  .command(
-    "amazon",
-    "Process Amazon customization",
-    (yargs) => {
-      return yargs
-        .command(
-          "sync",
-          "Download and process Amazon customization files",
-          () => { },
-          async () => {
-            await runCommand("Amazon Sync", async () => {
-              logger.warn("Amazon sync command not yet implemented.");
-            });
-          }
-        )
-        .command(
-          "update",
-          "Update order items and ShipStation with personalization data",
-          () => { },
-          async () => {
-            await runCommand("Amazon Update", async () => {
-              logger.warn("Amazon update command not yet implemented.");
-            });
-          }
-        )
-        .command(
-          "workflow",
-          "Run the entire Amazon customization workflow",
-          () => { },
-          async () => {
-            await runCommand("Amazon Workflow", async () => {
-              logger.warn("Amazon workflow command not yet implemented.");
-            });
-          }
-        )
-        .command(
-          "fix",
-          "Find and fix orders with missing personalization data",
-          () => { },
-          async () => {
-            await runCommand("Amazon Fix", async () => {
-              logger.warn("Amazon fix command not yet implemented.");
-            });
-          }
-        )
-        .demandCommand();
-    }
-  )
+  .command('amazon', 'Process Amazon customization', yargs => {
+    return yargs
+      .command(
+        'sync',
+        'Download and process Amazon customization files',
+        () => {},
+        async () => {
+          await runCommand('Amazon Sync', async () => {
+            logger.warn('Amazon sync command not yet implemented.');
+          });
+        }
+      )
+      .command(
+        'update',
+        'Update order items and ShipStation with personalization data',
+        () => {},
+        async () => {
+          await runCommand('Amazon Update', async () => {
+            logger.warn('Amazon update command not yet implemented.');
+          });
+        }
+      )
+      .command(
+        'workflow',
+        'Run the entire Amazon customization workflow',
+        () => {},
+        async () => {
+          await runCommand('Amazon Workflow', async () => {
+            logger.warn('Amazon workflow command not yet implemented.');
+          });
+        }
+      )
+      .command(
+        'fix',
+        'Find and fix orders with missing personalization data',
+        () => {},
+        async () => {
+          await runCommand('Amazon Fix', async () => {
+            logger.warn('Amazon fix command not yet implemented.');
+          });
+        }
+      )
+      .demandCommand();
+  })
   .help()
   .demandCommand()
   .strict();

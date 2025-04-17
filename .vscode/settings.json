@@ -1,0 +1,106 @@
+{
+  // Editor settings
+  "editor.formatOnSave": true, // Format files on save
+  "editor.defaultFormatter": "esbenp.prettier-vscode", // Use Prettier as default formatter
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit", // Run ESLint fixes on save (explicitly triggered)
+    "source.organizeImports": "explicit" // Organize imports on save
+  },
+  // ESLint settings
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  // Files settings
+  "files.eol": "\n", // Ensure consistent line endings (Linux/macOS style)
+  "files.insertFinalNewline": true, // Ensure files end with a newline
+  // Prettier settings
+  "prettier.requireConfig": true, // Only use prettier when config is present
+  "prettier.useEditorConfig": true, // Respect .editorconfig settings
+  // Language-specific formatter settings
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.inlayHints.enabled": "off",
+    "editor.quickSuggestions": {
+      "strings": true
+    },
+    "editor.suggest.insertMode": "replace"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // Tailwind CSS IntelliSense settings (optional, but helpful)
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+  ],
+  // Removed from here - consolidated with other settings
+  // TypeScript settings
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  // AI-assisted development settings
+  "editor.inlineSuggest.enabled": true,
+  "editor.acceptSuggestionOnCommitCharacter": false,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "diffEditor.maxComputationTime": 0,
+  "editor.suggest.preview": true,
+  "editor.suggest.showWords": false,
+  "editor.snippetSuggestions": "bottom",
+  // Gemini Code Assist settings
+  "geminicodeassist.experimental.promptFormatting": true,
+  "geminicodeassist.codeRewrite.colorize": true,
+  "geminicodeassist.inlineChat.snippetEditingEnabled": true,
+  "geminicodeassist.completion.enabled": true,
+  "geminicodeassist.codeGenerationPaneViewEnabled": true,
+  "geminicodeassist.updateChannel": "Insiders",
+  "geminicodeassist.project": "yorkshire3d",
+  // GitLens AI settings
+  "gitlens.ai.experimental.provider": "anthropic",
+  "gitlens.ai.experimental.openai.model": "gpt-4o",
+  "gitlens.codeLens.enabled": true,
+  "gitlens.ai.largePromptWarningThreshold": 100000,
+  // Improved autocompletion settings
+  "editor.quickSuggestions": {
+    "strings": true,
+    "comments": true,
+    "other": true
+  },
+  "editor.suggestSelection": "first",
+  "editor.tabCompletion": "on",
+  "editor.wordBasedSuggestions": "matchingDocuments",
+  "javascript.suggest.completeFunctionCalls": true,
+  "typescript.suggest.completeFunctionCalls": true,
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  // Project-specific settings for Y3DHub
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true
+  },
+  "files.associations": {
+    "*.css": "tailwindcss",
+    "*.json": "jsonc"
+  },
+  "editor.linkedEditing": true,
+  "terminal.integrated.defaultProfile.linux": "bash"
+}

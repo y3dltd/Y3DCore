@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 interface AutoRefresherProps {
   intervalSeconds?: number;
@@ -13,9 +13,7 @@ export function AutoRefresher({ intervalSeconds = 30 }: AutoRefresherProps) {
   useEffect(() => {
     const intervalMilliseconds = intervalSeconds * 1000;
     const intervalId = setInterval(() => {
-      console.log(
-        `[AutoRefresher] Refreshing data... (Interval: ${intervalSeconds}s)`
-      );
+      console.log(`[AutoRefresher] Refreshing data... (Interval: ${intervalSeconds}s)`);
       router.refresh();
     }, intervalMilliseconds);
 

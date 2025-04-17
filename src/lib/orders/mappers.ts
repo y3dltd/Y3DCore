@@ -1,11 +1,12 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from '@prisma/client';
+import { toDate } from 'date-fns-tz';
+
+import { logger } from '../shared/logging'; // Use relative path
 import type {
   ShipStationAddress,
   ShipStationOrderItem,
   ShipStationOrder,
-} from "../shared/shipstation"; // Use relative path
-import { toDate } from "date-fns-tz";
-import { logger } from "../shared/logging"; // Use relative path
+} from '../shared/shipstation'; // Use relative path
 
 // Define a simpler interface for the mappable fields
 interface MappableCustomerFields {
@@ -25,9 +26,7 @@ interface MappableCustomerFields {
 
 // --- Mapping Functions ---
 
-export const mapAddressToCustomerFields = (
-  addr: ShipStationAddress
-): MappableCustomerFields => ({
+export const mapAddressToCustomerFields = (addr: ShipStationAddress): MappableCustomerFields => ({
   name: addr.name || null,
   company: addr.company || null,
   street1: addr.street1 || null,
@@ -47,7 +46,7 @@ export const mapSsItemToProductData = (
 ): Prisma.ProductCreateInput | Prisma.ProductUpdateInput => ({
   // Trim SKU before mapping
   sku: ssItem.sku?.trim(),
-  name: ssItem.name || "Product Needs Name",
+  name: ssItem.name || 'Product Needs Name',
   imageUrl: ssItem.imageUrl,
   shipstation_product_id: ssItem.productId,
   item_weight_value: ssItem.weight?.value,
@@ -60,10 +59,7 @@ export const mapSsItemToProductData = (
 export const mapSsItemToOrderItemData = (
   ssItem: ShipStationOrderItem,
   productId: number
-): Omit<
-  Prisma.OrderItemUncheckedCreateInput,
-  "orderId" | "id" | "createdAt" | "updatedAt"
-> => ({
+): Omit<Prisma.OrderItemUncheckedCreateInput, 'orderId' | 'id' | 'createdAt' | 'updatedAt'> => ({
   shipstationLineItemKey: ssItem.lineItemKey,
   productId: productId,
   quantity: ssItem.quantity,
@@ -85,32 +81,25 @@ export const mapSsItemToOrderItemData = (
  * @param dateString The ShipStation timestamp string
  * @returns A Date object in UTC
  */
-function convertShipStationDateToUTC(
-  dateString: string | null | undefined
-): Date | null {
+function convertShipStationDateToUTC(dateString: string | null | undefined): Date | null {
   if (!dateString) return null;
 
   // ShipStation uses Pacific Time (America/Los_Angeles) for timestamps
   // This timezone is PST (UTC-8) during standard time and PDT (UTC-7) during daylight saving time
-  const SHIPSTATION_TIMEZONE = "America/Los_Angeles";
+  const SHIPSTATION_TIMEZONE = 'America/Los_Angeles';
 
   try {
     // Parse the date string as if it were in Pacific Time
     // toDate handles daylight saving time correctly
     return toDate(dateString, { timeZone: SHIPSTATION_TIMEZONE });
   } catch (error) {
-    logger.error(
-      `Error converting date ${dateString} from Pacific Time to UTC:`,
-      { error }
-    );
+    logger.error(`Error converting date ${dateString} from Pacific Time to UTC:`, { error });
     // Fallback to the old method if there's an error (less accurate)
     try {
       const date = new Date(dateString);
       // Check if the date is valid before attempting offset
       if (isNaN(date.getTime())) {
-        logger.warn(
-          `Invalid date string encountered during fallback conversion: ${dateString}`
-        );
+        logger.warn(`Invalid date string encountered during fallback conversion: ${dateString}`);
         return null;
       }
       // This fallback is less accurate as it doesn't account for DST
@@ -138,10 +127,7 @@ export const mapOrderToPrisma = (
   order_status: ssOrder.orderStatus,
   marketplace: ssOrder.advancedOptions?.source,
   customer_name:
-    ssOrder.shipTo?.name ||
-    ssOrder.billTo?.name ||
-    ssOrder.customerUsername ||
-    "Unknown Customer",
+    ssOrder.shipTo?.name || ssOrder.billTo?.name || ssOrder.customerUsername || 'Unknown Customer',
   total_price: ssOrder.orderTotal,
   shipping_price: ssOrder.shippingCost ?? null,
   shipping_amount_paid: ssOrder.shippingAmount,

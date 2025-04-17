@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+
 import './globals.css';
 import '../styles/color-badges.css';
+import { Footer } from '@/components/layout/footer'; // Import Footer
 import Navbar from '@/components/layout/navbar';
 import { cn } from '@/lib/utils'; // Import cn utility
-import { Footer } from '@/components/layout/footer'; // Import Footer
 
 // Initialize Inter font
 const inter = Inter({
@@ -16,6 +17,9 @@ export const metadata: Metadata = {
   title: 'Y3D Hub GL',
   description: 'Order Management and Processing Hub',
 };
+
+// Force runtime rendering for all pages, as data is dynamic and may rely on server-only resources
+export const dynamic = 'force-dynamic';
 
 export default function RootLayout({
   children,
@@ -38,7 +42,7 @@ export default function RootLayout({
       <body
         className={cn(
           inter.variable, // Use variable for better flexibility
-          "font-sans antialiased flex flex-col min-h-screen"
+          'font-sans antialiased flex flex-col min-h-screen'
         )}
       >
         <Navbar />

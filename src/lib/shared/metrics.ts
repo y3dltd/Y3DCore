@@ -1,8 +1,8 @@
 // filepath: /workspaces/Y3DHub/src/lib/shared/metrics.ts
 // import { prisma } from "./database"; // Commented out until DB saving is implemented
-import { getLogger } from "./logging";
+import { getLogger } from './logging';
 
-const logger = getLogger("metrics");
+const logger = getLogger('metrics');
 
 // Define the structure for a metric record
 export interface Metric {
@@ -29,10 +29,7 @@ class BasicMetricsCollector implements MetricsCollector {
     };
 
     // Log the metric
-    logger.info(
-      `Metric recorded: ${metric.name}=${metric.value}`,
-      metricRecord
-    );
+    logger.info(`Metric recorded: ${metric.name}=${metric.value}`, metricRecord);
 
     // Placeholder for storing metrics in the database
     // try {

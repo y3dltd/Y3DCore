@@ -1,10 +1,11 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '../ui/button';
-import { toast } from 'sonner';
 import { LogOut, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useTransition } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '../ui/button';
 
 export default function LogoutButton() {
   const [isPending, startTransition] = useTransition();
@@ -19,8 +20,8 @@ export default function LogoutButton() {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Logout failed' }));
-            throw new Error(errorData.message || 'Logout failed');
+          const errorData = await response.json().catch(() => ({ message: 'Logout failed' }));
+          throw new Error(errorData.message || 'Logout failed');
         }
 
         toast.success('Logged out successfully');
@@ -35,19 +36,15 @@ export default function LogoutButton() {
   };
 
   return (
-    <Button 
-      variant="ghost" 
-      size="sm" 
-      onClick={handleLogout} 
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleLogout}
       disabled={isPending}
       aria-label="Logout"
     >
-      {isPending ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <LogOut className="h-4 w-4" />
-      )}
+      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
       <span className="sr-only">Logout</span>
     </Button>
   );
-} 
+}

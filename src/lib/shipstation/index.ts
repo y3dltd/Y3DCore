@@ -1,13 +1,10 @@
 // Barrel file for ShipStation integration
-import { shipstationApi } from "./client";
+import { getShipstationOrders } from './api'; // Import getShipstationOrders
+import { shipstationApi } from './client';
 // Import DB functions including syncShipStationTags
-import {
-  getLastSyncTimestamp,
-  upsertOrderWithItems,
-  syncShipStationTags,
-} from "./db-sync";
-import logger from "../logger"; // Import logger (adjust path)
-import { MetricsCollector } from "./metrics";
+import { getLastSyncTimestamp, upsertOrderWithItems, syncShipStationTags } from './db-sync';
+import logger from '../logger'; // Import logger (adjust path)
+import { MetricsCollector } from './metrics';
 import {
   createSyncProgress,
   updateSyncProgress,
@@ -15,20 +12,20 @@ import {
   incrementProcessedOrders,
   incrementFailedOrders,
   updateLastProcessedOrder,
-} from "./sync-progress";
-import type { ShipStationOrder } from "./types"; // Import ShipStationOrder type
-import { getShipstationOrders } from "./api"; // Import getShipstationOrders
+} from './sync-progress';
+import type { ShipStationOrder } from './types'; // Import ShipStationOrder type
 
-export * from "./types";
-export * from "./api";
-export * from "./client"; // Re-export client functions
-export * from "./metrics";
-export * from "./sync-progress";
+export * from './types';
+export * from './api';
+export * from './client'; // Re-export client functions
+export * from './metrics';
+export * from './sync-progress';
 export { syncShipStationTags }; // Re-export syncShipStationTags
 
 // Define SyncOptions type if not already defined elsewhere
 export interface SyncOptions {
   dryRun?: boolean;
+  pageSize?: number;
 }
 
 // Constants for pagination and rate limiting
@@ -44,7 +41,7 @@ export async function syncAllPaginatedOrders(
   // Optional: Allow overriding the start date, ignoring the checkpoint
   overrideStartDate?: string,
   // Optional: Keep default start date if no override and no checkpoint
-  defaultStartDate: string = "2022-01-01T00:00:00.000Z",
+  defaultStartDate: string = '2022-01-01T00:00:00.000Z',
   // Add SyncOptions parameter
   options?: SyncOptions
 ): Promise<{
@@ -59,21 +56,19 @@ export async function syncAllPaginatedOrders(
   let page = 1;
   let totalPages = Infinity; // Initialize to infinity, update on first page
 
-  const progressId = await createSyncProgress("full");
+  const progressId = await createSyncProgress('full');
   const metrics = new MetricsCollector(progressId); // Pass progressId to MetricsCollector
 
   try {
     // Determine start date
     const startDate =
       overrideStartDate ??
-      (
-        (await getLastSyncTimestamp()) ?? new Date(defaultStartDate)
-      ).toISOString();
-    logger.info(
-      `[Full Sync] Starting sync for orders modified since: ${startDate}`
-    );
+      ((await getLastSyncTimestamp()) ?? new Date(defaultStartDate)).toISOString();
+    logger.info(`[Full Sync] Starting sync for orders modified since: ${startDate}`);
 
-    await updateSyncProgress(progressId, { status: "running" }); // Initial status update
+    await updateSyncProgress(progressId, { status: 'running' }); // Initial status update
+
+    const pageSize = options?.pageSize ?? PAGE_SIZE;
 
     while (page <= totalPages && success) {
       // Ensure loop stops on error
@@ -81,9 +76,9 @@ export async function syncAllPaginatedOrders(
         logger.info(`[Full Sync] Fetching page ${page}...`);
         const response = await getShipstationOrders({
           modifyDateStart: startDate,
-          sortBy: "ModifyDate",
-          sortDir: "ASC",
-          pageSize: PAGE_SIZE,
+          sortBy: 'ModifyDate',
+          sortDir: 'ASC',
+          pageSize,
           page: page,
         });
         metrics.recordApiCall();
@@ -93,7 +88,7 @@ export async function syncAllPaginatedOrders(
         if (page === 1) {
           totalPages = pages ?? Infinity; // Use reported pages or fallback
           logger.info(
-            `[Full Sync] Total pages reported: ${totalPages === Infinity ? "Unknown" : totalPages}`
+            `[Full Sync] Total pages reported: ${totalPages === Infinity ? 'Unknown' : totalPages}`
           );
           if (total) {
             await updateSyncProgress(progressId, { totalOrders: total });
@@ -101,9 +96,7 @@ export async function syncAllPaginatedOrders(
         }
 
         if (orders && orders.length > 0) {
-          logger.info(
-            `[Full Sync] Processing ${orders.length} orders from page ${page}...`
-          );
+          logger.info(`[Full Sync] Processing ${orders.length} orders from page ${page}...`);
 
           // Process each order
           for (const orderData of orders) {
@@ -151,7 +144,7 @@ export async function syncAllPaginatedOrders(
                 ordersFailed++;
                 await incrementFailedOrders(progressId);
                 logger.warn(
-                  `[Full Sync] Order ${orderData.orderNumber} failed: ${result.errors.map((e) => e.error).join(", ")}`
+                  `[Full Sync] Order ${orderData.orderNumber} failed: ${result.errors.map(e => e.error).join(', ')}`
                 );
               }
             } catch (orderError) {
@@ -159,9 +152,7 @@ export async function syncAllPaginatedOrders(
               ordersFailed++;
               await incrementFailedOrders(progressId);
               const errorMsg =
-                orderError instanceof Error
-                  ? orderError.message
-                  : String(orderError);
+                orderError instanceof Error ? orderError.message : String(orderError);
               logger.error(
                 `[Full Sync] Error processing order ${orderData.orderNumber}: ${errorMsg}`,
                 { error: orderError }
@@ -181,31 +172,26 @@ export async function syncAllPaginatedOrders(
           page++;
         } else {
           // If no orders are returned, we've reached the end for the current filters
-          logger.info(
-            `[Full Sync] No orders returned on page ${page}. Ending sync for this run.`
-          );
+          logger.info(`[Full Sync] No orders returned on page ${page}. Ending sync for this run.`);
           break; // Exit the while loop
         }
 
         // Keep the delay before the next iteration
         if (page <= totalPages) {
           // Only delay if there might be more pages
-          logger.info(
-            `[Full Sync] Waiting ${DELAY_MS / 1000}s before fetching page ${page}...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+          logger.info(`[Full Sync] Waiting ${DELAY_MS / 1000}s before fetching page ${page}...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS));
         }
       } catch (error: unknown) {
         // This catch block handles errors from getShipstationOrders or page-level issues
         success = false; // Mark sync as failed
-        let errorMessage = "Unknown error during page fetch/process";
+        let errorMessage = 'Unknown error during page fetch/process';
         if (error instanceof Error) {
           errorMessage = error.message;
         }
-        logger.error(
-          `[Full Sync] Error fetching or processing page ${page}: ${errorMessage}`,
-          { error }
-        );
+        logger.error(`[Full Sync] Error fetching or processing page ${page}: ${errorMessage}`, {
+          error,
+        });
         // Log details if it's an Axios error (optional, based on getShipstationOrders implementation)
         break; // Exit the while loop on error
       }
@@ -226,7 +212,7 @@ export async function syncAllPaginatedOrders(
     await markSyncCompleted(
       progressId,
       success,
-      success ? undefined : "Sync failed during page processing."
+      success ? undefined : 'Sync failed during page processing.'
     );
     // Save metrics
     await metrics.saveMetrics();
@@ -252,21 +238,13 @@ export async function syncAllPaginatedOrders(
     try {
       // Ensure progressId exists before trying to mark completion
       if (progressId) {
-        await markSyncCompleted(
-          progressId,
-          false,
-          `Sync setup failed: ${errorMsg}`
-        );
+        await markSyncCompleted(progressId, false, `Sync setup failed: ${errorMsg}`);
       } else {
-        logger.error(
-          `[Full Sync] Cannot mark progress as failed - progressId is missing.`
-        );
+        logger.error(`[Full Sync] Cannot mark progress as failed - progressId is missing.`);
       }
     } catch /* istanbul ignore next */ {
       // Ignore progress marking error here
-      logger.error(
-        `[Full Sync] Failed to mark progress as failed during setup error.`
-      );
+      logger.error(`[Full Sync] Failed to mark progress as failed during setup error.`);
     }
 
     // Ensure the function returns the correct structure on error
@@ -289,45 +267,37 @@ export async function syncRecentOrders(
 }> {
   // Note: This function now primarily acts as a wrapper around syncAllPaginatedOrders
   // It creates its own progress record for tracking the 'recent' sync type specifically.
-  const progressId = await createSyncProgress("recent");
+  const progressId = await createSyncProgress('recent');
   // Metrics are handled within syncAllPaginatedOrders, but we might want high-level logging here.
 
   try {
     const now = new Date();
-    const startDate = new Date(
-      now.getTime() - lookbackDays * 24 * 60 * 60 * 1000
-    );
+    const startDate = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000);
     const dateStartFilter = startDate.toISOString();
 
     // Format the lookback period for logging
     const lookbackPeriod =
-      lookbackDays >= 1
-        ? `${lookbackDays} days`
-        : `${Math.round(lookbackDays * 24)} hours`;
+      lookbackDays >= 1 ? `${lookbackDays} days` : `${Math.round(lookbackDays * 24)} hours`;
     logger.info(
       `[Recent Sync] Starting sync for orders in the last ${lookbackPeriod} (since ${dateStartFilter})`
     );
 
     // Update progress with start info (optional, as syncAllPaginatedOrders updates its own)
     await updateSyncProgress(progressId, {
-      status: "running",
+      status: 'running',
       // We don't know totalOrders yet, syncAllPaginatedOrders will update its record
     });
 
     // Use the full sync function with the calculated start date
     // syncAllPaginatedOrders handles its own progress marking and metrics saving.
     // Pass options to syncAllPaginatedOrders
-    const result = await syncAllPaginatedOrders(
-      dateStartFilter,
-      undefined,
-      options
-    );
+    const result = await syncAllPaginatedOrders(dateStartFilter, undefined, options);
 
     // Update *this* progress record based on the result of the underlying sync
     await markSyncCompleted(
       progressId,
       result.success,
-      result.success ? undefined : "Recent sync failed."
+      result.success ? undefined : 'Recent sync failed.'
     );
     // Optionally update processed/failed counts on this record too
     await updateSyncProgress(progressId, {
@@ -343,23 +313,14 @@ export async function syncRecentOrders(
   } catch (error) {
     // This catches errors specific to the setup of syncRecentOrders (e.g., date calculation)
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error(
-      `[Recent Sync] Unexpected error in sync process setup: ${errorMsg}`,
-      { error }
-    );
+    logger.error(`[Recent Sync] Unexpected error in sync process setup: ${errorMsg}`, { error });
 
     // Mark *this* progress record as failed
     try {
-      await markSyncCompleted(
-        progressId,
-        false,
-        `Recent sync setup failed: ${errorMsg}`
-      );
+      await markSyncCompleted(progressId, false, `Recent sync setup failed: ${errorMsg}`);
     } catch /* istanbul ignore next */ {
       // Ignore progress marking error
-      logger.error(
-        `[Recent Sync] Failed to mark progress as failed during setup error.`
-      );
+      logger.error(`[Recent Sync] Failed to mark progress as failed during setup error.`);
     }
 
     // Return consistent failure structure
@@ -375,17 +336,15 @@ export async function syncSingleOrder(
   // Add SyncOptions parameter
   options?: SyncOptions
 ): Promise<{ success: boolean; error?: string }> {
-  const progressId = await createSyncProgress("single");
+  const progressId = await createSyncProgress('single');
   const metrics = new MetricsCollector(progressId); // Pass progressId
 
   try {
     logger.info(`[Single Order Sync] Fetching order ${orderId}...`);
-    await updateSyncProgress(progressId, { status: "running", totalOrders: 1 });
+    await updateSyncProgress(progressId, { status: 'running', totalOrders: 1 });
 
     // Fetch the single order
-    const response = await shipstationApi.get<ShipStationOrder>(
-      `/orders/${orderId}`
-    );
+    const response = await shipstationApi.get<ShipStationOrder>(`/orders/${orderId}`);
     metrics.recordApiCall();
 
     if (!response.data) {
@@ -398,9 +357,7 @@ export async function syncSingleOrder(
     // Use string orderId for metrics processing
     metrics.startOrderProcessing(orderId);
 
-    logger.info(
-      `[Single Order Sync] Processing order ${orderId} (${orderNumber})...`
-    );
+    logger.info(`[Single Order Sync] Processing order ${orderId} (${orderNumber})...`);
 
     // Remove progressId from upsertOrderWithItems call
     // Pass options to upsertOrderWithItems
@@ -429,10 +386,8 @@ export async function syncSingleOrder(
       await metrics.saveMetrics();
       return { success: true };
     } else {
-      const errorMsg = result.errors.map((e) => e.error).join(", ");
-      logger.error(
-        `[Single Order Sync] Failed to sync order ${orderId}: ${errorMsg}`
-      );
+      const errorMsg = result.errors.map(e => e.error).join(', ');
+      logger.error(`[Single Order Sync] Failed to sync order ${orderId}: ${errorMsg}`);
 
       await incrementFailedOrders(progressId);
       await markSyncCompleted(progressId, false, errorMsg);
@@ -441,10 +396,7 @@ export async function syncSingleOrder(
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error(
-      `[Single Order Sync] Error syncing order ${orderId}: ${errorMsg}`,
-      { error }
-    );
+    logger.error(`[Single Order Sync] Error syncing order ${orderId}: ${errorMsg}`, { error });
 
     // Attempt to save metrics even on failure
     try {
@@ -459,9 +411,7 @@ export async function syncSingleOrder(
       await markSyncCompleted(progressId, false, errorMsg);
     } catch /* istanbul ignore next */ {
       // Ignore progress marking error
-      logger.error(
-        `[Single Order Sync] Failed to mark progress as failed during error.`
-      );
+      logger.error(`[Single Order Sync] Failed to mark progress as failed during error.`);
     }
 
     return { success: false, error: errorMsg };

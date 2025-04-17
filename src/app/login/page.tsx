@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, FormEvent, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useTransition } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,16 +29,17 @@ export default function LoginPage() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+          const errorData = await response
+            .json()
+            .catch(() => ({ message: 'An unknown error occurred' }));
           throw new Error(errorData.message || 'Login failed');
         }
 
         // Login successful
         toast.success('Login successful!');
         // Redirect to a protected page (e.g., dashboard or home)
-        router.push('/'); 
+        router.push('/');
         router.refresh(); // Refresh server components to reflect logged-in state
-
       } catch (error) {
         console.error('Login error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Login failed';
@@ -57,24 +59,24 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 disabled={isPending}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 disabled={isPending}
               />
             </div>
@@ -87,4 +89,4 @@ export default function LoginPage() {
       </Card>
     </div>
   );
-} 
+}

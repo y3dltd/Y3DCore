@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 
 export interface SyncMetrics {
   syncId: string;
@@ -61,19 +61,30 @@ export class MetricsCollector {
   /**
    * Records the completion of order processing
    */
-  recordOrderProcessed(orderId: string, success: boolean, itemsProcessed: number, itemsFailed: number): void {
+  recordOrderProcessed(
+    orderId: string,
+    success: boolean,
+    itemsProcessed: number,
+    itemsFailed: number
+  ): void {
     const startTime = this.orderTimings[orderId] || Date.now();
     const processingTime = Date.now() - startTime;
-    
+
     if (success) {
       this.metrics.totalOrdersProcessed++;
       this.metrics.totalItemsProcessed += itemsProcessed;
       this.metrics.totalItemsFailed += itemsFailed;
-      
+
       this.metrics.totalProcessingTime += processingTime;
-      this.metrics.maxProcessingTimePerOrder = Math.max(this.metrics.maxProcessingTimePerOrder, processingTime);
-      this.metrics.minProcessingTimePerOrder = Math.min(this.metrics.minProcessingTimePerOrder, processingTime);
-      
+      this.metrics.maxProcessingTimePerOrder = Math.max(
+        this.metrics.maxProcessingTimePerOrder,
+        processingTime
+      );
+      this.metrics.minProcessingTimePerOrder = Math.min(
+        this.metrics.minProcessingTimePerOrder,
+        processingTime
+      );
+
       if (this.metrics.totalOrdersProcessed > 0) {
         this.metrics.avgProcessingTimePerOrder = Math.round(
           this.metrics.totalProcessingTime / this.metrics.totalOrdersProcessed
@@ -82,7 +93,7 @@ export class MetricsCollector {
     } else {
       this.metrics.totalOrdersFailed++;
     }
-    
+
     delete this.orderTimings[orderId];
   }
 
@@ -106,18 +117,20 @@ export class MetricsCollector {
   async saveMetrics(): Promise<void> {
     try {
       this.metrics.endTime = new Date();
-      
+
       // If no orders were processed, set min to 0
       if (this.metrics.minProcessingTimePerOrder === Number.MAX_SAFE_INTEGER) {
         this.metrics.minProcessingTimePerOrder = 0;
       }
-      
+
       await prisma.syncMetrics.create({
         data: this.metrics,
       });
-      
+
       logger.info(`[Metrics] Saved sync metrics for sync ${this.metrics.syncId}`);
-      logger.info(`[Metrics] Summary: ${this.metrics.totalOrdersProcessed} orders processed, ${this.metrics.totalOrdersFailed} failed, ${this.metrics.totalItemsProcessed} items processed`);
+      logger.info(
+        `[Metrics] Summary: ${this.metrics.totalOrdersProcessed} orders processed, ${this.metrics.totalOrdersFailed} failed, ${this.metrics.totalItemsProcessed} items processed`
+      );
     } catch (error) {
       logger.error(`[Metrics] Failed to save metrics for sync ${this.metrics.syncId}: ${error}`);
       // Don't throw - we don't want to fail the sync just because metrics saving failed
@@ -131,7 +144,10 @@ export class MetricsCollector {
     return {
       ...this.metrics,
       avgProcessingTimePerOrder: Math.round(this.metrics.avgProcessingTimePerOrder),
-      minProcessingTimePerOrder: this.metrics.minProcessingTimePerOrder === Number.MAX_SAFE_INTEGER ? 0 : this.metrics.minProcessingTimePerOrder,
+      minProcessingTimePerOrder:
+        this.metrics.minProcessingTimePerOrder === Number.MAX_SAFE_INTEGER
+          ? 0
+          : this.metrics.minProcessingTimePerOrder,
     };
   }
 
@@ -143,7 +159,7 @@ export class MetricsCollector {
     const avgTimeStr = `${(summary.avgProcessingTimePerOrder / 1000).toFixed(2)}s`;
     const maxTimeStr = `${(summary.maxProcessingTimePerOrder / 1000).toFixed(2)}s`;
     const minTimeStr = `${(summary.minProcessingTimePerOrder / 1000).toFixed(2)}s`;
-    
+
     logger.info(`[Metrics] Current Status:
   - Orders: ${summary.totalOrdersProcessed} processed, ${summary.totalOrdersFailed} failed
   - Items: ${summary.totalItemsProcessed} processed, ${summary.totalItemsFailed} failed

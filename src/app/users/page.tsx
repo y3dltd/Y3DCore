@@ -1,9 +1,10 @@
 // import { Suspense } from 'react'; // Removed unused import
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
-import { UsersTable } from '@/components/users-table'; // Client component for the table
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from 'lucide-react';
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { UsersTable } from '@/components/users-table'; // Client component for the table
+import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // Admin User ID - Replace with role-based check later if possible
 const ADMIN_USER_ID = 1;
@@ -24,21 +25,19 @@ async function getUsers() {
 export default async function UsersPage() {
   const currentUser = await getCurrentUser();
 
-  // --- Authorization Check --- 
+  // --- Authorization Check ---
   if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
     return (
       <div className="container mx-auto py-10">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Unauthorized</AlertTitle>
-          <AlertDescription>
-            You do not have permission to access this page.
-          </AlertDescription>
+          <AlertDescription>You do not have permission to access this page.</AlertDescription>
         </Alert>
       </div>
     );
   }
-  // --- End Authorization Check --- 
+  // --- End Authorization Check ---
 
   const users = await getUsers();
 
@@ -59,4 +58,4 @@ export default async function UsersPage() {
       <UsersTable users={users as UserDataForTable[]} />
     </div>
   );
-} 
+}

@@ -1,69 +1,60 @@
-"use client";
+'use client';
 
-import React, {
-  useState,
-  useEffect,
-  useTransition,
-  useCallback,
-  useMemo,
-} from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import { PrintTaskStatus } from '@prisma/client';
+import { format } from 'date-fns';
+import debounce from 'lodash.debounce';
+import { X, CalendarIcon, RotateCcw } from 'lucide-react'; // Import icons
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
+import { DateRange } from 'react-day-picker';
+
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { PrintTaskStatus } from "@prisma/client";
-import { X, CalendarIcon, RotateCcw } from "lucide-react"; // Import icons
-import debounce from "lodash.debounce";
-import { format } from "date-fns";
-import { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 const colorOptions = [
-  "Black",
-  "Grey",
-  "Light Blue",
-  "Blue",
-  "Dark Blue",
-  "Brown",
-  "Orange",
-  "Matt Orange",
-  "Silk Orange",
-  "Red",
-  "Fire Engine Red",
-  "Rose Gold",
-  "Magenta",
-  "White",
-  "Yellow",
-  "Silver",
-  "Silk Silver",
-  "Purple",
-  "Pink",
-  "Gold",
-  "Skin",
-  "Peak Green",
-  "Green",
-  "Olive Green",
-  "Pine Green",
-  "Cold White",
-  "Matt Pink",
-  "Silk Pink",
-  "Glow in the Dark",
-  "Bronze",
-  "Beige",
-  "Turquoise",
+  'Black',
+  'Grey',
+  'Light Blue',
+  'Blue',
+  'Dark Blue',
+  'Brown',
+  'Orange',
+  'Matt Orange',
+  'Silk Orange',
+  'Red',
+  'Fire Engine Red',
+  'Rose Gold',
+  'Magenta',
+  'White',
+  'Yellow',
+  'Silver',
+  'Silk Silver',
+  'Purple',
+  'Pink',
+  'Gold',
+  'Skin',
+  'Peak Green',
+  'Green',
+  'Olive Green',
+  'Pine Green',
+  'Cold White',
+  'Matt Pink',
+  'Silk Pink',
+  'Glow in the Dark',
+  'Bronze',
+  'Beige',
+  'Turquoise',
 ];
 
 interface PrintQueueFiltersProps {
@@ -83,9 +74,7 @@ interface PrintQueueFiltersProps {
 }
 
 // Helper to get the first value if it's an array
-const getFilterParam = (
-  value: string | string[] | undefined
-): string | undefined => {
+const getFilterParam = (value: string | string[] | undefined): string | undefined => {
   return Array.isArray(value) ? value[0] : value;
 };
 
@@ -96,18 +85,20 @@ function isPrintTaskStatus(value: string): value is PrintTaskStatus {
 }
 
 // Type guard for extended status including 'active'
-function isExtendedPrintTaskStatus(
-  value: string
-): value is PrintTaskStatus | "active" | "all" {
-  return isPrintTaskStatus(value) || value === "all" || value === "active";
+function isExtendedPrintTaskStatus(value: string): value is PrintTaskStatus | 'active' | 'all' {
+  return isPrintTaskStatus(value) || value === 'all' || value === 'active';
 }
 
 // Type guard for Review Option
-function isReviewOption(value: string): value is "yes" | "no" | "all" {
-  return ["yes", "no", "all"].includes(value);
+function isReviewOption(value: string): value is 'yes' | 'no' | 'all' {
+  return ['yes', 'no', 'all'].includes(value);
 }
 
-export function PrintQueueFilters({ currentFilters, availableProductNames = [], availableShippingMethods = [] }: PrintQueueFiltersProps) {
+export function PrintQueueFilters({
+  currentFilters,
+  availableProductNames = [],
+  availableShippingMethods = [],
+}: PrintQueueFiltersProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const productNames = availableProductNames; // Will be used in future implementation
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -118,72 +109,61 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
   const [isPending, startTransition] = useTransition();
 
   // Local state for controlled inputs
-  const initialQueryParam = getFilterParam(currentFilters.query) || "";
+  const initialQueryParam = getFilterParam(currentFilters.query) || '';
   const [query, setQuery] = useState(initialQueryParam);
 
-  const initialStatusParam = getFilterParam(currentFilters.status) || "active";
+  const initialStatusParam = getFilterParam(currentFilters.status) || 'active';
   const initialValidatedStatus = isExtendedPrintTaskStatus(initialStatusParam)
     ? initialStatusParam
-    : "active";
-  const [status, setStatus] = useState<PrintTaskStatus | "all" | "active">(
-    initialValidatedStatus as PrintTaskStatus | "all" | "active"
+    : 'active';
+  const [status, setStatus] = useState<PrintTaskStatus | 'all' | 'active'>(
+    initialValidatedStatus as PrintTaskStatus | 'all' | 'active'
   );
 
-  const initialNeedsReviewParam =
-    getFilterParam(currentFilters.needsReview) || "all";
+  const initialNeedsReviewParam = getFilterParam(currentFilters.needsReview) || 'all';
   const initialValidatedNeedsReview = isReviewOption(initialNeedsReviewParam)
     ? initialNeedsReviewParam
-    : "all";
-  const [needsReview, setNeedsReview] = useState<"yes" | "no" | "all">(
-    initialValidatedNeedsReview
-  );
+    : 'all';
+  const [needsReview, setNeedsReview] = useState<'yes' | 'no' | 'all'>(initialValidatedNeedsReview);
 
   // Color filters
-  const initialColor1Param = getFilterParam(currentFilters.color1) || "";
+  const initialColor1Param = getFilterParam(currentFilters.color1) || '';
   const [color1, setColor1] = useState(initialColor1Param);
 
-  const initialColor2Param = getFilterParam(currentFilters.color2) || "";
+  const initialColor2Param = getFilterParam(currentFilters.color2) || '';
   const [color2, setColor2] = useState(initialColor2Param);
 
-  const initialColorParam = getFilterParam(currentFilters.color) || "";
+  const initialColorParam = getFilterParam(currentFilters.color) || '';
   const [color, setColor] = useState(initialColorParam);
 
   // Shipping Method filter
-  const initialShippingMethodParam = getFilterParam(currentFilters.shippingMethod) || "";
+  const initialShippingMethodParam = getFilterParam(currentFilters.shippingMethod) || '';
   const [shippingMethod, setShippingMethod] = useState(initialShippingMethodParam);
 
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(
-    () => {
-      const startStr = getFilterParam(currentFilters.shipByDateStart);
-      const endStr = getFilterParam(currentFilters.shipByDateEnd);
-      // Ensure dates are valid before setting
-      const start =
-        startStr && !isNaN(new Date(startStr).getTime())
-          ? new Date(startStr)
-          : undefined;
-      const end =
-        endStr && !isNaN(new Date(endStr).getTime())
-          ? new Date(endStr)
-          : undefined;
-      if (start || end) {
-        return { from: start, to: end };
-      }
-      return undefined;
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
+    const startStr = getFilterParam(currentFilters.shipByDateStart);
+    const endStr = getFilterParam(currentFilters.shipByDateEnd);
+    // Ensure dates are valid before setting
+    const start = startStr && !isNaN(new Date(startStr).getTime()) ? new Date(startStr) : undefined;
+    const end = endStr && !isNaN(new Date(endStr).getTime()) ? new Date(endStr) : undefined;
+    if (start || end) {
+      return { from: start, to: end };
     }
-  );
+    return undefined;
+  });
 
   // Check if any filter is currently active
   const isAnyFilterActive = useMemo(() => {
     return (
-      query !== "" ||
-      status !== "all" ||
-      needsReview !== "all" ||
+      query !== '' ||
+      status !== 'all' ||
+      needsReview !== 'all' ||
       dateRange?.from !== undefined ||
       dateRange?.to !== undefined ||
-      color1 !== "" ||
-      color2 !== "" ||
-      color !== "" ||
-      shippingMethod !== ""
+      color1 !== '' ||
+      color2 !== '' ||
+      color !== '' ||
+      shippingMethod !== ''
     );
   }, [query, status, needsReview, dateRange, color1, color2, color, shippingMethod]);
 
@@ -194,8 +174,8 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
       if (clearAll) {
         // Start fresh if clearing all, keep only non-filter params like limit
         current = new URLSearchParams();
-        const limit = searchParams.get("limit");
-        if (limit) current.set("limit", limit);
+        const limit = searchParams.get('limit');
+        if (limit) current.set('limit', limit);
       } else {
         current = new URLSearchParams(Array.from(searchParams.entries()));
       }
@@ -204,7 +184,7 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
         // Trim the query parameter if it exists
         const processedValue = key === 'query' && value ? value.trim() : value;
 
-        if (processedValue && processedValue !== "all") {
+        if (processedValue && processedValue !== 'all') {
           current.set(key, processedValue);
         } else {
           // Only delete if not clearing all (to avoid re-adding default 'all' values)
@@ -215,10 +195,10 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
       });
 
       // Always delete page when filters change or are cleared
-      current.delete("page");
+      current.delete('page');
 
       const search = current.toString();
-      const query = search ? `?${search}` : "";
+      const query = search ? `?${search}` : '';
 
       startTransition(() => {
         router.push(`${pathname}${query}`, { scroll: false }); // Prevent scroll jump
@@ -246,14 +226,14 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
   // Handler for status select change
   const handleStatusChange = (value: string) => {
-    const newStatus = isExtendedPrintTaskStatus(value) ? value : "active";
-    setStatus(newStatus as PrintTaskStatus | "all" | "active");
-    updateSearchParams({ status: newStatus === "all" ? undefined : newStatus });
+    const newStatus = isExtendedPrintTaskStatus(value) ? value : 'active';
+    setStatus(newStatus as PrintTaskStatus | 'all' | 'active');
+    updateSearchParams({ status: newStatus === 'all' ? undefined : newStatus });
   };
 
   // Handler for needs review select change
   const handleNeedsReviewChange = (value: string) => {
-    const newReview = value === "yes" || value === "no" ? value : "all";
+    const newReview = value === 'yes' || value === 'no' ? value : 'all';
     setNeedsReview(newReview);
     updateSearchParams({ needsReview: newReview });
   };
@@ -261,8 +241,8 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
   // Handler for Date Range Select
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     setDateRange(range);
-    const start = range?.from ? format(range.from, "yyyy-MM-dd") : undefined;
-    const end = range?.to ? format(range.to, "yyyy-MM-dd") : undefined;
+    const start = range?.from ? format(range.from, 'yyyy-MM-dd') : undefined;
+    const end = range?.to ? format(range.to, 'yyyy-MM-dd') : undefined;
     updateSearchParams({ shipByDateStart: start, shipByDateEnd: end });
   };
 
@@ -293,21 +273,21 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
   // Clear color1 input - not used with new Select component
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearColor1 = () => {
-    setColor1("");
+    setColor1('');
     updateSearchParams({ color1: undefined });
   };
 
   // Clear color2 input - not used with new Select component
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearColor2 = () => {
-    setColor2("");
+    setColor2('');
     updateSearchParams({ color2: undefined });
   };
 
   // Clear color select
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearColor = () => {
-    setColor("");
+    setColor('');
     updateSearchParams({ color: undefined });
   };
 
@@ -320,13 +300,13 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
   // Clear shipping method - not used with new Select component
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clearShippingMethod = () => {
-    setShippingMethod("");
+    setShippingMethod('');
     updateSearchParams({ shippingMethod: undefined });
   };
 
   // Clear search input
   const clearSearch = () => {
-    setQuery("");
+    setQuery('');
     updateSearchParams({ query: undefined }); // Pass undefined to clear
   };
 
@@ -337,14 +317,14 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
   // Clear All Filters
   const handleClearAllFilters = () => {
-    setQuery("");
-    setStatus("all");
-    setNeedsReview("all");
+    setQuery('');
+    setStatus('all');
+    setNeedsReview('all');
     setDateRange(undefined);
-    setColor1("");
-    setColor2("");
-    setColor("");
-    setShippingMethod("");
+    setColor1('');
+    setColor2('');
+    setColor('');
+    setShippingMethod('');
     // Call update with all filters explicitly set to undefined/default
     updateSearchParams(
       {
@@ -364,46 +344,40 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
   // Sync local state
   useEffect(() => {
-    setQuery(searchParams.get("query") || "");
+    setQuery(searchParams.get('query') || '');
 
-    const statusParam = searchParams.get("status") || "all";
-    setStatus(
-      isPrintTaskStatus(statusParam) || statusParam === "all"
-        ? statusParam
-        : "all"
-    );
+    const statusParam = searchParams.get('status') || 'all';
+    setStatus(isPrintTaskStatus(statusParam) || statusParam === 'all' ? statusParam : 'all');
 
-    const needsReviewParam = searchParams.get("needsReview") || "all";
-    setNeedsReview(isReviewOption(needsReviewParam) ? needsReviewParam : "all");
+    const needsReviewParam = searchParams.get('needsReview') || 'all';
+    setNeedsReview(isReviewOption(needsReviewParam) ? needsReviewParam : 'all');
 
-    const start = searchParams.get("shipByDateStart");
-    const end = searchParams.get("shipByDateEnd");
-    const startDate =
-      start && !isNaN(new Date(start).getTime()) ? new Date(start) : undefined;
-    const endDate =
-      end && !isNaN(new Date(end).getTime()) ? new Date(end) : undefined;
+    const start = searchParams.get('shipByDateStart');
+    const end = searchParams.get('shipByDateEnd');
+    const startDate = start && !isNaN(new Date(start).getTime()) ? new Date(start) : undefined;
+    const endDate = end && !isNaN(new Date(end).getTime()) ? new Date(end) : undefined;
     setDateRange({ from: startDate, to: endDate });
 
-    setColor1(searchParams.get("color1") || "");
-    setColor2(searchParams.get("color2") || "");
-    setColor(searchParams.get("color") || "");
-    setShippingMethod(searchParams.get("shippingMethod") || "");
+    setColor1(searchParams.get('color1') || '');
+    setColor2(searchParams.get('color2') || '');
+    setColor(searchParams.get('color') || '');
+    setShippingMethod(searchParams.get('shippingMethod') || '');
     // Keep dependency array simple
   }, [searchParams]);
 
   const statusOptions = [
-    { value: "active", label: "Active Tasks" },
-    { value: "all", label: "All Statuses" },
-    ...Object.values(PrintTaskStatus).map((s) => ({
+    { value: 'active', label: 'Active Tasks' },
+    { value: 'all', label: 'All Statuses' },
+    ...Object.values(PrintTaskStatus).map(s => ({
       value: s,
-      label: s.charAt(0).toUpperCase() + s.slice(1).replace("_", " "),
+      label: s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' '),
     })),
   ];
 
   const reviewOptions = [
-    { value: "all", label: "Review: Any" },
-    { value: "yes", label: "Review: Yes" },
-    { value: "no", label: "Review: No" },
+    { value: 'all', label: 'Review: Any' },
+    { value: 'yes', label: 'Review: Yes' },
+    { value: 'no', label: 'Review: No' },
   ];
 
   return (
@@ -424,10 +398,7 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Search Input */}
       <div className="flex-grow min-w-[200px] relative">
-        <Label
-          htmlFor="search-query"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="search-query" className="mb-1 block text-xs font-medium">
           Search (Product, SKU, Order#)
         </Label>
         <div>
@@ -464,21 +435,15 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Status Select */}
       <div>
-        <Label
-          htmlFor="status-filter"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="status-filter" className="mb-1 block text-xs font-medium">
           Status
         </Label>
-        <Select
-          value={status}
-          onValueChange={handleStatusChange}
-        >
+        <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger id="status-filter" className="w-[160px] h-9">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            {statusOptions.map((option) => (
+            {statusOptions.map(option => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
@@ -489,21 +454,15 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Needs Review Select */}
       <div>
-        <Label
-          htmlFor="review-filter"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="review-filter" className="mb-1 block text-xs font-medium">
           Needs Review
         </Label>
-        <Select
-          value={needsReview}
-          onValueChange={handleNeedsReviewChange}
-        >
+        <Select value={needsReview} onValueChange={handleNeedsReviewChange}>
           <SelectTrigger id="review-filter" className="w-[160px] h-9">
             <SelectValue placeholder="Filter by review" />
           </SelectTrigger>
           <SelectContent>
-            {reviewOptions.map((option) => (
+            {reviewOptions.map(option => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
@@ -515,31 +474,27 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
       {/* Date Range Picker with Clear Button */}
       <div className="flex items-end gap-1">
         <div>
-          <Label
-            htmlFor="date-range"
-            className="mb-1 block text-xs font-medium"
-          >
+          <Label htmlFor="date-range" className="mb-1 block text-xs font-medium">
             Ship By Date
           </Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 id="date-range"
-                variant={"outline"}
+                variant={'outline'}
                 className={cn(
-                  "w-[200px] h-9 justify-start text-left font-normal text-sm", // Reduced width, added height
-                  !dateRange?.from && !dateRange?.to && "text-muted-foreground" // Adjust condition
+                  'w-[200px] h-9 justify-start text-left font-normal text-sm', // Reduced width, added height
+                  !dateRange?.from && !dateRange?.to && 'text-muted-foreground' // Adjust condition
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
                   dateRange.to ? (
                     <>
-                      {format(dateRange.from, "LLL dd, y")} -{" "}
-                      {format(dateRange.to, "LLL dd, y")}
+                      {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
                     </>
                   ) : (
-                    format(dateRange.from, "LLL dd, y")
+                    format(dateRange.from, 'LLL dd, y')
                   )
                 ) : (
                   <span>Pick a date range</span>
@@ -575,16 +530,13 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Color 1 Filter */}
       <div>
-        <Label
-          htmlFor="color1-filter"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="color1-filter" className="mb-1 block text-xs font-medium">
           Color 1
         </Label>
         <Select
-          value={color1 || "all"}
-          onValueChange={(value) => {
-            const newValue = value === "all" ? "" : value;
+          value={color1 || 'all'}
+          onValueChange={value => {
+            const newValue = value === 'all' ? '' : value;
             setColor1(newValue);
             updateSearchParams({ color1: newValue || undefined });
           }}
@@ -594,7 +546,7 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Colors</SelectItem>
-            {colorOptions.map((colorOption) => (
+            {colorOptions.map(colorOption => (
               <SelectItem key={colorOption} value={colorOption}>
                 {colorOption}
               </SelectItem>
@@ -605,16 +557,13 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Color 2 Filter */}
       <div>
-        <Label
-          htmlFor="color2-filter"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="color2-filter" className="mb-1 block text-xs font-medium">
           Color 2
         </Label>
         <Select
-          value={color2 || "all"}
-          onValueChange={(value) => {
-            const newValue = value === "all" ? "" : value;
+          value={color2 || 'all'}
+          onValueChange={value => {
+            const newValue = value === 'all' ? '' : value;
             setColor2(newValue);
             updateSearchParams({ color2: newValue || undefined });
           }}
@@ -624,7 +573,7 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Colors</SelectItem>
-            {colorOptions.map((colorOption) => (
+            {colorOptions.map(colorOption => (
               <SelectItem key={colorOption} value={colorOption}>
                 {colorOption}
               </SelectItem>
@@ -635,22 +584,19 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
 
       {/* Shipping Method Filter */}
       <div>
-        <Label
-          htmlFor="shipping-method-filter"
-          className="mb-1 block text-xs font-medium"
-        >
+        <Label htmlFor="shipping-method-filter" className="mb-1 block text-xs font-medium">
           Shipping Method
         </Label>
         <Select
-          value={shippingMethod || "all"}
-          onValueChange={(value) => handleShippingMethodChange(value === "all" ? "" : value)}
+          value={shippingMethod || 'all'}
+          onValueChange={value => handleShippingMethodChange(value === 'all' ? '' : value)}
         >
           <SelectTrigger id="shipping-method-filter" className="w-[160px] h-9">
             <SelectValue placeholder="All Shipping Methods" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Shipping Methods</SelectItem>
-            {availableShippingMethods.map((method) => (
+            {availableShippingMethods.map(method => (
               <SelectItem key={method} value={method}>
                 {method}
               </SelectItem>
@@ -660,9 +606,7 @@ export function PrintQueueFilters({ currentFilters, availableProductNames = [], 
       </div>
 
       {/* Loading Indicator */}
-      {isPending && (
-        <div className="text-sm text-muted-foreground">Loading...</div>
-      )}
+      {isPending && <div className="text-sm text-muted-foreground">Loading...</div>}
     </div>
   );
 }

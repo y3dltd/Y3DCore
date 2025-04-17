@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+
 import logger from '@/lib/logger';
 
 interface AmazonCustomizationData {
@@ -13,7 +14,9 @@ interface AmazonCustomizationData {
  * @param url The Amazon CustomizedURL.
  * @returns Extracted personalization data or null if processing fails.
  */
-export async function fetchAndProcessAmazonCustomization(url: string): Promise<AmazonCustomizationData | null> {
+export async function fetchAndProcessAmazonCustomization(
+  url: string
+): Promise<AmazonCustomizationData | null> {
   logger.info(`[Amazon Processor] Fetching customization data from URL: ${url}`);
   try {
     const response = await fetch(url);
@@ -21,7 +24,7 @@ export async function fetchAndProcessAmazonCustomization(url: string): Promise<A
       throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
     }
     if (!response.body) {
-        throw new Error('Response body is null');
+      throw new Error('Response body is null');
     }
 
     const zipBuffer = await response.arrayBuffer();
@@ -33,14 +36,18 @@ export async function fetchAndProcessAmazonCustomization(url: string): Promise<A
       throw new Error('No JSON file found in the zip archive.');
     }
     if (jsonFiles.length > 1) {
-      logger.warn(`[Amazon Processor] Multiple JSON files found in zip from ${url}. Using the first one: ${jsonFiles[0].name}`);
+      logger.warn(
+        `[Amazon Processor] Multiple JSON files found in zip from ${url}. Using the first one: ${jsonFiles[0].name}`
+      );
     }
 
     const jsonFile = jsonFiles[0];
     const jsonContent = await jsonFile.async('string');
     const jsonData = JSON.parse(jsonContent);
 
-    logger.debug(`[Amazon Processor] Raw JSON data from ${jsonFile.name}:\n${JSON.stringify(jsonData, null, 2)}`);
+    logger.debug(
+      `[Amazon Processor] Raw JSON data from ${jsonFile.name}:\n${JSON.stringify(jsonData, null, 2)}`
+    );
 
     // --- !!! IMPORTANT: JSON Parsing Logic Needed Here !!! ---
     // This part is highly dependent on the actual structure of the JSON file.
@@ -60,9 +67,11 @@ export async function fetchAndProcessAmazonCustomization(url: string): Promise<A
     const color2 = jsonData?.color2 ?? null; // Example guess
 
     if (!customText && !color1) {
-        logger.warn(`[Amazon Processor] Could not extract meaningful data from JSON in ${url}. JSON: ${JSON.stringify(jsonData)}`);
-        // Decide if this should be an error or just return null/empty data
-        // return null; // Or return extracted data even if partial
+      logger.warn(
+        `[Amazon Processor] Could not extract meaningful data from JSON in ${url}. JSON: ${JSON.stringify(jsonData)}`
+      );
+      // Decide if this should be an error or just return null/empty data
+      // return null; // Or return extracted data even if partial
     }
     // --- End of Placeholder Logic ---
 
@@ -72,9 +81,10 @@ export async function fetchAndProcessAmazonCustomization(url: string): Promise<A
       color2,
     };
 
-    logger.info(`[Amazon Processor] Successfully extracted data for ${url}: ${JSON.stringify(extractedData)}`);
+    logger.info(
+      `[Amazon Processor] Successfully extracted data for ${url}: ${JSON.stringify(extractedData)}`
+    );
     return extractedData;
-
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.error(`[Amazon Processor] Error processing URL ${url}: ${errorMsg}`, { error });

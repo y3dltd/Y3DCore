@@ -1,9 +1,11 @@
-import { rm } from 'fs/promises';
-import { globby } from 'globby';
-import { join } from 'path';
-import { logger } from '@/lib/shared/logging';
 import { existsSync } from 'fs';
+import { rm } from 'fs/promises';
 import { homedir } from 'os';
+import { join } from 'path';
+
+import { globby } from 'globby';
+
+import { logger } from '@/lib/shared/logging';
 
 /**
  * Options for cleanup operations
@@ -85,21 +87,12 @@ export async function cleanup(options: CleanupOptions = {}): Promise<CleanupResu
 
   // Conditionally add log files
   if (includeLogFiles) {
-    patternsToRemove = [
-      ...patternsToRemove,
-      'logs',
-      '*.log',
-    ];
+    patternsToRemove = [...patternsToRemove, 'logs', '*.log'];
   }
 
   // Conditionally add example files
   if (includeExampleFiles) {
-    patternsToRemove = [
-      ...patternsToRemove,
-      'example*.jpg',
-      'example*.png',
-      'example*.json',
-    ];
+    patternsToRemove = [...patternsToRemove, 'example*.jpg', 'example*.png', 'example*.json'];
   }
 
   // NEW: Conditionally add legacy code patterns
@@ -189,7 +182,7 @@ export async function cleanup(options: CleanupOptions = {}): Promise<CleanupResu
   const totalRemoved = result.filesRemoved + result.directoriesRemoved;
   logger.info(
     `Cleanup ${dryRun ? 'dry run' : 'completed'}: ${dryRun ? 'Would remove' : 'Removed'} ${totalRemoved} items ` +
-    `(${result.filesRemoved} files, ${result.directoriesRemoved} directories)`
+      `(${result.filesRemoved} files, ${result.directoriesRemoved} directories)`
   );
 
   if (result.errors.length > 0) {

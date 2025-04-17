@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { verifyPassword } from '@/lib/server-only/auth-password';
+
 import { getSession } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
+import { prisma } from '@/lib/prisma';
+import { verifyPassword } from '@/lib/server-only/auth-password';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,9 +38,8 @@ export async function POST(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
     return NextResponse.json(userWithoutPassword);
-
   } catch (error) {
     console.error('[API Auth Login] Error:', error);
     return handleApiError(error); // Use your existing error handler
   }
-} 
+}

@@ -1,16 +1,6 @@
 // Re-export from the original location
-import type {
-  ShipStationAddress,
-  ShipStationOrderItem,
-  ShipStationOrder,
-  ShipStationTag,
-  ShipStationApiParams,
-  ShipStationOrdersResponse,
-} from "../shipstation/types"; // Import types
 
 // Import from the correct location
-import { shipstationApi } from "../shipstation/client"; // Import from client.ts
-import { getShipstationOrders, listTags, updateOrderItemOptions } from "../shipstation/api"; // Import from api.ts
 
 // Import sync functions
 import {
@@ -18,8 +8,18 @@ import {
   syncRecentOrders,
   syncSingleOrder,
   syncShipStationTags,
-} from "../orders/sync"; // Import from orders/sync
-import type { SyncOptions } from "../orders/sync"; // Import as type
+} from '../orders/sync'; // Import from orders/sync
+import type { SyncOptions } from '../orders/sync'; // Import as type
+import { getShipstationOrders, listTags, updateOrderItemOptions } from '../shipstation/api'; // Import from api.ts
+import { shipstationApi } from '../shipstation/client'; // Import from client.ts
+import type {
+  ShipStationAddress,
+  ShipStationOrderItem,
+  ShipStationOrder,
+  ShipStationTag,
+  ShipStationApiParams,
+  ShipStationOrdersResponse,
+} from '../shipstation/types'; // Import types
 
 // Export functions normally
 export {

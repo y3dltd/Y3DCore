@@ -1,7 +1,8 @@
+import { User } from '@prisma/client';
 import { IronSession, IronSessionData, getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+
 import { prisma } from './prisma';
-import { User } from '@prisma/client';
 
 // Augment IronSessionData to include user information
 declare module 'iron-session' {
@@ -21,7 +22,9 @@ export const sessionOptions = {
 };
 
 if (!sessionOptions.password || sessionOptions.password.length < 32) {
-  console.error('CRITICAL SECURITY WARNING: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!');
+  console.error(
+    'CRITICAL SECURITY WARNING: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
+  );
 }
 
 // Function to get the current session
@@ -32,21 +35,23 @@ export async function getSession(): Promise<IronSession<IronSessionData>> {
 
 // Function to get the currently logged-in user
 export async function getCurrentUser(): Promise<Omit<User, 'password'> | null> {
-  const session = await getSession();
-  if (!session.userId) {
+  try {
+    const session = await getSession();
+    const userId = session.userId;
+    if (!userId) return null;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+    // Exclude password before returning
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  } catch (err: unknown) {
+    console.error(
+      '[getCurrentUser] Error retrieving user session:',
+      err instanceof Error ? err.message : err
+    );
     return null;
   }
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-  });
-  if (!user) {
-    session.destroy();
-    return null;
-  }
-  // Exclude password before returning
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, ...userWithoutPassword } = user;
-  return userWithoutPassword;
 }
 
 // Password hashing and verification functions have been moved to src/lib/server-only/auth-password.ts

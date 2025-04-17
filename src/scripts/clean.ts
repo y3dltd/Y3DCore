@@ -6,8 +6,9 @@
  */
 
 import { program } from 'commander';
-import { cleanup, CleanupOptions } from '@/lib/utils/cleanup';
+
 import { logger } from '@/lib/shared/logging';
+import { cleanup, CleanupOptions } from '@/lib/utils/cleanup';
 
 program
   .name('clean')
@@ -19,7 +20,11 @@ program
   .option('-e, --example-files', 'Include example files', false)
   .option('-l, --no-logs', 'Skip log files', true)
   .option('--dir <directory>', 'Root directory to clean (default: current directory)')
-  .option('--legacy', 'Remove old/legacy code and directories (y3dhub/, src/tests/, *.js, etc.)', false)
+  .option(
+    '--legacy',
+    'Remove old/legacy code and directories (y3dhub/, src/tests/, *.js, etc.)',
+    false
+  )
   .parse(process.argv);
 
 const options = program.opts();

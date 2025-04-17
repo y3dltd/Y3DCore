@@ -1,5 +1,5 @@
-import { getPrintPlan } from "@/lib/ai/print-plan";
-import { PrintQueueTable, PrintTaskData } from "@/components/print-queue-table";
+import { PrintTaskData } from '@/components/print-queue-table';
+import { getPrintPlan } from '@/lib/ai/print-plan';
 
 export default async function PrintPlanPage() {
   // Fetch tasks as in main print queue page (pseudo-code, adapt as needed)
@@ -10,7 +10,7 @@ export default async function PrintPlanPage() {
     <div className="max-w-5xl mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">AI-Generated Print Plan</h1>
       <pre className="bg-gray-100 rounded p-4 overflow-x-auto text-xs">
-        {plan ? JSON.stringify(plan, null, 2) : "No plan generated."}
+        {plan ? JSON.stringify(plan, null, 2) : 'No plan generated.'}
       </pre>
     </div>
   );

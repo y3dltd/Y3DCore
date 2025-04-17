@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { PrintTaskStatus } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
+
 import { getCurrentUser } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
+import { prisma } from '@/lib/prisma';
 
 // Helper function to check if a string is a valid PrintTaskStatus
 function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
-  return typeof status === 'string' && Object.values(PrintTaskStatus).includes(status as PrintTaskStatus);
+  return (
+    typeof status === 'string' && Object.values(PrintTaskStatus).includes(status as PrintTaskStatus)
+  );
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { taskId: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   // --- Authentication Check ---
   const user = await getCurrentUser();
   if (!user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
   // --- End Authentication Check ---
 
@@ -39,9 +39,9 @@ export async function PATCH(
   if (!status || !isValidPrintTaskStatus(status)) {
     return NextResponse.json(
       {
-        error: `Invalid or missing status. Must be one of: ${Object.values(
-          PrintTaskStatus
-        ).join(', ')}`,
+        error: `Invalid or missing status. Must be one of: ${Object.values(PrintTaskStatus).join(
+          ', '
+        )}`,
       },
       { status: 400 }
     );

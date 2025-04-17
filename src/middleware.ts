@@ -1,6 +1,7 @@
+import { getIronSession, IronSessionData } from 'iron-session';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getIronSession, IronSessionData } from 'iron-session';
+
 import { sessionOptions } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
@@ -35,7 +36,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

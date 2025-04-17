@@ -1,4 +1,21 @@
-import { prisma } from '@/lib/prisma';
+// import { Order } from '@prisma/client'; // Unused import
+import { Prisma } from '@prisma/client'; // Import Prisma types for where clause
+import {
+  DollarSign, // Example icon for revenue
+  Package, // Example icon for orders/items
+  TrendingUp, // Example icon for weekly revenue
+  Copy, // For copy to clipboard functionality
+  // Users    // Example icon (replace if needed)
+} from 'lucide-react'; // Import icons
+import Link from 'next/link'; // Import Link
+import { toast } from 'sonner'; // Import toast for copy feedback
+
+import { StatsCard } from '@/components/dashboard/stats-card'; // Import StatsCard
+import { LimitSelector } from '@/components/limit-selector'; // Import LimitSelector
+import { OrdersPagination } from '@/components/orders-pagination';
+import { OrdersSearchForm } from '@/components/orders-search-form'; // Import the client component wrapper
+import { Badge } from '@/components/ui/badge'; // Import Badge
+import { Button } from '@/components/ui/button'; // Re-add Button import
 import {
   Table,
   TableBody,
@@ -8,26 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { detectMarketplaceOrderNumber } from '@/lib/order-utils';
-// import { Order } from '@prisma/client'; // Unused import
-import { OrdersPagination } from '@/components/orders-pagination';
-import { LimitSelector } from '@/components/limit-selector'; // Import LimitSelector
-import Link from 'next/link'; // Import Link
 import { CURRENCY_SYMBOL } from '@/lib/constants'; // Import the constant
-import { StatsCard } from '@/components/dashboard/stats-card'; // Import StatsCard
-import {
-  DollarSign, // Example icon for revenue
-  Package,    // Example icon for orders/items
-  TrendingUp, // Example icon for weekly revenue
-  // Users       // Example icon (replace if needed)
-} from 'lucide-react'; // Import icons
-import { Button } from '@/components/ui/button'; // Re-add Button import
-import { Prisma } from '@prisma/client'; // Import Prisma types for where clause
-import { Badge } from "@/components/ui/badge"; // Import Badge
-import { Copy } from 'lucide-react'; // Import Copy icon
+import { detectMarketplaceOrderNumber } from '@/lib/order-utils';
+import { prisma } from '@/lib/prisma';
 import { formatDateForTable } from '@/lib/shared/date-utils'; // Import date utility functions
-import { toast } from 'sonner'; // Import toast for copy feedback
-import { OrdersSearchForm } from '@/components/orders-search-form'; // Import the client component wrapper
 import { cn } from '@/lib/utils'; // Import cn utility for className concatenation
 
 // Force dynamic rendering to ensure searchParams are handled correctly
@@ -63,7 +64,7 @@ function getStartOfLastWeekUTC(): Date {
 function calculatePercentageChange(current: number, previous: number): string {
   if (previous === 0) {
     // Avoid division by zero
-    return current > 0 ? "+∞%" : "+0%"; // Indicate infinite increase or no change from zero
+    return current > 0 ? '+∞%' : '+0%'; // Indicate infinite increase or no change from zero
   }
   const change = ((current - previous) / previous) * 100;
   const sign = change >= 0 ? '+' : '';
@@ -81,7 +82,14 @@ async function getDashboardStats() {
   const startOfLastWeek = getStartOfLastWeekUTC();
 
   // Fetch stats concurrently
-  const [todayOrderStats, yesterdayOrderStats, thisWeekRevenueStats, lastWeekRevenueStats, todayItemStats, yesterdayItemStats] = await Promise.all([
+  const [
+    todayOrderStats,
+    yesterdayOrderStats,
+    thisWeekRevenueStats,
+    lastWeekRevenueStats,
+    todayItemStats,
+    yesterdayItemStats,
+  ] = await Promise.all([
     // Orders & Revenue: Today
     prisma.order.aggregate({
       _count: { id: true },
@@ -153,7 +161,10 @@ async function getOrders(
   marketplaceFilter?: string,
   orderDateStart?: string,
   orderDateEnd?: string
-): Promise<{ orders: Prisma.OrderGetPayload<{ select: typeof orderSelectClause["select"] }>[]; total: number }> {
+): Promise<{
+  orders: Prisma.OrderGetPayload<{ select: (typeof orderSelectClause)['select'] }>[];
+  total: number;
+}> {
   // Define the select clause here to reuse it and for the return type
   const orderSelectClause = {
     select: {
@@ -169,9 +180,9 @@ async function getOrders(
       ship_by_date: true, // Add ship_by_date
       tracking_number: true,
       _count: {
-        select: { items: true }
-      }
-    }
+        select: { items: true },
+      },
+    },
   };
 
   const skip = Math.max(0, (page - 1) * limit);
@@ -231,7 +242,7 @@ async function getOrders(
   if (orderDateStart && orderDateEnd) {
     where.created_at = {
       gte: new Date(orderDateStart),
-      lt: new Date(orderDateEnd)
+      lt: new Date(orderDateEnd),
     };
   }
 
@@ -243,7 +254,7 @@ async function getOrders(
       orderBy: {
         created_at: 'desc',
       },
-      select: orderSelectClause.select // Use the defined select clause
+      select: orderSelectClause.select, // Use the defined select clause
     }),
     prisma.order.count({ where: where }),
   ]);
@@ -253,7 +264,10 @@ async function getOrders(
 // Fetch distinct filter options
 async function getFilterOptions(): Promise<{ statuses: string[]; marketplaces: string[] }> {
   // Add explicit types for Prisma results
-  const [statusesResult, marketplacesResult]: [{ order_status: string | null }[], { marketplace: string | null }[]] = await Promise.all([
+  const [statusesResult, marketplacesResult]: [
+    { order_status: string | null }[],
+    { marketplace: string | null }[],
+  ] = await Promise.all([
     prisma.order.findMany({
       select: { order_status: true },
       distinct: ['order_status'],
@@ -289,21 +303,21 @@ type SelectedOrderData = Prisma.OrderGetPayload<{
     ship_by_date: true; // Add ship_by_date
     tracking_number: true;
     _count: { select: { items: true } };
-  }
+  };
 }>;
 
 // Marketplace styling similar to print-queue with high contrast for dark mode
 const marketplaceStyles: Record<string, { bg: string; text: string }> = {
-  eBay: { bg: "bg-blue-500", text: "text-white" },
-  Amazon: { bg: "bg-orange-500", text: "text-white" },
-  Etsy: { bg: "bg-orange-600", text: "text-white" },
-  Shopify: { bg: "bg-green-500", text: "text-white" },
-  "N/A": { bg: "bg-gray-500", text: "text-white" },
+  eBay: { bg: 'bg-blue-500', text: 'text-white' },
+  Amazon: { bg: 'bg-orange-500', text: 'text-white' },
+  Etsy: { bg: 'bg-orange-600', text: 'text-white' },
+  Shopify: { bg: 'bg-green-500', text: 'text-white' },
+  'N/A': { bg: 'bg-gray-500', text: 'text-white' },
 };
 
 // Helper function to get marketplace display name
 function getMarketplaceAlias(marketplace: string | null | undefined): string {
-  if (!marketplace) return "N/A";
+  if (!marketplace) return 'N/A';
   return marketplace;
 }
 
@@ -315,13 +329,17 @@ function TrackingNumberCell({ trackingNumber }: { trackingNumber: string | null 
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent link navigation if wrapped
-    navigator.clipboard.writeText(trackingNumber)
+    navigator.clipboard
+      .writeText(trackingNumber)
       .then(() => toast.success('Tracking # copied!'))
       .catch(() => toast.error('Failed to copy tracking #'));
   };
 
   // Basic check for common carrier URLs - replace with actual logic if needed
-  const trackingUrl = trackingNumber.length > 10 ? `https://www.google.com/search?q=${encodeURIComponent(trackingNumber)}` : null;
+  const trackingUrl =
+    trackingNumber.length > 10
+      ? `https://www.google.com/search?q=${encodeURIComponent(trackingNumber)}`
+      : null;
 
   const content = (
     <div className="flex items-center gap-1 max-w-xs group">
@@ -356,7 +374,7 @@ function TrackingNumberCell({ trackingNumber }: { trackingNumber: string | null 
 }
 
 export default async function OrdersPage({
-  searchParams
+  searchParams,
 }: {
   searchParams?: {
     page?: string | string[];
@@ -391,9 +409,15 @@ export default async function OrdersPage({
   // Parse filter params
   const currentSearch = Array.isArray(searchParam) ? searchParam[0] : searchParam;
   const currentStatus = Array.isArray(statusParam) ? statusParam[0] : statusParam;
-  const currentMarketplace = Array.isArray(marketplaceParam) ? marketplaceParam[0] : marketplaceParam;
-  const currentOrderDateStart = Array.isArray(orderDateStartParam) ? orderDateStartParam[0] : orderDateStartParam;
-  const currentOrderDateEnd = Array.isArray(orderDateEndParam) ? orderDateEndParam[0] : orderDateEndParam;
+  const currentMarketplace = Array.isArray(marketplaceParam)
+    ? marketplaceParam[0]
+    : marketplaceParam;
+  const currentOrderDateStart = Array.isArray(orderDateStartParam)
+    ? orderDateStartParam[0]
+    : orderDateStartParam;
+  const currentOrderDateEnd = Array.isArray(orderDateEndParam)
+    ? orderDateEndParam[0]
+    : orderDateEndParam;
 
   // Fetch data and filter options concurrently
   const [{ orders, total }, stats, { statuses, marketplaces }, allTags] = await Promise.all([
@@ -405,16 +429,18 @@ export default async function OrdersPage({
       currentStatus,
       currentMarketplace,
       currentOrderDateStart, // Pass start date
-      currentOrderDateEnd    // Pass end date
+      currentOrderDateEnd // Pass end date
     ),
     getDashboardStats(),
     getFilterOptions(),
-    prisma.tag.findMany()
+    prisma.tag.findMany(),
   ]);
   const totalPages = Math.ceil(total / validatedLimit);
 
   return (
-    <div className="space-y-6"> {/* Add spacing for page elements */}
+    <div className="space-y-6">
+      {' '}
+      {/* Add spacing for page elements */}
       {/* Stats Cards Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
@@ -442,15 +468,15 @@ export default async function OrdersPage({
           description={stats.revenueWeekPrev}
         />
       </div>
-
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
         <h2 className="text-2xl font-semibold mb-2">Welcome to the Y3DLabs Internal Dashboard</h2>
         <p className="text-sm opacity-90">
-          The search function allows you to quickly locate orders by order number or customer name. You can also filter results by order status or marketplace, making it easier to monitor and manage tasks.
+          The search function allows you to quickly locate orders by order number or customer name.
+          You can also filter results by order status or marketplace, making it easier to monitor
+          and manage tasks.
         </p>
       </div>
-
       {/* Orders Table Section */}
       <div className="bg-card text-card-foreground rounded-lg border p-6 space-y-4">
         {/* Search and Filter Controls Form - Using Client Component */}
@@ -463,7 +489,6 @@ export default async function OrdersPage({
           statuses={statuses}
           marketplaces={marketplaces}
         />
-
         {/* Orders Table (Existing) */}
         <Table>
           <TableHeader>
@@ -487,53 +512,68 @@ export default async function OrdersPage({
               // Check for Prime/Premium tags
               const isPrime = (order.tag_ids as number[])?.some(tagId => {
                 const tag = allTags.find(t => t.shipstation_tag_id === tagId);
-                return tag?.name === "Amazon Prime Order";
+                return tag?.name === 'Amazon Prime Order';
               });
 
               const isPremium = (order.tag_ids as number[])?.some(tagId => {
                 const tag = allTags.find(t => t.shipstation_tag_id === tagId);
-                return tag?.name === "*** PREMIUM DELIVERY ***";
+                return tag?.name === '*** PREMIUM DELIVERY ***';
               });
 
               // Check if order is a priority based on ship_by_date (within 2 days)
-              const isPriority = order.ship_by_date && new Date(order.ship_by_date).getTime() < (new Date().getTime() + 2 * 24 * 60 * 60 * 1000);
+              const isPriority =
+                order.ship_by_date &&
+                new Date(order.ship_by_date).getTime() <
+                  new Date().getTime() + 2 * 24 * 60 * 60 * 1000;
 
               return (
                 <TableRow
                   key={order.id}
                   className={cn(
-                    "hover:bg-muted/50",
-                    isPrime && "bg-blue-50 dark:bg-blue-900/20",
-                    isPremium && "bg-purple-50 dark:bg-purple-900/20",
-                    isPriority && !isPrime && !isPremium && "bg-amber-50 dark:bg-amber-900/20",
-                    !isPrime && !isPremium && !isPriority && (orders.indexOf(order) % 2 !== 0) && "bg-muted/25"
+                    'hover:bg-muted/50',
+                    isPrime && 'bg-blue-50 dark:bg-blue-900/20',
+                    isPremium && 'bg-purple-50 dark:bg-purple-900/20',
+                    isPriority && !isPrime && !isPremium && 'bg-amber-50 dark:bg-amber-900/20',
+                    !isPrime &&
+                      !isPremium &&
+                      !isPriority &&
+                      orders.indexOf(order) % 2 !== 0 &&
+                      'bg-muted/25'
                   )}
                 >
                   <TableCell className="font-medium text-muted-foreground">{order.id}</TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <Link href={`/orders/${order.id}`} className="text-foreground/90 hover:text-foreground hover:underline">
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="text-foreground/90 hover:text-foreground hover:underline"
+                      >
                         {order.shipstation_order_number || 'N/A'}
                       </Link>
                       {isPrime && (
                         <Badge className="bg-blue-500 text-white hover:bg-blue-600">Prime</Badge>
                       )}
                       {isPremium && (
-                        <Badge className="bg-purple-500 text-white hover:bg-purple-600">Premium</Badge>
+                        <Badge className="bg-purple-500 text-white hover:bg-purple-600">
+                          Premium
+                        </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell><div className="truncate max-w-xs">{order.customer_name || 'N/A'}</div></TableCell>
+                  <TableCell>
+                    <div className="truncate max-w-xs">{order.customer_name || 'N/A'}</div>
+                  </TableCell>
                   <TableCell>
                     <div className="text-center">
                       {(() => {
                         const marketplaceAlias = getMarketplaceAlias(order.marketplace);
-                        const style = marketplaceStyles[marketplaceAlias] || marketplaceStyles["N/A"];
+                        const style =
+                          marketplaceStyles[marketplaceAlias] || marketplaceStyles['N/A'];
                         return (
                           <Badge
                             variant="default"
                             className={cn(
-                              "px-2 py-1 text-xs font-medium rounded-md border border-white/10 shadow-sm",
+                              'px-2 py-1 text-xs font-medium rounded-md border border-white/10 shadow-sm',
                               style.bg,
                               style.text
                             )}
@@ -548,11 +588,15 @@ export default async function OrdersPage({
                     <Badge
                       variant="default"
                       className={cn(
-                        "font-medium text-xs px-2 py-1",
-                        order.order_status === 'shipped' && "bg-green-600 dark:bg-green-700 text-white",
-                        order.order_status === 'awaiting_shipment' && "bg-blue-600 dark:bg-blue-700 text-white",
-                        order.order_status === 'on_hold' && "bg-yellow-600 dark:bg-yellow-700 text-white",
-                        order.order_status === 'cancelled' && "bg-red-600 dark:bg-red-700 text-white"
+                        'font-medium text-xs px-2 py-1',
+                        order.order_status === 'shipped' &&
+                          'bg-green-600 dark:bg-green-700 text-white',
+                        order.order_status === 'awaiting_shipment' &&
+                          'bg-blue-600 dark:bg-blue-700 text-white',
+                        order.order_status === 'on_hold' &&
+                          'bg-yellow-600 dark:bg-yellow-700 text-white',
+                        order.order_status === 'cancelled' &&
+                          'bg-red-600 dark:bg-red-700 text-white'
                       )}
                     >
                       {order.order_status.replace(/_/g, ' ')}
@@ -591,10 +635,10 @@ export default async function OrdersPage({
                       <Badge
                         variant="secondary"
                         className={cn(
-                          "text-xs px-2 py-1 font-medium",
+                          'text-xs px-2 py-1 font-medium',
                           order._count.items > 1
-                            ? "bg-blue-500 hover:bg-blue-600 text-white"
-                            : "bg-gray-500 hover:bg-gray-600 text-white"
+                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                            : 'bg-gray-500 hover:bg-gray-600 text-white'
                         )}
                       >
                         {order._count.items}
@@ -603,7 +647,8 @@ export default async function OrdersPage({
                         variant="default"
                         className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium border border-white/10 shadow-sm"
                       >
-                        {CURRENCY_SYMBOL}{order.total_price.toFixed(2)}
+                        {CURRENCY_SYMBOL}
+                        {order.total_price.toFixed(2)}
                       </Badge>
                     </div>
                   </TableCell>
@@ -639,27 +684,40 @@ export default async function OrdersPage({
                       <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell><TrackingNumberCell trackingNumber={order.tracking_number} /></TableCell>
+                  <TableCell>
+                    <TrackingNumberCell trackingNumber={order.tracking_number} />
+                  </TableCell>
                   <TableCell className="text-center">
                     <Link href={`/orders/${order.id}`}>
-                      <Button variant="outline" size="sm">View</Button>
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
                     </Link>
                   </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
-          <TableCaption>A list of recent orders. Page {validatedPage} of {totalPages}. Total Orders: {total}</TableCaption>
+          <TableCaption>
+            A list of recent orders. Page {validatedPage} of {totalPages}. Total Orders: {total}
+          </TableCaption>
         </Table>
-
         {/* Pagination Controls (Existing) */}
         <div className="flex justify-between items-center mt-4">
           {/* Pass current searchParams to LimitSelector and OrdersPagination - REMOVED for now to fix lint error */}
           <LimitSelector currentLimit={validatedLimit} /* searchParams={awaitedSearchParams} */ />
-          <OrdersPagination currentPage={validatedPage} totalPages={totalPages} limit={validatedLimit} /* searchParams={awaitedSearchParams} */ />
+          <OrdersPagination
+            currentPage={validatedPage}
+            totalPages={totalPages}
+            limit={validatedLimit} /* searchParams={awaitedSearchParams} */
+          />
         </div>
-        {orders.length === 0 && <p className="text-center mt-4">No orders found for the current filters.</p>} {/* Update empty message */}
-      </div> {/* Close card div */}
+        {orders.length === 0 && (
+          <p className="text-center mt-4">No orders found for the current filters.</p>
+        )}{' '}
+        {/* Update empty message */}
+      </div>{' '}
+      {/* Close card div */}
     </div>
   );
 }

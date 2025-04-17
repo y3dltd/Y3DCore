@@ -1,6 +1,6 @@
-import { getPrintQueueSummary, PrintQueueSummaryData } from "@/lib/ai/print-queue-summary";
-import { PrintQueueSummary } from "@/components/print-queue-summary";
-import { PrintTaskData } from "@/components/print-queue-table";
+import { PrintQueueSummary } from '@/components/print-queue-summary';
+import { PrintTaskData } from '@/components/print-queue-table';
+import { getPrintQueueSummary, PrintQueueSummaryData } from '@/lib/ai/print-queue-summary';
 
 interface Props {
   tasks: PrintTaskData[];
@@ -8,7 +8,7 @@ interface Props {
 
 export default async function PrintQueueSummaryServer({ tasks }: Props) {
   // Transform tasks to the format expected by getPrintQueueSummary
-  const taskInputs = tasks.map((task) => ({
+  const taskInputs = tasks.map(task => ({
     id: String(task.id),
     qty: task.quantity || 1,
     color1: task.color_1 ?? '',

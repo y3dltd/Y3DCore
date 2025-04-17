@@ -1,9 +1,9 @@
 // filepath: /workspaces/Y3DHub/src/lib/shared/database.ts
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma } from '@prisma/client';
 
 // Initialize Prisma Client
 const prisma = new PrismaClient({
-  log: ["query", "info", "warn", "error"], // Configure logging as needed
+  log: ['query', 'info', 'warn', 'error'], // Configure logging as needed
 });
 
 // Export the Prisma client instance and Prisma types
@@ -22,7 +22,7 @@ export async function disconnectPrisma() {
 }
 
 // Ensure Prisma disconnects on application shutdown (example for Node.js)
-process.on("beforeExit", async () => {
-  console.log("Disconnecting Prisma...");
+process.on('beforeExit', async () => {
+  console.log('Disconnecting Prisma...');
   await disconnectPrisma();
 });

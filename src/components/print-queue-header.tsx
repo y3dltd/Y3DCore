@@ -1,10 +1,12 @@
-'use client'
+'use client';
 
-import { RefreshCcw, CheckCheck, Wrench } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import React, { useEffect } from 'react'
-import { useFormState } from 'react-dom'
-import { PrintQueueToolsModal } from './print-queue-tools-modal'
+import { RefreshCcw, CheckCheck, Wrench } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useFormState } from 'react-dom';
+
+import { Button } from '@/components/ui/button';
+
+import { PrintQueueToolsModal } from './print-queue-tools-modal';
 // Assume a toast component exists (e.g., from sonner)
 // import { toast } from 'sonner';
 
@@ -39,7 +41,7 @@ function CleanupButton({ action }: { action: CleanupAction }) {
         console.log(`Cleanup successful: ${state.updatedCount} tasks updated.`); // Placeholder feedback
       } else {
         // toast.info("Cleanup ran, but no tasks needed updating.");
-        console.log("Cleanup ran, but no tasks needed updating."); // Placeholder feedback
+        console.log('Cleanup ran, but no tasks needed updating.'); // Placeholder feedback
       }
     }
     // Only run effect when state changes *after* form submission
@@ -52,7 +54,7 @@ function CleanupButton({ action }: { action: CleanupAction }) {
         size="sm"
         type="submit"
         title="Mark tasks for shipped/cancelled orders as completed"
-      // Add pending state handling if desired later
+        // Add pending state handling if desired later
       >
         <CheckCheck className="mr-2 h-4 w-4" />
         Cleanup Tasks
@@ -70,25 +72,15 @@ export function PrintQueueHeader({ formattedNow, cleanupAction }: PrintQueueHead
     <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
       <h1 className="text-3xl font-bold">Print Queue</h1>
       <div className="flex items-center space-x-2 text-sm text-muted-foreground ml-auto">
-        <span>
-          Last updated: {formattedNow}
-        </span>
+        <span>Last updated: {formattedNow}</span>
         <PrintQueueToolsModal>
-          <Button
-            variant="outline"
-            size="sm"
-            title="Open print queue tools"
-          >
+          <Button variant="outline" size="sm" title="Open print queue tools">
             <Wrench className="mr-2 h-4 w-4" />
             Tools
           </Button>
         </PrintQueueToolsModal>
         <CleanupButton action={cleanupAction} />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-        >
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
           <RefreshCcw className="mr-2 h-4 w-4" />
           Refresh
         </Button>

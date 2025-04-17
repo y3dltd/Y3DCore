@@ -607,6 +607,31 @@ This project uses [PM2](https://pm2.keymetrics.io/) to manage the Next.js applic
   pm2 delete y3dhub-nextjs
   ```
 
+## Full Workflow CLI
+
+Run the entire end-to-end system (ShipStation sync → print queue → Amazon customization) with:
+
+```bash
+npm run full-workflow -- [options]
+```
+
+
+Options:
+- `--mode <all|recent|single>`  Which orders to sync (default: recent)
+- `--order-id <ID>`             Only sync a single order (requires `--mode single`)
+- `--days-back <N>`             Days to look back when mode is `recent` (default: 2)
+- `--hours <N>`                 Hours to look back when mode is `recent` (overrides `--days-back`)
+- `--dry-run`                   Show actions without making any changes
+- `--verbose`                   Enable verbose console output
+- `--skip-tags`                 Skip ShipStation tag synchronization (tags-only sync should be run separately)
+
+Concurrency:
+The workflow uses a filesystem lock on `/tmp/y3dhub_workflow.lock` to ensure only one instance runs at a time.
+
+Exit codes:
+- `0` on success
+- Non-zero if any step fails; the workflow aborts on the first error.
+
 - **Monitor resource usage:**
 
   ```bash

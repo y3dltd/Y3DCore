@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
+
 import {
   Pagination,
   PaginationContent,
@@ -87,10 +88,7 @@ export function OrdersPagination({ currentPage, totalPages, limit }: OrdersPagin
         {pageNumbers.map((page, index) => (
           <PaginationItem key={index}>
             {typeof page === 'number' ? (
-              <PaginationLink
-                href={createPageURL(page)}
-                isActive={currentPage === page}
-              >
+              <PaginationLink href={createPageURL(page)} isActive={currentPage === page}>
                 {page}
               </PaginationLink>
             ) : (

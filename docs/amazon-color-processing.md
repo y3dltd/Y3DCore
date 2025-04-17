@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the process for handling Amazon orders with missing color information, including the scripts developed, workflow procedures, and recommendations for future improvements.
+This document outlines the process for handling Amazon orders with missing color information, including the scripts developed, workflow procedures, and recommendations for full end-to-end testing and diagnosing the workflow.
 
 ## Problem Statement
 
@@ -10,236 +10,189 @@ Some Amazon orders arrive with missing color information due to:
 - CustomizedURL field missing in some orders
 - Variations in JSON field naming in Amazon's customization data
 - Inconsistent data extraction from Amazon's customization URLs
+- Potential timing or timezone handling issues during sync/processing
 
-This leads to incomplete orders in the print queue and potential fulfillment delays.
+This leads to incomplete orders in the print queue, tasks with missing colors in the DB, and potential fulfillment/shipping delays.
 
-## Scripts Developed
+## End-to-End Testing & Diagnosis — Is the Full Workflow Working?
 
-### 1. Find Amazon Orders with Missing Colors
+To fully check if the color and name customisations are propagating end-to-end (Amazon → DB → PrintTasks → ShipStation), and to diagnose potential issues (timezone, sync, ShipStation update delays):
 
-**Script**: `src/scripts/find-amazon-orders-with-missing-colors.ts`
+### 1. **Check the Most Recent Data in the Database**
 
-**Purpose**: Identifies Amazon orders that have missing color information by:
-- Scanning orders with the "amazon" source
-- Checking for missing color_1 or color_2 values in print tasks
-- Outputting a JSON file listing all affected orders and items
+To check if the workflow is syncing recent orders (within the last 2 hours) and capturing personalization details, you can use the included diagnostic scripts:
 
-**Usage**:
+#### a. **Check All Orders With Missing Colors**
+
+Run:
 ```bash
 npx tsx src/scripts/find-amazon-orders-with-missing-colors.ts
+# Output: amazon-orders-missing-colors.json
 ```
+This will list *all* Amazon orders/items/tasks still missing color1/color2 (and their taskIds, etc.). Check if orders within the last few hours are in this file; if so, they are either too new to be processed, or the workflow/data path is broken.
 
-**Output**: Generates `amazon-orders-missing-colors.json` with detailed information about affected orders
+#### b. **Print Full DB Data for a Specific Amazon Order**
 
-### 2. Reprocess Amazon Colors
-
-**Script**: `src/scripts/reprocess-amazon-colors.ts`
-
-**Purpose**: Updates orders with missing color information using:
-- Amazon CustomizedURL extraction (when available)
-- Manual color entries provided via a JSON file
-
-**Features**:
-- Dry run mode for previewing changes
-- Manual entry support for orders without CustomizedURL
-- Template generation for creating manual color entries
-- Order-specific processing with `--order-id` flag
-- Database updates with correct color information
-- ShipStation synchronization
-
-**Usage**:
+Use the diagnostic script:
 ```bash
-# Generate a template for manual color entries
-npx tsx src/scripts/reprocess-amazon-colors.ts --generate-template
-
-# Process using manual entries (dry run)
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json --dry-run
-
-# Process using manual entries (actual update)
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json
-
-# Process specific order
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 123
+npx tsx src/scripts/find-amazon-orders-with-missing-colors.ts
+# Find your target orderId/orderNumber from output
+# Then, check the DB Json with:
+node check-database-order-customization.js  # or npx tsx src/scripts/check-database-order-customization.ts
 ```
 
-### 3. Amazon Customization Parser
+#### c. **Directly Check a Single Order in Print Tasks Table**
 
-**File**: `src/lib/orders/amazon/customization.ts`
-
-**Updates**: Improved parser logic to handle variations in JSON field naming for:
-- Custom text extraction
-- Color identification and normalization
-- Enhanced type safety and error handling
-
-## Workflow Process
-
-1. **Identification**:
-   - Run `find-amazon-orders-with-missing-colors.ts` to identify affected orders
-   - Review `amazon-orders-missing-colors.json` to understand the scope
-
-2. **Manual Entry Preparation**:
-   - Generate a template: `reprocess-amazon-colors.ts --generate-template`
-   - Fill in color information for orders without CustomizedURL
-   - Save as a JSON file (e.g., `manual-color-batch.json`)
-
-3. **Validation**:
-   - Run in dry-run mode to verify expected changes
-   - Ensure color information is correctly mapped
-
-4. **Processing**:
-   - Run the script without dry-run flag to apply changes
-   - Verify database and ShipStation updates
-
-5. **Verification**:
-   - Check print queue for updated color information
-   - Confirm ShipStation has correct product options
-
-## Example Usage
-
-For batch processing multiple orders:
+Quickly check a single order's tasks:
+- With `check-order.js`/`check-order.ts` (with your order number hardcoded)
+- Or via Prisma Studio/DB tools
+do:
 ```bash
-# Generate the template
-npx tsx src/scripts/reprocess-amazon-colors.ts --generate-template
-
-# Fill in manual-color-batch.json with proper color information
-
-# Validate with dry run
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --dry-run
-
-# Process orders
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json
+node check-order.js # (edit it to match your order number)
 ```
 
-For processing a single order:
-```bash
-npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 617
-```
+This gives you a live snapshot of what your DB currently thinks the customizations for this order/item/task are.
 
-## Troubleshooting
+### 2. **Test Amazon Customization Extraction (SP-API / URL)**
 
-### Common Issues
+To check that Amazon Customization is being pulled (and if timezone handling affects whether "the latest" is fetched):
 
-1. **ShipStation Not Updating**
+- Run `display-complete-amazon-order-data.js` (or `check-amazon-customization.js`)
+- Review or save the API outputs (`amazon-order-complete-data.json`, etc.)
+- Use `getOrderItems`/`getOrder` to ensure the Amazon SP-API returns the right set of order items and data.
 
-   If you notice the database is updated but ShipStation doesn't reflect the changes:
+If your test order/item data is present here *with* personalisation/color (or customizedURL pointing to a personalization zip), then the data *should* be possible to sync.
 
-   - **Problem**: ShipStation's API has rate limits and occasional sync delays
-   - **Solution**: Use the populate-print-queue script with force-recreate to sync the data:
-     ```bash
-     npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
-     ```
-     The `-f` flag (force-recreate) will rebuild print tasks and push the changes to ShipStation
+- To test Amazon Customization file extraction for a given item:
+  - Use `fetchAndProcessAmazonCustomization(url)` in Node REPL / script, or re-run the batch color reprocessing script for just the target item
 
-2. **Order Not Found**
+### 3. **Trigger a Full Manual Workflow for a Test Order**
 
-   If `reprocess-amazon-colors.ts` can't find an order:
-
-   - **Problem**: The script uses `--order-id` which refers to the internal database ID
-   - **Solution**: Use the finder script to identify the internal ID first:
-     ```bash
-     # Look up the internal ID
-     grep "202-7013581-4597156" amazon-orders-missing-colors.json
-     
-     # Then use the internal ID with the reprocessor
-     npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json --order-id 617
-     ```
-
-3. **Missing CustomizedURL**
-
-   For orders completely missing the CustomizedURL field:
-
-   - **Problem**: No way to automatically extract color data
-   - **Solution**: Create a manual entries file with the correct color data, then:
-     ```bash
-     # Use manual entries
-     npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file your-entries.json
-     
-     # For stubborn orders, try the complete populate process
-     npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
-     ```
-
-4. **Shipped Orders Not Updating**
-
-   If already shipped orders aren't updating in ShipStation:
-
-   - **Problem**: ShipStation limits modifications to shipped orders
-   - **Solution**: Document the missing colors for future reference, but focus on processing current orders
-
-### When to Regenerate Print Tasks
-
-In some cases, completely regenerating print tasks may be necessary:
+**a. Force database and ShipStation update for a test order:**
 
 ```bash
-# Clear existing tasks and recreate them
-npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --force-recreate
+npx tsx src/scripts/populate-print-queue.ts --order-id 026-5585200-4785105 -f --preserve-text
+```
+- This will force recreation of tasks, refetch Amazon URL if possible, and sync colors to ShipStation.
+- `--preserve-text` helps retain the *name* if it was previously correct, guarding against AI overwrites.
 
-# For orders with marketplace numbers, use the order number directly
-npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --force-recreate
+**b. Manually Push DB Data into ShipStation Again:**
+If some orders are not updating in ShipStation, but the DB is correct, you can trigger a direct sync:
+```bash
+npx tsx src/scripts/populate-print-queue.ts --order-id 026-5585200-4785105 --shipstation-sync-only
+```
+- This pushes what's currently in your DB to ShipStation item options.
+
+### 4. **Check ShipStation UI (or Pull via API) For Updated Color/Names**
+
+Go to the ShipStation web UI and check the order's item options:
+- Are the colors and names present and correct?
+- Is the timestamp of last modification recent? (If not, maybe the workflow isn't running as often as you think, or timezone is making you miss out-of-window orders)
+
+**Note:** ShipStation can take a few minutes for updates to appear in the UI, and ignores updates for "shipped" orders.
+
+### 5. **Check Your Cron/Automation for Timezone Issues**
+
+- The crontab runs (in `crontab-config.txt`/`new_crontab.txt`) typically call `sync-orders.ts --hours=2`.
+- This uses **UTC or server time**, but ShipStation API filters use Pacific Time for the `modifyDateStart`.
+- Use recent local order timestamps to determine if your sync is pulling ALL the last 2 hours (cross-check the date/time math or add debug logs).
+- If you notice orders from 2 hours ago are *not* updating, check (a) if the DB is missing the right orders (timezone mis-conversion), or (b) if print task creation is not catching them due to logic/skipped status.
+  - Add debug logs to your worker scripts to print "processing order date xyz, comparing to last sync date abc"
+
+## Color Reprocessing (Manual + URL)
+
+To re-update ALL ShipStation items for orders with missing colors, the reprocess script is used:
+
+```bash
+npx tsx src/scripts/reprocess-amazon-colors.ts --dry-run
+# To only update missing fields safely
+npx tsx src/scripts/reprocess-amazon-colors.ts
+# Use --generate-template and --use-manual-entries to fill in colors for stubborn/malformed orders
+# See README.md for details
 ```
 
-This approach is more aggressive than the color reprocessing script but can help with stubborn orders that aren't updating properly.
+- **Safe:** Will only update print tasks where color_1 or color_2 is currently null, using AmazonURL or manual file.
+- **ShipStation Sync included:** Script will push those changes to ShipStation at the item-level.
 
-### ⚠️ CRITICAL WARNING: AI-Based Name Extraction ⚠️
+## Diagnosing Color/Name Not Updating in ShipStation
 
-When using the `populate-print-queue.ts` script with `-f` or `--force-recreate` flag, be aware of the following serious issue:
+1. **If DB is updated, but ShipStation is NOT (and order is NOT shipped):**
+   - Check print-queue script output/logs for API errors
+   - Double-check `populate-print-queue.ts --order-id <order> --shipstation-sync-only`
+   - Ensure print task holds correct data *and* that lineItemKey and orderId are correct
+2. **If neither the DB nor ShipStation are updating:**
+   - Check the `--hours=N` window logic in `sync-orders.ts` is pulling all expected orders from ShipStation (use verbose logging for debug)
+   - Confirm the print task creation script *finds* the new/fresh order and doesn't skip it due to status/item filter logic
+3. **If only the name is wrong after --force-recreate:**
+   - Never use --force-recreate on live orders without --preserve-text, unless you want the AI to invent new names!
+   - Always check AI output with --dry-run and --preserve-text before pushing live
+4. **Timing:**
+   - ShipStation API and database may be a few minutes behind each other. Give 5-10 minutes for update propagation.
 
-- **Problem**: The script uses OpenAI to extract customization data and may OVERWRITE existing names in the database and ShipStation with incorrect values!
-- **Example**: An order with name "Nick" may be erroneously changed to "Thomas" by the AI extraction process.
+## ShipStation "Already Shipped" Limitation
 
-**Recommended Approach for Name Updates:**
+- **Once an order is shipped, ShipStation ignores subsequent updates to personalization fields!** Your script will notice, but the update will not propagate in the UI.
 
-1. **Never use `populate-print-queue.ts` to update just name information**
-   ```bash
-   # DANGEROUS - may overwrite correct names with AI guesses
-   npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f
-   ```
+## Testing ShipStation Sync Before and After Shipping
 
-2. **Use the specialized scripts for color updates only**
-   ```bash
-   # SAFER - only updates color information, preserves names
-   npx tsx src/scripts/reprocess-amazon-colors.ts --use-manual-entries --manual-file manual-color-batch.json
-   ```
+- Always test your sync pipeline on a test order that is NOT shipped/fulfilled!
+- For already shipped orders, you can still see updates in your local DB, but MUST mark new tasks/review externally.
 
-3. **If you must recreate print tasks, verify ALL data after processing**
-   - Double-check all name/text values in ShipStation after using the populate script
-   - Immediately correct any erroneous name changes in both the database and ShipStation
+## Full Debug Workflow
 
-This issue needs to be addressed in future development to prevent data loss and customer errors.
+- Use all check scripts in `/home/jayson/y3dhubv3_copy/` (check-amazon-customization.js, check-database-order-customization.js, check-order.js)
+- Use print-queue scripts in dry run, force-recreate, and preserve-text modes for diagnosis
+- Always force a print/task/ShipStation refresh after confirming database data
+- For naming issues: never update tasks with AI extraction unless you're certain the name field is needed to be replaced!
+
+---
+
+## Summary Table of All Scripts and Their Purpose
+
+| Script/Utility                        | What It Does                                                               |
+|---------------------------------------|----------------------------------------------------------------------------|
+| find-amazon-orders-with-missing-colors.ts | List all Amazon orders/items with missing color info (Amazon → DB)         |
+| reprocess-amazon-colors.ts            | Safe re-extraction of color info from Amazon URL or manual, updates DB+SS  |
+| check-order.js / check-database-order-customization.js | Print all DB fields for a given order/item/task                   |
+| populate-print-queue.ts --order-id ... [flags]| Force full refresh of print tasks for one order, updates DB + ShipStation |
+| populate-print-queue.ts --shipstation-sync-only | Just send DB data to ShipStation (doesn't touch AI/URL/manual source)     |
+| check-amazon-customization.js         | Show Amazon SP-API raw order/items data                                    |
+| display-complete-amazon-order-data.js | Saves the full Amazon API order/items to file for review                   |
+| check-order.js                        | Print DB task details for a specific order number                          |
+
+## Best Practice: When Color Not Updating
+
+- 1. Confirm order is still NOT shipped on ShipStation
+- 2. Inspect DB via check-order.js (should show newest data)
+- 3. If DB missing color → use reprocess-amazon-colors or full print-queue force-recreate
+- 4. If DB has color but ShipStation doesn't: run populate-print-queue with --shipstation-sync-only
+- 5. If AI is about to update name field, run with --preserve-text
+- 6. If completely stuck: create an entry in manual-color-batch.json/template and re-run with --use-manual-entries
 
 ## Future Improvements
 
-1. **Prevention**:
-   - Implement validation during initial order import to flag missing colors
-   - Add automated alerts for orders with missing color information
+See main section in this file and also FUTURE_IMPROVEMENTS.md.
 
-2. **Automation**:
-   - Develop a UI for manually entering missing color information
-   - Create a scheduled job to periodically check for and fix missing colors
-   - Implement intelligent color prediction based on product name patterns
+- Add logging of all inbound modification dates and sync times
+- Add last-modified check to determine if timezone math is correct
+- Consider forcing periodic full historical sync as backup
+- Add dashboard or UI tools for checking/enforcing latest state
+- Add warning if sync running out-of-window due to DST errors
 
-3. **Resilience**:
-   - Add retry mechanisms for Amazon URL extraction failures
-   - Implement fallback strategies when color information can't be determined
-   - Create a recovery process for orders with incorrect color assignments
+---
 
-4. **Monitoring**:
-   - Add telemetry to track frequency of missing color data
-   - Create dashboards to monitor error rates and resolution times
-   - Implement alerting for critical order processing failures
+If you follow this process you can fully trace every step:
+- Amazon → item print_setting/CustomURL → parsed color/name
+- → DB printTasks reflects correct colors/names
+- → ShipStation item options get updated with the same
+- → UI displays correct personalization to packing staff, customer, etc.
 
-5. **Integration**:
-   - Add direct integration with ShipStation's API for real-time order updates
-   - Develop a system to batch process color updates during off-peak hours
-   - Create reporting tools to track all manual interventions
+With the above scripted checks, you can isolate whether the problem is:
+- ShipStation API window (timing/progress/modifyDateStart)
+- Amazon data not available (URL is not present/JSON malformed)
+- DB missing color due to script logic
+- ShipStation not refreshing due to order being shipped
+- AI/overwrite affecting the name field
+- Or combination of the above.
 
-6. **Fix AI Name Extraction Issues**:
-   - Modify `populate-print-queue.ts` to preserve existing names and only extract missing data
-   - Add validation checks to prevent AI from overwriting existing order data 
-   - Implement a "preserve fields" option to selectively update only specified fields
-   - Create an audit system that flags potential AI errors for human review
-
-## Conclusion
-
-The scripts and process documented here provide a reliable method for handling Amazon orders with missing color information. By following the outlined workflow, you can ensure that orders are properly updated with the correct color details, leading to accurate fulfillment and improved customer satisfaction.
-
-The solution addresses immediate needs while the suggested improvements outline a path toward a more automated and resilient system for the future. 
+If you need to test any step manually, all test/check scripts are already in your repo under /home/jayson/y3dhubv3_copy/.

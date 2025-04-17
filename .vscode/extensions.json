@@ -1,0 +1,29 @@
+{
+  "recommendations": [
+    // Core development
+    "dbaeumer.vscode-eslint", // ESLint integration
+    "esbenp.prettier-vscode", // Prettier code formatter
+    "Prisma.prisma", // Prisma syntax highlighting, formatting, intellisense
+    "bradlc.vscode-tailwindcss", // Tailwind CSS IntelliSense
+    // Next.js/React development
+    "dsznajder.es7-react-js-snippets", // React snippets
+    "christian-kohler.path-intellisense", // Path autocomplete
+    "ms-vscode.vscode-typescript-next", // Latest TypeScript features
+    // Testing and CI
+    "ms-playwright.playwright", // If using Playwright for testing
+    "github.vscode-github-actions", // GitHub Actions support
+    // AI Assistants
+    "github.copilot", // GitHub Copilot AI assistant
+    "github.copilot-chat", // GitHub Copilot Chat
+    "codeium.codeium", // Codeium AI assistant
+    "Google.gemini-code-assist", // Gemini Code Assist
+    // Git and project tools
+    "eamodio.gitlens", // GitLens for git integration
+    "usernamehw.errorlens", // Error Lens for better error visibility
+    "yoavbls.pretty-ts-errors", // Better TypeScript errors
+    "wix.vscode-import-cost", // Display import sizes
+    "naumovs.color-highlight", // Highlight colors in CSS
+    "streetsidesoftware.code-spell-checker" // Spell checking
+  ],
+  "unwantedRecommendations": []
+}

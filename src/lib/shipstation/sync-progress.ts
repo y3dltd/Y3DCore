@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 
 export type SyncType = 'full' | 'recent' | 'single';
 export type SyncStatus = 'running' | 'completed' | 'failed';
@@ -79,7 +79,9 @@ export async function markSyncCompleted(
     });
     logger.info(`[Sync Progress] Marked sync ${progressId} as ${success ? 'completed' : 'failed'}`);
   } catch (updateError) {
-    logger.error(`[Sync Progress] Failed to mark sync ${progressId} as ${success ? 'completed' : 'failed'}: ${updateError}`);
+    logger.error(
+      `[Sync Progress] Failed to mark sync ${progressId} as ${success ? 'completed' : 'failed'}: ${updateError}`
+    );
     // Don't throw - we don't want to fail the sync just because progress tracking failed
   }
 }
@@ -101,7 +103,9 @@ export async function getLastSuccessfulSync(syncType: SyncType): Promise<SyncPro
     // Assert the type to match the SyncProgress interface
     return result as SyncProgress | null;
   } catch (error) {
-    logger.error(`[Sync Progress] Failed to get last successful sync of type ${syncType}: ${error}`);
+    logger.error(
+      `[Sync Progress] Failed to get last successful sync of type ${syncType}: ${error}`
+    );
     return null;
   }
 }
@@ -141,7 +145,7 @@ export async function resumeFailedSync(syncType: SyncType): Promise<{
     if (!lastFailed || !lastFailed.lastProcessedOrderId) {
       return null;
     }
-    
+
     const newProgress = await prisma.syncProgress.create({
       data: {
         syncType,
@@ -154,9 +158,11 @@ export async function resumeFailedSync(syncType: SyncType): Promise<{
         lastProcessedTimestamp: lastFailed.lastProcessedTimestamp,
       },
     });
-    
-    logger.info(`[Sync Progress] Created new progress record ${newProgress.id} to resume failed sync`);
-    
+
+    logger.info(
+      `[Sync Progress] Created new progress record ${newProgress.id} to resume failed sync`
+    );
+
     return {
       progressId: newProgress.id,
       lastProcessedOrderId: lastFailed.lastProcessedOrderId,
@@ -171,18 +177,23 @@ export async function resumeFailedSync(syncType: SyncType): Promise<{
 /**
  * Increments the processed orders count
  */
-export async function incrementProcessedOrders(progressId: string, count: number = 1): Promise<void> {
+export async function incrementProcessedOrders(
+  progressId: string,
+  count: number = 1
+): Promise<void> {
   try {
     await prisma.syncProgress.update({
       where: { id: progressId },
       data: {
         processedOrders: {
-          increment: count
-        }
-      }
+          increment: count,
+        },
+      },
     });
   } catch (error) {
-    logger.error(`[Sync Progress] Failed to increment processed orders for ${progressId}: ${error}`);
+    logger.error(
+      `[Sync Progress] Failed to increment processed orders for ${progressId}: ${error}`
+    );
     // Don't throw
   }
 }
@@ -196,9 +207,9 @@ export async function incrementFailedOrders(progressId: string, count: number = 
       where: { id: progressId },
       data: {
         failedOrders: {
-          increment: count
-        }
-      }
+          increment: count,
+        },
+      },
     });
   } catch (error) {
     logger.error(`[Sync Progress] Failed to increment failed orders for ${progressId}: ${error}`);
@@ -210,8 +221,8 @@ export async function incrementFailedOrders(progressId: string, count: number = 
  * Updates the last processed order information
  */
 export async function updateLastProcessedOrder(
-  progressId: string, 
-  orderId: string, 
+  progressId: string,
+  orderId: string,
   timestamp: Date
 ): Promise<void> {
   try {
@@ -219,11 +230,13 @@ export async function updateLastProcessedOrder(
       where: { id: progressId },
       data: {
         lastProcessedOrderId: orderId,
-        lastProcessedTimestamp: timestamp
-      }
+        lastProcessedTimestamp: timestamp,
+      },
     });
   } catch (error) {
-    logger.error(`[Sync Progress] Failed to update last processed order for ${progressId}: ${error}`);
+    logger.error(
+      `[Sync Progress] Failed to update last processed order for ${progressId}: ${error}`
+    );
     // Don't throw
   }
 }

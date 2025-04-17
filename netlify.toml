@@ -4,3 +4,8 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[plugins]]
+  package = "netlify-plugin-cache"
+  [plugins.inputs]
+    directories = ["node_modules/**/*", ".next/cache/**/*"]

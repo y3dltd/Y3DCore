@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
+import { NextResponse } from 'next/server';
 
 interface ErrorResponse {
   message: string;
@@ -59,11 +59,17 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
     // Handle specific Prisma error codes
     switch (error.code) {
       case 'P2002': // Unique constraint violation
-        return createErrorResponse('A record with this identifier already exists', 409, { code: error.code, fields: error.meta?.target });
+        return createErrorResponse('A record with this identifier already exists', 409, {
+          code: error.code,
+          fields: error.meta?.target,
+        });
       case 'P2025': // Record not found
         return createErrorResponse('Record not found', 404, { code: error.code });
       case 'P2003': // Foreign key constraint failed
-        return createErrorResponse('Related record not found', 400, { code: error.code, field: error.meta?.field_name });
+        return createErrorResponse('Related record not found', 400, {
+          code: error.code,
+          field: error.meta?.field_name,
+        });
       case 'P2014': // Required relation violation
         return createErrorResponse('Required relation missing', 400, { code: error.code });
       default:

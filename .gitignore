@@ -65,8 +65,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# IDE and editor folders
-.vscode/
+# IDE and editor folders - Keep .vscode settings for team consistency
+# .vscode/ - Kept for consistent developer experience
 .idea/
 *.sublime-*
 .qodo/
@@ -133,3 +133,9 @@ example.*
 *.zip
 .qodo
 amazon-spapi-credentials.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/node_modules/.cache/
