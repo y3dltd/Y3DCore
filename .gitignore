@@ -140,3 +140,6 @@ amazon-spapi-credentials.md
 /playwright/.cache/
 /node_modules/.cache/
 dev.log
+
+# Local Netlify folder
+.netlify

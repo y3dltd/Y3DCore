@@ -52,5 +52,4 @@ export function validateSessionPassword(): void {
   }
 }
 
-// Validate password on module load
-validateSessionPassword();
+// Note: validation is now the responsibility of code paths that actually establish a session.

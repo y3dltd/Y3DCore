@@ -1,4 +1,5 @@
 import { User } from '@prisma/client';
+import type { SessionOptions } from 'iron-session';
 import { IronSession, IronSessionData, getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 
@@ -11,29 +12,55 @@ declare module 'iron-session' {
   }
 }
 
-// Define session options
-export const sessionOptions = {
-  cookieName: 'y3dhub_session',
-  password: process.env.SESSION_PASSWORD as string,
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 * 7,
-  },
-};
+// Lazily create and validate session options only when first needed.
+let memoizedSessionOptions: ReturnType<typeof buildSessionOptions> | null = null;
 
-if (!sessionOptions.password || sessionOptions.password.length < 32) {
-  console.error(
-    'CRITICAL SECURITY ERROR: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
-  );
-  // Fail hard instead of just logging
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
+function buildSessionOptions() {
+  const password = process.env.SESSION_PASSWORD;
+
+  if (!password || password.length < 32) {
+    console.error(
+      'CRITICAL SECURITY ERROR: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
+    );
+    // Abort only at runtime (e.g. on first request), not during build/bundle time.
+    if (process.env.NODE_ENV === 'production')
+      throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
   }
+
+  return {
+    cookieName: 'y3dhub_session',
+    password: password ?? 'development_fallback_password_change_me_please',
+    cookieOptions: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7,
+    },
+  } as const;
 }
+
+export function getSessionOptions() {
+  if (!memoizedSessionOptions) memoizedSessionOptions = buildSessionOptions();
+  return memoizedSessionOptions;
+}
+
+// Legacy lazy proxy: evaluates only on first property access, preventing build‑time execution
+export const sessionOptions: SessionOptions = new Proxy({} as SessionOptions, {
+  get(_target, prop) {
+    return (getSessionOptions() as unknown as Record<PropertyKey, unknown>)[
+      prop as PropertyKey
+    ];
+  },
+  set(_target, prop, value) {
+    // Allow consumers to mutate options if they really want to
+    (getSessionOptions() as unknown as Record<PropertyKey, unknown>)[
+      prop as PropertyKey
+    ] = value;
+    return true;
+  },
+});
 
 // Function to get the current session
 export async function getSession(): Promise<IronSession<IronSessionData>> {
-  const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
+  const session = await getIronSession<IronSessionData>(cookies(), getSessionOptions());
   return session;
 }
 

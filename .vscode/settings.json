@@ -22,7 +22,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -117,16 +117,24 @@
   // Code Spell Checker settings
   "cSpell.enabled": true,
   "cSpell.words": [
+    "autoincrement",
     "cmdk",
+    "colour",
+    "creds",
+    "customisation",
     "dhub",
     "ehthumbs",
     "embla",
+    "eslintcache",
+    "icoloration",
+    "initialised",
     "jspm",
     "keyrings",
     "lmstudio",
     "LMSTUDIO",
     "lookback",
     "multistream",
+    "nextjs",
     "nextui",
     "nuxt",
     "ollama",
@@ -147,12 +155,14 @@
     "spapi",
     "Spapi",
     "SPAPI",
+    "standardise",
     "upserted",
     "Upserted",
     "upserting",
     "Upserting",
     "upserts",
     "Upserts",
+    "userland",
     "vaul",
     "vercel",
     "vuepress"
