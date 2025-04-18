@@ -6,7 +6,7 @@
   "scripts": {
     "prepare": "husky install",
     "lint-staged": "lint-staged",
-    "dev": "next dev",
+    "dev": "next dev -p 3002",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build --no-lint",
     "start": "next start",
     "lint": "next lint",
@@ -23,7 +23,9 @@
     "seed:test-user": "tsx src/scripts/seed-test-user.ts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --pass-with-no-tests",
-    "test": "vitest run"
+    "docs:gen-commands": "tsx scripts/docs/gen-commands-table.ts",
+    "test": "vitest run",
+    "worker:stl": "tsx src/workers/stl-render-worker.ts"
   },
   "dependencies": {
     "@aws-sdk/credential-provider-node": "^3.787.0",
@@ -61,6 +63,7 @@
     "@scaleleap/selling-partner-api-sdk": "^8.4.0",
     "@tanstack/react-table": "^8.19.3",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/papaparse": "^5.3.15",
     "@types/pino": "^7.0.5",
     "amazon-sp-api": "^1.1.6",
     "axios": "^1.8.4",
@@ -80,6 +83,7 @@
     "lucide-react": "^0.485.0",
     "next-themes": "^0.3.0",
     "openai": "^4.94.0",
+    "papaparse": "^5.5.2",
     "pino": "^9.6.0",
     "puppeteer-core": "^24.4.0",
     "react-day-picker": "^8.10.1",
@@ -100,6 +104,7 @@
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/eslintrc": "^3",
     "@netlify/next": "^1.4.9",
+    "@netlify/plugin-nextjs": "^5.10.6",
     "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",
