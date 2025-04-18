@@ -24,8 +24,12 @@ This document provides guidance for diagnosing and fixing common issues in Y3DHu
   - Check script logs for sync errors.
   - Manually compare data between systems.
   - Investigate timestamp conversion issues (see `docs/timezone-handling.md`).
+  - **Print Tasks Pending for Shipped Orders**: If print tasks remain `pending` or `in_progress` even after the corresponding order is marked `shipped` in the database, this might have been due to an older version of the `fix-status-mismatch.ts` script.
 - **Fixes**:
-  - Rerun relevant sync scripts.
+  - Ensure you are using the latest version of `fix-status-mismatch.ts` (updated April 17, 2025 or later).
+  - Run the dedicated cleanup script: `npx tsx src/scripts/cleanup-shipped-tasks.ts` (use `--dry-run` first).
+  - Alternatively, run the full workflow: `./scripts/workflow.sh` (use `--dry-run` first).
+  - Rerun relevant sync scripts (`sync-orders.ts`).
   - Use fix commands if available (e.g., `amazon-customization.ts fix`).
   - Manually correct data if necessary.
 
@@ -50,3 +54,38 @@ This document provides guidance for diagnosing and fixing common issues in Y3DHu
 - Browser developer tools
 - Database query logs
 - Specific order processing (`--order-id` flag)
+
+## Deploying to Netlify via CLI
+
+1. Install the Netlify CLI if you haven't already:
+
+   ```bash
+   npm install -g netlify-cli
+   ```
+
+2. Login to Netlify:
+
+   ```bash
+   netlify login
+   ```
+
+3. **Build your site (if required):**
+
+   - For most frameworks (like Next.js, React, etc.), run:
+     ```bash
+     npm run build
+     ```
+   - Make sure the output directory matches your Netlify settings (e.g., `out`, `build`, or `.next`).
+
+4. Deploy your site (from your project root):
+
+   ```bash
+   netlify deploy
+   ```
+
+   - For production:
+     ```bash
+     netlify deploy --prod
+     ```
+
+5. Follow the prompts to select your site or create a new one.

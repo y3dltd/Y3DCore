@@ -15,6 +15,7 @@ npx tsx src/scripts/populate-print-queue.ts --order-id <order-number> --shipstat
 ```
 
 This command will:
+
 1. Find the order in the database
 2. Fetch all print tasks associated with each order item
 3. Update the ShipStation order with personalization options matching the database tasks
@@ -27,6 +28,7 @@ This command will:
 **Important:** ShipStation restricts modifications to orders that are already marked as "shipped" or "fulfilled".
 
 When attempting to sync details for shipped orders:
+
 - The API might return a successful response
 - However, the changes may not be applied in the ShipStation system
 - The script will warn you when attempting to update a shipped order
@@ -55,6 +57,56 @@ If synchronization is not working as expected:
 2. **Verify database data**: Use `check-order.js` or Prisma Studio to confirm the database has the correct values
 3. **API permissions**: Ensure the ShipStation API key has write access
 4. **Rate limits**: ShipStation has API rate limits that may affect rapid updates
+5. **Status Mismatch Script**: Use `src/scripts/fix-status-mismatch.ts` to check and correct discrepancies between ShipStation order status and the database status, including updating associated print tasks.
+
+## Main Order & Tag Synchronization (`sync-orders.ts`)
+
+The primary script for fetching order updates and tags from ShipStation and updating the local database is `src/scripts/sync-orders.ts`.
+
+### Modes of Operation
+
+- `--mode recent` (Default): Syncs orders modified within a recent timeframe (default 2 days, configurable with `--days-back` or `--hours`). Skips tag sync by default.
+- `--mode all`: Syncs all orders since the last successful sync timestamp or a specified `--force-start-date`. Skips tag sync by default.
+- `--mode single --order-id <ID>`: Syncs a single specific order. The `<ID>` can be the **Database ID**, **Marketplace Order Number**, or **ShipStation Order ID**. Skips tag sync.
+- `--mode tags`: Syncs only the ShipStation tags and then exits.
+
+### Options
+
+- `--sync-tags`: **Enables** tag synchronization (skipped by default in `recent` and `all` modes).
+- `--order-id <ID>`: Specifies the order identifier for `single` mode.
+- `--days-back <N>` / `--hours <N>`: Sets the lookback period for `recent` mode.
+- `--force-start-date <YYYY-MM-DD>`: Forces `all` mode to start from a specific date.
+- `--dry-run`: Simulates the sync without making database changes. Useful for testing.
+- `--verbose`: Enables more detailed logging output.
+
+### Identifier Resolution (`--order-id`)
+
+The `--order-id` flag for `single` mode is flexible:
+
+1.  If the provided ID is purely numeric, the script first checks if it matches an `id` in the local `Order` table.
+2.  If not found by DB ID, it checks if it matches a `shipstation_order_number`.
+3.  If still not found, it assumes the numeric ID is the internal `shipstation_order_id`.
+4.  If the provided ID is non-numeric, it assumes it's a `shipstation_order_number`.
+5.  The script uses the resolved `shipstation_order_id` to query the ShipStation API.
+
+## Full Workflow Script (`workflow.sh`)
+
+The `scripts/workflow.sh` script orchestrates a common sequence of synchronization tasks:
+
+1.  **Sync Orders:** Runs `src/scripts/sync-orders.ts` (passes through mode, ID, date range, dry-run, verbose, and tag sync options).
+2.  **Populate Print Queue:** Runs `src/scripts/populate-print-queue.ts` to generate print tasks for newly synced or relevant orders.
+3.  **Cleanup Shipped Tasks:** Runs the dedicated `src/scripts/cleanup-shipped-tasks.ts` script to mark tasks as completed for orders that are now shipped/cancelled in the database.
+
+This workflow script provides a convenient way to run the standard sync process. It accepts the same flags as `sync-orders.ts` (e.g., `--mode`, `--order-id`, `--dry-run`, `--sync-tags`).
+
+## Status Mismatch Correction (`fix-status-mismatch.ts`)
+
+The `src/scripts/fix-status-mismatch.ts` script specifically addresses discrepancies between the order status in ShipStation and the local database.
+
+- It fetches order status from both sources.
+- If a mismatch is found (and `--fix` is used), it updates the database status.
+- **Crucially**, it also checks if the order's final status is `shipped` or `cancelled`. If so (and `--fix` is used), it updates any associated `pending` or `in_progress` print tasks to `completed` or `cancelled`, respectively. This ensures task statuses align with the final order status, even if the order status itself didn't need correction during that specific run.
+- Can be run for a specific `--order-id` (DB ID only) or for all orders.
 
 ## Command Examples
 
@@ -70,4 +122,4 @@ npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --shi
 
 # Include debug logs
 npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 --shipstation-sync-only --log-level debug
-``` 
+```
