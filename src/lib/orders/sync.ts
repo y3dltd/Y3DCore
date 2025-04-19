@@ -1,33 +1,32 @@
-import { Prisma, Customer, Product } from '@prisma/client';
+import { Customer, Prisma, Product } from '@prisma/client';
 import axios from 'axios';
 
-import {
-  mapAddressToCustomerFields,
-  mapSsItemToProductData,
-  mapSsItemToOrderItemData,
-  mapOrderToPrisma,
-} from './mappers';
 import { prisma } from '../shared/database'; // Use relative path
 import { logger } from '../shared/logging'; // Import logger
+import {
+  mapAddressToCustomerFields,
+  mapOrderToPrisma,
+  mapSsItemToOrderItemData,
+  mapSsItemToProductData,
+} from './mappers';
 // --- Imports ---
 import { recordMetric } from '../shared/metrics'; // Import the recordMetric helper
 import {
+  listTags,
   shipstationApi, // Ensure this is exported from shared
-  listTags, // Ensure this is exported from shared
-  type ShipStationOrder,
-  type ShipStationOrderItem,
-  type ShipStationTag, // Ensure this is exported from shared
   type ShipStationApiParams, // Ensure this is exported from shared
-  type ShipStationOrdersResponse, // Ensure this is exported from shared
+  type ShipStationOrder,
+  type ShipStationOrderItem, // Ensure this is exported from shared
+  type ShipStationOrdersResponse,
+  type ShipStationTag, // Ensure this is exported from shared
 } from '../shared/shipstation'; // Use relative path
 // import type { MetricsCollector } from "../shared/metrics"; // Import MetricsCollector type - removed unused import
 import {
   createSyncProgress,
-  updateSyncProgress,
-  markSyncCompleted,
-  incrementProcessedOrders,
   incrementFailedOrders,
-  // updateLastProcessedOrder, // removed unused import
+  incrementProcessedOrders,
+  markSyncCompleted,
+  updateSyncProgress,
 } from '../shipstation/sync-progress'; // Import progress functions
 
 // Removed unused import: format from 'date-fns-tz'
@@ -243,8 +242,8 @@ export const upsertProductFromItem = async (
         ) {
           logger.warn(
             `[Product Sync Conflict] SKU '${trimmedSku}' exists (DB ID: ${existingBySku.id}) but with different ShipStation Product ID. ` +
-              `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
-              `Attempting to update with incoming ID.`
+            `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
+            `Attempting to update with incoming ID.`
           );
         }
 
@@ -276,8 +275,8 @@ export const upsertProductFromItem = async (
           ) {
             logger.warn(
               `[Product Sync Conflict] Update failed for SKU '${trimmedSku}' (ID: ${existingBySku.id}). ` +
-                `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
-                `Keeping existing product record without updating SS_ID.`
+              `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
+              `Keeping existing product record without updating SS_ID.`
             );
             return existingBySku; // Return existing even on conflict during update attempt
           } else {
@@ -1045,7 +1044,7 @@ export async function syncRecentOrders(
  * Syncs a single order from ShipStation by its ID
  */
 export async function syncSingleOrder(
-  orderId: number, // Keep as number, convert inside
+  orderIdentifier: string,
   options?: SyncOptions // Added options
 ): Promise<{ success: boolean; error?: string }> {
   const progressId = await createSyncProgress('single');
@@ -1054,29 +1053,32 @@ export async function syncSingleOrder(
 
   try {
     logger.info(
-      `[Single Order Sync] Fetching order ${orderId} from ShipStation...${options?.dryRun ? ' (DRY RUN)' : ''}`
+      `[Single Order Sync] Fetching order ${orderIdentifier} from ShipStation...${options?.dryRun ? ' (DRY RUN)' : ''}`
     );
     // Initialize progress tracking
     await updateSyncProgress(progressId, { status: 'running', totalOrders: 1 }); // Use correct field name
+    const isNumeric = /^\d+$/.test(orderIdentifier);
     recordMetric({
       name: 'shipstation_api_call',
       value: 1,
-      tags: { endpoint: `/orders/${orderId}` },
+      tags: { endpoint: isNumeric ? `/orders/${orderIdentifier}` : '/orders?orderNumber' },
     });
 
-    // Use getShipstationOrders with orderId filter for consistency and retry logic
-    // Pass orderId as number directly to the params object
-    const response = await getShipstationOrders({ orderId: orderId });
+    let response;
+    if (isNumeric) {
+      response = await getShipstationOrders({ orderId: Number(orderIdentifier) });
+    } else {
+      response = await getShipstationOrders({ orderNumber: orderIdentifier });
+    }
 
     if (!response.orders || response.orders.length === 0 || !response.orders[0].orderId) {
-      errorMsg = `Order ${orderId} not found or invalid response from ShipStation`;
+      errorMsg = `Order ${orderIdentifier} not found or invalid response from ShipStation`;
       logger.error(`[Single Order Sync] ${errorMsg}`);
       throw new Error(errorMsg);
     }
 
-    const orderData = response.orders[0]; // Get the single order from the response array
-    // Metric for start already recorded within upsertOrderWithItems
-    logger.info(`[Single Order Sync] Processing order ${orderId} (${orderData.orderNumber})...`);
+    const orderData = response.orders[0];
+    logger.info(`[Single Order Sync] Processing order ${orderIdentifier} (${orderData.orderNumber})...`);
 
     // Pass options down
     const result = await upsertOrderWithItems(
@@ -1099,11 +1101,11 @@ export async function syncSingleOrder(
 
     if (result.success) {
       logger.info(
-        `[Single Order Sync] Successfully synced order ${orderId}${options?.dryRun ? ' (DRY RUN)' : ''}`
+        `[Single Order Sync] Successfully synced order ${orderIdentifier}${options?.dryRun ? ' (DRY RUN)' : ''}`
       );
-      await incrementProcessedOrders(progressId); // Correct function name
+      await incrementProcessedOrders(progressId);
       await updateSyncProgress(progressId, {
-        lastProcessedOrderId: orderId.toString(),
+        lastProcessedOrderId: orderIdentifier,
         lastProcessedTimestamp: new Date(),
       });
       overallSuccess = true;
@@ -1111,8 +1113,8 @@ export async function syncSingleOrder(
       errorMsg =
         result.errors.map(e => `SKU: ${e.itemSku || 'N/A'} - ${e.error}`).join('; ') ||
         'Unknown processing error';
-      logger.error(`[Single Order Sync] Failed to sync order ${orderId}: ${errorMsg}`);
-      await incrementFailedOrders(progressId); // Correct function name
+      logger.error(`[Single Order Sync] Failed to sync order ${orderIdentifier}: ${errorMsg}`);
+      await incrementFailedOrders(progressId);
       throw new Error(errorMsg);
     }
 
@@ -1120,7 +1122,7 @@ export async function syncSingleOrder(
     return { success: overallSuccess, error: errorMsg };
   } catch (error: unknown) {
     // Changed any to unknown
-    logger.error(`[Single Order Sync] Error syncing order ${orderId}:`, {
+    logger.error(`[Single Order Sync] Error syncing order ${orderIdentifier}:`, {
       error: error instanceof Error ? error.message : error,
     });
     errorMsg = error instanceof Error ? error.message : 'Unknown error';

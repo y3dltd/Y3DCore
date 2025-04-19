@@ -4,14 +4,11 @@ import { shipstationApi } from './client';
 import { upsertOrderWithItems } from './db-sync';
 import type {
   ShipStationApiParams,
-  ShipStationOrdersResponse,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type is used implicitly in loop
   ShipStationOrder,
-  SyncSummary,
+  ShipStationOrdersResponse,
   ShipStationTag,
-  // ShipStationOrderItem, // Removed as it's only used in the duplicate import below
-  // Removed duplicate ShipStationOrderItem import
-  // ShipStationOrderItem // Removed unused import
+  SyncSummary,
 } from './types';
 
 const MAX_RETRIES = 3;
@@ -317,11 +314,15 @@ export async function updateOrderItemOptions(
   });
 
   // Construct payload by spreading the fetched order and overriding items
-  // Ensure orderId and orderKey are present from the fetchedOrder
   const payload = {
     ...fetchedOrder, // Spread all properties from the fetched order
     items: updatedOrderItems, // Override with the modified items array
   };
+
+  // Only override units from inches to centimeters; numeric values remain unchanged
+  if (payload.dimensions?.units === 'inches') {
+    payload.dimensions.units = 'centimeters'
+  }
 
   // Ensure orderId is a number if it exists (it should)
   if (payload.orderId) {
@@ -372,3 +373,93 @@ export async function updateOrderItemOptions(
 
 // Helper to construct full URL
 // ... existing code ...
+
+export async function updateOrderItemsOptionsBatch(
+  fetchedOrder: ShipStationOrder,
+  itemsToPatch: Record<string, Array<{ name: string; value: string | null }>>,
+  auditNote: string | null = null
+): Promise<boolean> {
+  const endpoint = '/orders/createorder'
+
+  // Build updated items list, only patch targeted items
+  const updatedItems = fetchedOrder.items.map(item =>
+    itemsToPatch[item.lineItemKey]
+      ? { ...item, options: itemsToPatch[item.lineItemKey].filter(o => o.value !== null) }
+      : item
+  )
+
+  // Build human‑friendly summaries for Internal Notes / Custom Field 1
+  const summaryLines = Object.entries(itemsToPatch).map(([_, opts]) => {
+    const text = opts.find(o => o.name === 'Name or Text')?.value ?? '-'
+    const colour1 = opts.find(o => o.name === 'Colour 1')?.value ?? null
+    const colour2 = opts.find(o => o.name === 'Colour 2')?.value ?? null
+    const colourPart = colour1 ? ` (${colour1}${colour2 ? ` / ${colour2}` : ''})` : ''
+    return `${text}${colourPart}`
+  })
+  const summaryBlock = summaryLines.join('\n')
+
+  const vibeLine = `🤖 AI personalised ${summaryLines.length} item${summaryLines.length === 1 ? '' : 's'}`
+
+  const sparkleLine = `🌟 Y3D AI – Happy ${new Date().toLocaleDateString('en', { weekday: 'long' })}!`
+
+  const newNotesLines = [
+    sparkleLine,
+    vibeLine,
+    summaryBlock,
+    auditNote ?? '',
+  ]
+    .filter(Boolean)
+    .map(l => l.trim())
+
+  // Prevent duplicates if note already exists
+  const existingLines = (fetchedOrder.internalNotes ?? '').split(/\r?\n/)
+  const mergedNotes = [...existingLines, ...newNotesLines].filter(
+    (line, idx, arr) => line && arr.indexOf(line) === idx
+  )
+
+  const payload: ShipStationOrder = {
+    ...fetchedOrder,
+    items: updatedItems,
+    internalNotes: mergedNotes.join('\n'),
+  }
+
+  // Inject Custom Field 1 when only one summary line
+  if (summaryLines.length === 1) {
+    const cf1 = summaryLines[0].slice(0, 100)
+    payload.advancedOptions = {
+      ...(fetchedOrder.advancedOptions ?? {}),
+      customField1: cf1,
+    } as ShipStationOrder['advancedOptions']
+  }
+
+  // Convert units flag only
+  if (payload.dimensions?.units === 'inches') payload.dimensions.units = 'centimeters'
+
+  // Ensure numeric orderId
+  if (payload.orderId) payload.orderId = Number(payload.orderId)
+
+  console.log(
+    `[ShipStation API] Batch‑updating ${Object.keys(itemsToPatch).length} items in order ${fetchedOrder.orderId} …`
+  )
+  try {
+    console.log('[ShipStation API] Sending payload:', JSON.stringify(payload, null, 2))
+    const response = await shipstationApi.post(endpoint, payload)
+    if (response.status === 200 || response.status === 201) {
+      console.log(
+        `[ShipStation API] Batch update success for order ${fetchedOrder.orderId}.`
+      )
+      return true
+    }
+    console.warn(
+      `[ShipStation API] Batch update unexpected status ${response.status} for order ${fetchedOrder.orderId}.`
+    )
+    return false
+  } catch (error) {
+    let msg = `[ShipStation API] Batch update error for order ${fetchedOrder.orderId}`
+    if (axios.isAxiosError(error)) {
+      msg += `. Status: ${error.response?.status ?? 'N/A'}`
+    } else if (error instanceof Error) msg += `: ${error.message}`
+    console.error(msg, error)
+    return false
+  }
+}

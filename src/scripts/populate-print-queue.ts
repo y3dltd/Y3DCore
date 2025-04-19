@@ -6,7 +6,7 @@ import readline from 'readline/promises';
 import util from 'util';
 
 // External dependencies
-import { PrismaClient, Prisma, PrintTaskStatus, OrderItem } from '@prisma/client';
+import { OrderItem, PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pino from 'pino';
@@ -16,7 +16,7 @@ import { z } from 'zod';
 // Internal/local imports
 import { getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
-import { getShipstationOrders, updateOrderItemOptions } from '../lib/shared/shipstation';
+import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
 
 // Initialize database connection
 const prisma = new PrismaClient();
@@ -118,11 +118,11 @@ interface ProcessingOptions {
 // --- Helper Functions ---
 async function loadPromptFile(filePath: string): Promise<string> {
   try {
-    return await fs.readFile(filePath, 'utf-8');
+    return await fs.readFile(filePath, 'utf-8')
   } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown file load error';
-    logger.error(`Failed to load prompt file: ${filePath} - ${errorMsg}`);
-    throw new Error(`Could not load prompt file: ${filePath}`);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown file load error'
+    logger.error(`Failed to load prompt file: ${filePath} - ${errorMsg}`)
+    throw new Error(`Could not load prompt file: ${filePath}`)
   }
 }
 
@@ -249,6 +249,9 @@ async function extractOrderPersonalization(
     temperature: number;
     max_tokens: number;
     response_format: ResponseFormat;
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
   }
 
   let rawResponse: string | null = null;
@@ -273,7 +276,10 @@ async function extractOrderPersonalization(
         { role: 'system', content: systemPromptContent },
         { role: 'user', content: userPromptContent },
       ],
-      temperature: 0.1,
+      temperature: 0.0,
+      top_p: 1.0,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
       max_tokens: 4096, // Increased from 2048 to 4096 to handle larger responses
       response_format: { type: 'json_object' },
     };
@@ -344,7 +350,7 @@ async function extractOrderPersonalization(
             cleanedContent.substring(
               0,
               cleanedContent.lastIndexOf(lastCompleteObjectMatch[0]) +
-                lastCompleteObjectMatch[0].length
+              lastCompleteObjectMatch[0].length
             ) + '\n  }\n}';
           logger.info(`[AI][Order ${order.id}] Fixed truncated JSON by adding closing braces.`);
         } else {
@@ -494,6 +500,10 @@ async function createOrUpdateTasksInTransaction(
     existingTaskData = await getExistingTaskData(tx, order.id);
   }
 
+  // Collect ShipStation option patches to send in one batch call per order
+  const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
+  const patchReasons: string[] = [];
+
   for (const item of order.items) {
     const orderItemId = item.id;
     const productId = item.productId;
@@ -542,6 +552,14 @@ async function createOrUpdateTasksInTransaction(
         try {
           const amazonData = await fetchAndProcessAmazonCustomization(customizedUrl);
           if (amazonData) {
+            // REGKEY SKU rule: force uppercase registration text once for all subsequent use
+            if (product?.sku?.toUpperCase().includes('REGKEY') && amazonData.customText) {
+              amazonData.customText = amazonData.customText.toUpperCase();
+              logger.info(
+                `[DB][Order ${order.id}][Item ${orderItemId}] REGKEY SKU detected, upper‑casing custom text to '${amazonData.customText}'.`
+              );
+            }
+
             // --- Update ShipStation Item Options ---
             if (!options.dryRun) {
               // Ensure we have the necessary IDs and data to update ShipStation
@@ -589,31 +607,9 @@ async function createOrUpdateTasksInTransaction(
                     }
 
                     if (ssOptions.length > 0) {
-                      // Call update function with minimal payload (3 args)
-                      logger.info(
-                        `[ShipStation Update][Order ${order.id}][Item ${item.id}] Calling updateOrderItemOptions (status check removed)...`
-                      ); // Updated log
-                      // Pass the required 3 arguments: lineItemKey, options array, and the full fetched order object
-                      const updateSuccess = await updateOrderItemOptions(
-                        item.shipstationLineItemKey, // Ensure this exists and is correct
-                        ssOptions,
-                        ssOrder // Pass the full fetched ShipStation order object
-                      );
-                      if (updateSuccess) {
-                        logger.info(
-                          `[ShipStation Update][Order ${order.id}][Item ${item.id}] Successfully updated item options.`
-                        );
-                      } else {
-                        logger.warn(
-                          `[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to update item options via API (updateOrderItemOptions returned false).`
-                        );
-                      }
-                    } else {
-                      logger.warn(
-                        `[ShipStation Update][Order ${order.id}][Item ${item.id}] Skipping update: No valid options constructed from Amazon data.`
-                      );
+                      itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+                      patchReasons.push(item.shipstationLineItemKey);
                     }
-                    // *** REMOVED closing brace for status check ***
                   } else {
                     logger.error(
                       `[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to fetch order details from ShipStation.`
@@ -699,400 +695,388 @@ async function createOrUpdateTasksInTransaction(
             );
           dataSource = 'Placeholder'; // Mark as placeholder on error
         }
-      } else {
-        logger.info(
-          `[DB][Order ${order.id}][Item ${orderItemId}] Amazon order item without CustomizedURL. Using AI data.`
-        );
-        // No URL, will proceed to AI fallback naturally
       }
-    }
 
-    // 2. eBay Special Case (Only if not already processed by Amazon URL)
-    if (
-      dataSource !== 'AmazonURL' &&
-      order.marketplace?.toLowerCase().includes('ebay') &&
-      order.customer_notes?.includes('Personalisation:')
-    ) {
-      // Attempt eBay special case logic (simplified for integration)
-      logger.info(
-        `[Order ${order.id}][Item ${orderItemId}] Attempting eBay special case parsing...`
-      );
-      // ... (Keep the eBay parsing logic from lines 428-543 here) ...
-      // If successful, populate taskDetailsToCreate and set dataSource = 'eBaySpecial'
-      // For brevity, assuming the existing eBay logic populates taskDetailsToCreate correctly if a match is found
-      // Need to adapt the existing logic slightly to push to taskDetailsToCreate instead of directly upserting
-      // --- Start eBay Logic Adaptation ---
-      const customerNotes = order.customer_notes || '';
-      let itemColor = null;
+      // 2. eBay Special Case (Only if not already processed by Amazon URL)
       if (
-        item.print_settings &&
-        typeof item.print_settings === 'object' &&
-        Array.isArray(item.print_settings)
+        dataSource !== 'AmazonURL' &&
+        order.marketplace?.toLowerCase().includes('ebay') &&
+        order.customer_notes?.includes('Personalisation:')
       ) {
-        const colorSetting = item.print_settings.find(
-          s => typeof s === 'object' && s !== null && 'name' in s && s.name === 'Color'
-        );
-        if (colorSetting && typeof colorSetting === 'object' && 'value' in colorSetting)
-          itemColor = String(colorSetting.value);
-      }
-      if (!itemColor && product?.name) {
-        const colorMatch = product.name.match(/\[(.*?)\]/);
-        if (colorMatch && colorMatch[1]) itemColor = colorMatch[1];
-      }
-
-      if (itemColor) {
-        const personalizations: { variationId: string; text: string }[] = [];
-        const regex = /Item ID: \d+ Variation: (\d+)[\s\S]*?Text: ([^\n]+)/g;
-        let match;
-        while ((match = regex.exec(customerNotes)) !== null)
-          personalizations.push({ variationId: match[1], text: match[2].trim() });
-
-        const itemIndex = order.items.findIndex(i => i.id === orderItemId);
-        if (itemIndex >= 0 && itemIndex < personalizations.length) {
-          const personalization = personalizations[itemIndex];
-
-          // Check if we need to preserve existing text
-          let customText = personalization.text;
-          if (
-            options.preserveText &&
-            existingTaskData[orderItemId] &&
-            existingTaskData[orderItemId].length > 0
-          ) {
-            const existingTask = existingTaskData[orderItemId][0];
-            if (existingTask.custom_text) {
-              customText = existingTask.custom_text;
-              logger.info(
-                `[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text: "${customText}" instead of "${personalization.text}"`
-              );
-            }
-          }
-
-          logger.info(
-            `[Order ${order.id}][Item ${orderItemId}] eBay Special Case: Matched personalization by position.`
-          );
-          taskDetailsToCreate.push({
-            custom_text: customText, // Use preserved text if available
-            color_1: itemColor,
-            color_2: null,
-            quantity: item.quantity,
-            needs_review: false,
-            review_reason: null,
-            status: PrintTaskStatus.pending,
-            annotation:
-              options.preserveText && customText !== personalization.text
-                ? 'Data from eBay Customer Notes (Special Case, text preserved from existing task)'
-                : 'Data from eBay Customer Notes (Special Case)',
-          });
-          dataSource = 'eBaySpecial';
-        }
-      }
-      // --- End eBay Logic Adaptation ---
-    }
-
-    // 3. AI Data Fallback / Primary Source (if not handled by Amazon/eBay)
-    if (dataSource === 'AI') {
-      const itemResult = aiData.itemPersonalizations[item.id.toString()];
-      if (!itemResult || itemResult.personalizations.length === 0) {
-        const reason = !itemResult ? 'No AI data for item' : 'AI returned zero personalizations';
-        logger.warn(
-          `[Order ${order.id}][Item ${orderItemId}] No AI data found. Creating placeholder.`
-        );
-        dataSource = 'Placeholder';
-        finalNeedsReview = true;
-        finalReviewReason = reason.substring(0, 1000);
-        finalCustomText = 'Placeholder - Review Needed';
-        finalColor1 = null;
-        finalColor2 = null;
-        finalQuantity = item.quantity;
-        taskDetailsToCreate.push({
-          custom_text: finalCustomText,
-          color_1: finalColor1,
-          color_2: finalColor2,
-          quantity: finalQuantity,
-          needs_review: finalNeedsReview,
-          review_reason: finalReviewReason,
-          status: PrintTaskStatus.pending,
-          annotation: finalAnnotation,
-        });
-      } else {
-        logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using AI data.`);
-        let itemRequiresReview = itemResult.overallNeedsReview || false;
-        const itemReviewReasons: string[] = itemResult.overallReviewReason
-          ? [itemResult.overallReviewReason]
-          : [];
-        let totalQuantityFromAI = 0;
-        itemResult.personalizations.forEach(p => (totalQuantityFromAI += p.quantity));
-        if (totalQuantityFromAI !== item.quantity) {
-          logger.warn(
-            `[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI Quantity Mismatch!`
-          );
-          itemRequiresReview = true;
-          itemReviewReasons.push(
-            `Qty Mismatch (AI: ${totalQuantityFromAI}, Order: ${item.quantity})`
-          );
-        }
-
-        // ShipStation update logic moved below, after successful task upsert
-        for (let i = 0; i < itemResult.personalizations.length; i++) {
-          const detail = itemResult.personalizations[i];
-          const combinedNeedsReview = itemRequiresReview || detail.needsReview;
-          const detailReason = detail.needsReview ? detail.reviewReason : null;
-          const annotationReason =
-            combinedNeedsReview && detail.annotation ? `Annotation: ${detail.annotation}` : null;
-          const reviewReasonCombined =
-            Array.from(
-              new Set([
-                ...itemReviewReasons,
-                ...(detailReason ? [detailReason] : []),
-                ...(annotationReason ? [annotationReason] : []),
-              ])
-            )
-              .filter(Boolean)
-              .join('; ')
-              .substring(0, 1000) || null;
-
-          // Check if we need to preserve existing text
-          let customText = detail.customText;
-          let annotation = detail.annotation;
-
-          if (
-            options.preserveText &&
-            existingTaskData[orderItemId] &&
-            i < existingTaskData[orderItemId].length
-          ) {
-            const existingTask = existingTaskData[orderItemId][i];
-            if (existingTask.custom_text) {
-              customText = existingTask.custom_text;
-              const preservedTextMessage = `Preserved original text: "${customText}" instead of AI-suggested: "${detail.customText}"`;
-              logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] ${preservedTextMessage}`);
-              annotation = annotation
-                ? `${annotation}; ${preservedTextMessage}`
-                : preservedTextMessage;
-            }
-          }
-
-          if (detail.annotation) {
-            logger.info(
-              `[AI Annotation][Order ${order.id}][Item ${orderItemId}]: ${detail.annotation}`
-            );
-          }
-
-          taskDetailsToCreate.push({
-            custom_text: customText, // Use preserved text if available
-            color_1: detail.color1,
-            color_2: detail.color2,
-            quantity: detail.quantity,
-            needs_review: combinedNeedsReview,
-            review_reason: reviewReasonCombined,
-            status: PrintTaskStatus.pending,
-            annotation: annotation, // Use updated annotation that includes the preserved text info
-          });
-          if (combinedNeedsReview) itemsNeedReviewCount++;
-        }
-        itemDebugEntry.status = itemRequiresReview ? 'Success (Needs Review)' : 'Success'; // Set status based on AI review flag
-      }
-    } else if (dataSource === 'Placeholder' && taskDetailsToCreate.length === 0) {
-      // Ensure placeholder is created if Amazon fetch failed and no AI fallback occurred
-
-      // Check if we need to preserve existing text even for placeholder
-      let customText = 'Placeholder - Review Needed';
-      if (
-        options.preserveText &&
-        existingTaskData[orderItemId] &&
-        existingTaskData[orderItemId].length > 0
-      ) {
-        const existingTask = existingTaskData[orderItemId][0];
-        if (existingTask.custom_text) {
-          customText = existingTask.custom_text;
-          logger.info(
-            `[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text for placeholder: "${customText}"`
-          );
-        }
-      }
-
-      taskDetailsToCreate.push({
-        custom_text: customText,
-        color_1: null,
-        color_2: null,
-        quantity: item.quantity,
-        needs_review: true,
-        review_reason: finalReviewReason ?? 'Placeholder due to processing error',
-        status: PrintTaskStatus.pending,
-        annotation:
-          options.preserveText && customText !== 'Placeholder - Review Needed'
-            ? 'Placeholder with preserved text from existing task'
-            : null,
-      });
-      itemsNeedReviewCount++;
-      itemDebugEntry.status = 'Placeholder Created';
-    } else if (dataSource === 'AmazonURL' || dataSource === 'eBaySpecial') {
-      itemDebugEntry.status = 'Success (' + dataSource + ')';
-    } else {
-      itemDebugEntry.status = 'Skipped (Unknown Reason)'; // Should not happen ideally
-    }
-
-    // 4. Upsert Tasks based on collected details
-    itemDebugEntry.createdTaskIds = [];
-    let currentTaskIndex = 0;
-    for (const taskDetail of taskDetailsToCreate) {
-      const taskData: Prisma.PrintOrderTaskCreateInput = {
-        order: { connect: { id: order.id } },
-        orderItem: { connect: { id: orderItemId } },
-        product: { connect: { id: productId } },
-        taskIndex: currentTaskIndex,
-        shorthandProductName: shorthandName,
-        customer: order.customerId ? { connect: { id: order.customerId } } : undefined,
-        quantity: taskDetail.quantity,
-        custom_text: taskDetail.custom_text,
-        color_1: taskDetail.color_1,
-        color_2: taskDetail.color_2,
-        ship_by_date: order.ship_by_date,
-        needs_review: taskDetail.needs_review,
-        review_reason: taskDetail.review_reason,
-        status: taskDetail.status, // Should be PrintTaskStatus.pending
-        marketplace_order_number: order.shipstation_order_number,
-        annotation: taskDetail.annotation, // Add annotation
-      };
-
-      if (options.dryRun) {
+        // Attempt eBay special case logic (simplified for integration)
         logger.info(
-          `[Dry Run][Order ${order.id}][Item ${orderItemId}] Would upsert task ${currentTaskIndex} from ${dataSource}. Review: ${taskDetail.needs_review}`
+          `[Order ${order.id}][Item ${orderItemId}] Attempting eBay special case parsing...`
         );
-      } else {
-        try {
-          const upsertData = {
-            where: {
-              orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex },
-            },
-            update: {
-              shorthandProductName: taskData.shorthandProductName,
-              custom_text: taskData.custom_text,
-              color_1: taskData.color_1,
-              color_2: taskData.color_2,
-              quantity: taskData.quantity,
-              needs_review: taskData.needs_review,
-              review_reason: taskData.review_reason,
-              status: taskData.status, // Use enum
-              ship_by_date: taskData.ship_by_date,
-              marketplace_order_number: taskData.marketplace_order_number,
-              annotation: taskData.annotation, // Add annotation to update
-            },
-            create: taskData,
-          };
-          logger.debug(
-            `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preparing to UPSERT task from ${dataSource} with data:`,
-            upsertData
+        // ... (Keep the eBay parsing logic from lines 428-543 here) ...
+        // If successful, populate taskDetailsToCreate and set dataSource = 'eBaySpecial'
+        // For brevity, assuming the existing eBay logic populates taskDetailsToCreate correctly if a match is found
+        // Need to adapt the existing logic slightly to push to taskDetailsToCreate instead of directly upserting
+        // --- Start eBay Logic Adaptation ---
+        const customerNotes = order.customer_notes || '';
+        let itemColor = null;
+        if (
+          item.print_settings &&
+          typeof item.print_settings === 'object' &&
+          Array.isArray(item.print_settings)
+        ) {
+          const colorSetting = item.print_settings.find(
+            s => typeof s === 'object' && s !== null && 'name' in s && s.name === 'Color'
           );
-          const task = await tx.printOrderTask.upsert(upsertData);
-          logger.info(
-            `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${dataSource}.`
-          );
+          if (colorSetting && typeof colorSetting === 'object' && 'value' in colorSetting)
+            itemColor = String(colorSetting.value);
+        }
+        if (!itemColor && product?.name) {
+          const colorMatch = product.name.match(/\[(.*?)\]/);
+          if (colorMatch && colorMatch[1]) itemColor = colorMatch[1];
+        }
 
-          // --- BEGIN ShipStation Update (Post Task Upsert) ---
-          // Update Shipstation only if the task came from AI and upsert succeeded
-          if (dataSource === 'AI' && item.shipstationLineItemKey && order.shipstation_order_id) {
-            if (options.dryRun) {
-              logger.info(
-                `[Dry Run][ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Would fetch order and attempt to update item options using task data.`
-              );
-            } else {
-              logger.info(
-                `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Task upserted, preparing ShipStation update...`
-              );
-              try {
-                // Fetch fresh order data from ShipStation *before* updating
-                const ssOrderResponse = await getShipstationOrders({
-                  orderId: Number(order.shipstation_order_id),
-                });
-                if (
-                  ssOrderResponse &&
-                  ssOrderResponse.orders &&
-                  ssOrderResponse.orders.length > 0
-                ) {
-                  const ssOrder = ssOrderResponse.orders[0];
-                  logger.debug(
-                    { fetchedSsOrder: ssOrder },
-                    `[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Fetched ShipStation order details.`
-                  );
+        if (itemColor) {
+          const personalizations: { variationId: string; text: string }[] = [];
+          const regex = /Item ID: \d+ Variation: (\d+)[\s\S]*?Text: ([^\n]+)/g;
+          let match;
+          while ((match = regex.exec(customerNotes)) !== null)
+            personalizations.push({ variationId: match[1], text: match[2].trim() });
 
-                  // Construct options from the task data that was just saved
-                  const ssOptions = [];
-                  if (taskDetail.custom_text) {
-                    ssOptions.push({ name: 'Name or Text', value: taskDetail.custom_text });
-                  }
-                  if (taskDetail.color_1) {
-                    ssOptions.push({ name: 'Colour 1', value: taskDetail.color_1 });
-                  }
-                  if (taskDetail.color_2) {
-                    ssOptions.push({ name: 'Colour 2', value: taskDetail.color_2 });
-                  }
+          const itemIndex = order.items.findIndex(i => i.id === orderItemId);
+          if (itemIndex >= 0 && itemIndex < personalizations.length) {
+            const personalization = personalizations[itemIndex];
 
-                  if (ssOptions.length > 0) {
-                    logger.info(
-                      `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Calling updateOrderItemOptions...`
-                    );
-                    const updateSuccess = await updateOrderItemOptions(
-                      item.shipstationLineItemKey,
-                      ssOptions,
-                      ssOrder // Pass the fetched order object
-                    );
-                    if (updateSuccess) {
-                      logger.info(
-                        `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Successfully updated item options.`
-                      );
-                    } else {
-                      // Log failure but don't throw, allow transaction to commit task data
-                      logger.warn(
-                        `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Failed to update item options (updateOrderItemOptions returned false). Task data is saved.`
-                      );
-                    }
-                  } else {
-                    logger.warn(
-                      `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Skipping update: No valid options constructed from task data.`
-                    );
-                  }
-                } else {
-                  logger.error(
-                    `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Failed to fetch order details from ShipStation.`
-                  );
-                }
-              } catch (fetchOrUpdateError) {
-                // Log failure but don't throw, allow transaction to commit task data
-                logger.error(
-                  `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Error during ShipStation fetch or update process:`,
-                  fetchOrUpdateError
+            // Check if we need to preserve existing text
+            let customText = personalization.text;
+            if (
+              options.preserveText &&
+              existingTaskData[orderItemId] &&
+              existingTaskData[orderItemId].length > 0
+            ) {
+              const existingTask = existingTaskData[orderItemId][0];
+              if (existingTask.custom_text) {
+                customText = existingTask.custom_text;
+                logger.info(
+                  `[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text: "${customText}" instead of "${personalization.text}"`
                 );
               }
             }
-          } else if (
-            dataSource === 'AI' &&
-            (!item.shipstationLineItemKey || !order.shipstation_order_id)
-          ) {
+
+            logger.info(
+              `[Order ${order.id}][Item ${orderItemId}] eBay Special Case: Matched personalization by position.`
+            );
+            taskDetailsToCreate.push({
+              custom_text: customText, // Use preserved text if available
+              color_1: itemColor,
+              color_2: null,
+              quantity: item.quantity,
+              needs_review: false,
+              review_reason: null,
+              status: PrintTaskStatus.pending,
+              annotation:
+                options.preserveText && customText !== personalization.text
+                  ? 'Data from eBay Customer Notes (Special Case, text preserved from existing task)'
+                  : 'Data from eBay Customer Notes (Special Case)',
+            });
+            dataSource = 'eBaySpecial';
+          }
+        }
+        // --- End eBay Logic Adaptation ---
+      }
+
+      // 3. AI Data Fallback / Primary Source (if not handled by Amazon/eBay)
+      if (dataSource === 'AI') {
+        const itemResult = aiData.itemPersonalizations[item.id.toString()];
+        if (!itemResult || itemResult.personalizations.length === 0) {
+          const reason = !itemResult ? 'No AI data for item' : 'AI returned zero personalizations';
+          logger.warn(
+            `[Order ${order.id}][Item ${orderItemId}] No AI data found. Creating placeholder.`
+          );
+          dataSource = 'Placeholder';
+          finalNeedsReview = true;
+          finalReviewReason = reason.substring(0, 1000);
+          finalCustomText = 'Placeholder - Review Needed';
+          finalColor1 = null;
+          finalColor2 = null;
+          finalQuantity = item.quantity;
+          taskDetailsToCreate.push({
+            custom_text: finalCustomText,
+            color_1: finalColor1,
+            color_2: finalColor2,
+            quantity: finalQuantity,
+            needs_review: finalNeedsReview,
+            review_reason: finalReviewReason,
+            status: PrintTaskStatus.pending,
+            annotation: finalAnnotation,
+          });
+        } else {
+          logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using AI data.`);
+          let itemRequiresReview = itemResult.overallNeedsReview || false;
+          const itemReviewReasons: string[] = itemResult.overallReviewReason
+            ? [itemResult.overallReviewReason]
+            : [];
+          let totalQuantityFromAI = 0;
+          itemResult.personalizations.forEach(p => (totalQuantityFromAI += p.quantity));
+          if (totalQuantityFromAI !== item.quantity) {
             logger.warn(
-              `[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Skipping update for AI task: Missing shipstationLineItemKey or shipstation_order_id.`
+              `[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI Quantity Mismatch!`
+            );
+            itemRequiresReview = true;
+            itemReviewReasons.push(
+              `Qty Mismatch (AI: ${totalQuantityFromAI}, Order: ${item.quantity})`
             );
           }
-          // --- END ShipStation Update (Post Task Upsert) ---
-          tasksCreatedCount++;
-          itemDebugEntry.createdTaskIds.push(task.id);
-        } catch (e) {
-          logger.error(
-            `[DB][Order ${order.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${dataSource}:`,
-            e
-          );
-          itemDebugEntry.status = 'Failed'; // Update item status on failure
-          itemDebugEntry.error = e instanceof Error ? e.message : String(e);
-          // Decide whether to throw or just log and continue with next item/order
-          throw e; // Re-throwing will rollback the transaction for the whole order
-        }
-      }
-      currentTaskIndex++;
-    }
-    logger.info(
-      `[DB][Order ${order.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`
-    );
 
-    // --- End Refactored Logic ---
+          // ShipStation update logic moved below, after successful task upsert
+          for (let i = 0; i < itemResult.personalizations.length; i++) {
+            const detail = itemResult.personalizations[i];
+            const combinedNeedsReview = itemRequiresReview || detail.needsReview;
+            const detailReason = detail.needsReview ? detail.reviewReason : null;
+            const annotationReason =
+              combinedNeedsReview && detail.annotation ? `Annotation: ${detail.annotation}` : null;
+            const reviewReasonCombined =
+              Array.from(
+                new Set([
+                  ...itemReviewReasons,
+                  ...(detailReason ? [detailReason] : []),
+                  ...(annotationReason ? [annotationReason] : []),
+                ])
+              )
+                .filter(Boolean)
+                .join('; ')
+                .substring(0, 1000) || null;
+
+            // Check if we need to preserve existing text
+            let customText = detail.customText;
+            let annotation = detail.annotation;
+
+            if (
+              options.preserveText &&
+              existingTaskData[orderItemId] &&
+              i < existingTaskData[orderItemId].length
+            ) {
+              const existingTask = existingTaskData[orderItemId][i];
+              if (existingTask.custom_text) {
+                customText = existingTask.custom_text;
+                const preservedTextMessage = `Preserved original text: "${customText}" instead of AI-suggested: "${detail.customText}"`;
+                logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] ${preservedTextMessage}`);
+                annotation = annotation
+                  ? `${annotation}; ${preservedTextMessage}`
+                  : preservedTextMessage;
+              }
+            }
+
+            if (detail.annotation) {
+              logger.info(
+                `[AI Annotation][Order ${order.id}][Item ${orderItemId}]: ${detail.annotation}`
+              );
+            }
+
+            taskDetailsToCreate.push({
+              custom_text: customText, // Use preserved text if available
+              color_1: detail.color1,
+              color_2: detail.color2,
+              quantity: detail.quantity,
+              needs_review: combinedNeedsReview,
+              review_reason: reviewReasonCombined,
+              status: PrintTaskStatus.pending,
+              annotation: annotation, // Use updated annotation that includes the preserved text info
+            });
+            if (combinedNeedsReview) itemsNeedReviewCount++;
+          }
+          itemDebugEntry.status = itemRequiresReview ? 'Success (Needs Review)' : 'Success'; // Set status based on AI review flag
+        }
+      } else if (dataSource === 'Placeholder' && taskDetailsToCreate.length === 0) {
+        // Ensure placeholder is created if Amazon fetch failed and no AI fallback occurred
+
+        // Check if we need to preserve existing text even for placeholder
+        let customText = 'Placeholder - Review Needed';
+        if (
+          options.preserveText &&
+          existingTaskData[orderItemId] &&
+          existingTaskData[orderItemId].length > 0
+        ) {
+          const existingTask = existingTaskData[orderItemId][0];
+          if (existingTask.custom_text) {
+            customText = existingTask.custom_text;
+            logger.info(
+              `[DB][Order ${order.id}][Item ${orderItemId}] Preserving existing text for placeholder: "${customText}"`
+            );
+          }
+        }
+
+        taskDetailsToCreate.push({
+          custom_text: customText,
+          color_1: null,
+          color_2: null,
+          quantity: item.quantity,
+          needs_review: true,
+          review_reason: finalReviewReason ?? 'Placeholder due to processing error',
+          status: PrintTaskStatus.pending,
+          annotation:
+            options.preserveText && customText !== 'Placeholder - Review Needed'
+              ? 'Placeholder with preserved text from existing task'
+              : null,
+        });
+        itemsNeedReviewCount++;
+        itemDebugEntry.status = 'Placeholder Created';
+      } else if (dataSource === 'AmazonURL' || dataSource === 'eBaySpecial') {
+        itemDebugEntry.status = 'Success (' + dataSource + ')';
+      } else {
+        itemDebugEntry.status = 'Skipped (Unknown Reason)'; // Should not happen ideally
+      }
+
+      // 4. Upsert Tasks based on collected details
+      itemDebugEntry.createdTaskIds = [];
+      let currentTaskIndex = 0;
+      for (const taskDetail of taskDetailsToCreate) {
+        const taskData: Prisma.PrintOrderTaskCreateInput = {
+          order: { connect: { id: order.id } },
+          orderItem: { connect: { id: orderItemId } },
+          product: { connect: { id: productId } },
+          taskIndex: currentTaskIndex,
+          shorthandProductName: shorthandName,
+          customer: order.customerId ? { connect: { id: order.customerId } } : undefined,
+          quantity: taskDetail.quantity,
+          custom_text: taskDetail.custom_text,
+          color_1: taskDetail.color_1,
+          color_2: taskDetail.color_2,
+          ship_by_date: order.ship_by_date,
+          needs_review: taskDetail.needs_review,
+          review_reason: taskDetail.review_reason,
+          status: taskDetail.status, // Should be PrintTaskStatus.pending
+          marketplace_order_number: order.shipstation_order_number,
+          annotation: taskDetail.annotation, // Add annotation
+        };
+
+        if (options.dryRun) {
+          logger.info(
+            `[Dry Run][Order ${order.id}][Item ${orderItemId}] Would upsert task ${currentTaskIndex} from ${dataSource}. Review: ${taskDetail.needs_review}`
+          );
+        } else {
+          try {
+            const upsertData = {
+              where: {
+                orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex },
+              },
+              update: {
+                shorthandProductName: taskData.shorthandProductName,
+                custom_text: taskData.custom_text,
+                color_1: taskData.color_1,
+                color_2: taskData.color_2,
+                quantity: taskData.quantity,
+                needs_review: taskData.needs_review,
+                review_reason: taskData.review_reason,
+                status: taskData.status, // Use enum
+                ship_by_date: taskData.ship_by_date,
+                marketplace_order_number: taskData.marketplace_order_number,
+                annotation: taskData.annotation, // Add annotation to update
+              },
+              create: taskData,
+            };
+            logger.debug(
+              `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preparing to UPSERT task from ${dataSource} with data:`,
+              upsertData
+            );
+            const task = await tx.printOrderTask.upsert(upsertData);
+            logger.info(
+              `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${dataSource}.`
+            );
+
+            // --- BEGIN ShipStation Update (Post Task Upsert) ---
+            // Update Shipstation only if the task came from AI and upsert succeeded
+            if (dataSource === 'AI' && item.shipstationLineItemKey && order.shipstation_order_id) {
+              if (options.dryRun) {
+                logger.info(
+                  `[Dry Run][ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Would fetch order and attempt to update item options using task data.`
+                );
+              } else {
+                logger.info(
+                  `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Task upserted, preparing ShipStation update...`
+                );
+                try {
+                  // Fetch fresh order data from ShipStation *before* updating
+                  const ssOrderResponse = await getShipstationOrders({
+                    orderId: Number(order.shipstation_order_id),
+                  });
+                  if (
+                    ssOrderResponse &&
+                    ssOrderResponse.orders &&
+                    ssOrderResponse.orders.length > 0
+                  ) {
+                    const ssOrder = ssOrderResponse.orders[0];
+                    logger.debug(
+                      { fetchedSsOrder: ssOrder },
+                      `[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Fetched ShipStation order details.`
+                    );
+
+                    // Construct options from the task data that was just saved
+                    const ssOptions = [];
+                    if (taskDetail.custom_text) {
+                      ssOptions.push({ name: 'Name or Text', value: taskDetail.custom_text });
+                    }
+                    if (taskDetail.color_1) {
+                      ssOptions.push({ name: 'Colour 1', value: taskDetail.color_1 });
+                    }
+                    if (taskDetail.color_2) {
+                      ssOptions.push({ name: 'Colour 2', value: taskDetail.color_2 });
+                    }
+
+                    if (ssOptions.length > 0) {
+                      itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+                      patchReasons.push(item.shipstationLineItemKey);
+                    }
+                  } else {
+                    logger.error(
+                      `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Failed to fetch order details from ShipStation.`
+                    );
+                  }
+                } catch (fetchOrUpdateError) {
+                  // Log failure but don't throw, allow transaction to commit task data
+                  logger.error(
+                    `[ShipStation Update][Order ${order.id}][Item ${orderItemId}][Task ${task.id}] Error during ShipStation fetch or update process:`,
+                    fetchOrUpdateError
+                  );
+                }
+              }
+            } else if (
+              dataSource === 'AI' &&
+              (!item.shipstationLineItemKey || !order.shipstation_order_id)
+            ) {
+              logger.warn(
+                `[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Skipping update for AI task: Missing shipstationLineItemKey or shipstation_order_id.`
+              );
+            }
+            // --- END ShipStation Update (Post Task Upsert) ---
+            tasksCreatedCount++;
+            itemDebugEntry.createdTaskIds.push(task.id);
+          } catch (e) {
+            logger.error(
+              `[DB][Order ${order.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${dataSource}:`,
+              e
+            );
+            itemDebugEntry.status = 'Failed'; // Update item status on failure
+            itemDebugEntry.error = e instanceof Error ? e.message : String(e);
+            // Decide whether to throw or just log and continue with next item/order
+            throw e; // Re-throwing will rollback the transaction for the whole order
+          }
+        }
+        currentTaskIndex++;
+      }
+      logger.info(
+        `[DB][Order ${order.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`
+      );
+
+      // --- End Refactored Logic ---
+    } // End item loop
+
+    // Batch ShipStation update once per order
+    if (!options.dryRun && Object.keys(itemsToPatch).length > 0 && order.shipstation_order_id) {
+      try {
+        const ssOrderResp = await getShipstationOrders({ orderId: Number(order.shipstation_order_id) });
+        if (ssOrderResp.orders && ssOrderResp.orders.length > 0) {
+          const auditNote = `AI sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+          await updateOrderItemsOptionsBatch(ssOrderResp.orders[0], itemsToPatch, auditNote);
+        }
+      } catch (batchErr) {
+        logger.error(`[ShipStation Batch][Order ${order.id}] Error during batch update`, batchErr);
+      }
+    }
   } // End item loop
   return { tasksCreatedCount, tasksSkippedCount, itemsNeedReviewCount };
 }
@@ -1142,6 +1126,9 @@ async function syncExistingTasksToShipstation(
   options: ProcessingOptions
 ): Promise<{ updatedCount: number; failedCount: number }> {
   logger.info(`[ShipStation Sync] Starting sync of existing tasks for order ${orderId}...`);
+  // Collect option changes so we can fire a single batch PATCH at the end
+  const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
+  const patchReasons: string[] = [];
   let updatedCount = 0;
   let failedCount = 0;
 
@@ -1305,40 +1292,22 @@ async function syncExistingTasksToShipstation(
         continue;
       }
 
-      // Update ShipStation
-      logger.info(
-        `[ShipStation Sync] Updating ShipStation item ${item.id} (task ${task.id}) with options: ${JSON.stringify(ssOptions)}`
-      );
-      try {
-        const updateSuccess = await updateOrderItemOptions(
-          item.shipstationLineItemKey,
-          ssOptions,
-          ssOrder
-        );
+      // Accumulate for batch update inside syncExistingTasks path too
+      if (ssOptions.length > 0) {
+        itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+        patchReasons.push(item.shipstationLineItemKey);
+      }
+    }
 
-        if (updateSuccess) {
-          // Add note about shipped order updates
-          if (
-            ssOrder.orderStatus &&
-            (ssOrder.orderStatus.toLowerCase() === 'shipped' ||
-              ssOrder.orderStatus.toLowerCase() === 'fulfilled')
-          ) {
-            logger.info(
-              `[ShipStation Sync] API reported success for item ${item.id}, but changes may not be applied since order is ${ssOrder.orderStatus}`
-            );
-          } else {
-            logger.info(`[ShipStation Sync] Successfully updated ShipStation item ${item.id}`);
-          }
-          updatedCount++;
-        } else {
-          logger.warn(`[ShipStation Sync] Failed to update ShipStation item ${item.id}`);
-          failedCount++;
-        }
-      } catch (error) {
-        logger.error(
-          `[ShipStation Sync] Error updating ShipStation item ${item.id}: ${error instanceof Error ? error.message : String(error)}`
-        );
-        failedCount++;
+    // Send the accumulated batch update once
+    if (!options.dryRun && Object.keys(itemsToPatch).length > 0) {
+      try {
+        const auditNote = `Task sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+        await updateOrderItemsOptionsBatch(ssOrder, itemsToPatch, auditNote);
+        updatedCount += Object.keys(itemsToPatch).length;
+      } catch (batchErr) {
+        logger.error(`[ShipStation Sync] Batch update error`, batchErr);
+        failedCount += Object.keys(itemsToPatch).length;
       }
     }
 
@@ -1403,7 +1372,7 @@ async function main() {
       )
       .option('-l, --limit <number>', 'Limit orders fetched', val => parseInt(val, 10))
       .option('--openai-api-key <key>', 'OpenAI API Key', process.env.OPENAI_API_KEY)
-      .option('--openai-model <model>', 'OpenAI model', 'gpt-4o-mini')
+      .option('--openai-model <model>', 'OpenAI model', 'gpt-4.1-mini')
       .option('--debug', 'Enable debug logging', false) // Boolean flag (presence implies true) - Added default false
       .option('--verbose', 'Enable verbose logging', false) // Boolean flag (presence implies true) - Added default false
       .option('--log-level <level>', 'Set log level', 'info')
@@ -1464,10 +1433,8 @@ async function main() {
 
     // Load Prompts
     logger.info('Loading prompts...');
-    const systemPrompt = await loadPromptFile('src/scripts/prompt-system-optimized.txt');
-    const userPromptTemplate = await loadPromptFile(
-      'src/scripts/prompt-user-template-optimized.txt'
-    );
+    const systemPrompt = await loadPromptFile('src/lib/ai/prompts/prompt-system-optimized.txt');
+    const userPromptTemplate = await loadPromptFile('src/lib/ai/prompts/prompt-user-template-optimized.txt');
     logger.info('Prompts loaded.');
 
     // Prepare options for AI processing
@@ -1724,7 +1691,7 @@ Options:
   --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
   --limit <number>          Limit orders fetched (no default; fetch all orders)
   --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
-  --openai-model <model>    OpenAI model (default: gpt-4o-mini)
+  --openai-model <model>    OpenAI model (default: gpt-4.1-mini)
   --debug                   Enable debug logging
   --verbose                 Enable verbose logging
   --log-level <level>       Set log level (default: info)

@@ -143,3 +143,11 @@ dev.log
 
 # Local Netlify folder
 .netlify
+
+# Ignore STL files
+*.stl
+
+# Aider
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v4/

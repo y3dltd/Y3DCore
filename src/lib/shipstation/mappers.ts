@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { toDate } from 'date-fns-tz';
 
-import type { ShipStationAddress, ShipStationOrderItem, ShipStationOrder } from './types';
+import type { ShipStationAddress, ShipStationOrder, ShipStationOrderItem } from './types';
 
 // Define a simpler interface for the mappable fields
 interface MappableCustomerFields {
@@ -135,8 +135,8 @@ export const mapOrderToPrisma = (
   amount_paid: ssOrder.amountPaid,
   order_weight_value: ssOrder.weight?.value,
   order_weight_units: ssOrder.weight?.units,
-  // Dimensions
-  dimensions_units: ssOrder.dimensions?.units,
+  // Dimensions: only override units, numeric values remain unchanged
+  dimensions_units: ssOrder.dimensions?.units === 'inches' ? 'centimeters' : ssOrder.dimensions?.units,
   dimensions_length: ssOrder.dimensions?.length,
   dimensions_width: ssOrder.dimensions?.width,
   dimensions_height: ssOrder.dimensions?.height,

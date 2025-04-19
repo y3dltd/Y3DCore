@@ -4,8 +4,8 @@ import { hideBin } from 'yargs/helpers';
 import {
   syncAllPaginatedOrders,
   syncRecentOrders,
-  syncSingleOrder,
   syncShipStationTags,
+  syncSingleOrder,
   type SyncOptions, // Import the options type
 } from '@/lib/orders/sync';
 import { logger } from '@/lib/shared/logging';
@@ -58,8 +58,8 @@ const cli = yargs(hideBin(process.argv))
           describe: 'Force sync to start from this ISO date (YYYY-MM-DDTHH:mm:ss.sssZ)',
           type: 'string',
         })
-        .option('skip-tags', {
-          describe: 'Skip syncing ShipStation tags',
+        .option('sync-tags', {
+          describe: 'Sync ShipStation tags before processing orders',
           type: 'boolean',
           default: false,
         })
@@ -96,9 +96,8 @@ const cli = yargs(hideBin(process.argv))
 
         logger.info(`Starting sync with mode: ${argv.mode}${options.dryRun ? ' (DRY RUN)' : ''}`);
 
-        if (!argv.skipTags) {
+        if (argv.syncTags) {
           logger.info('Syncing ShipStation tags...');
-          // Pass options to syncShipStationTags
           await syncShipStationTags(options);
           logger.info('Tag sync complete.');
         }
@@ -122,7 +121,7 @@ const cli = yargs(hideBin(process.argv))
             break;
           case 'single':
             // Pass options to syncSingleOrder - convert orderId to number if needed
-            result = await syncSingleOrder(Number(argv.orderId), options);
+            result = await syncSingleOrder(argv.orderId as string, options);
             break;
           default:
             logger.error(`Invalid sync mode: ${argv.mode}`);
@@ -148,7 +147,7 @@ const cli = yargs(hideBin(process.argv))
       .command(
         'sync',
         'Download and process Amazon customization files',
-        () => {},
+        () => { },
         async () => {
           await runCommand('Amazon Sync', async () => {
             logger.warn('Amazon sync command not yet implemented.');
@@ -158,7 +157,7 @@ const cli = yargs(hideBin(process.argv))
       .command(
         'update',
         'Update order items and ShipStation with personalization data',
-        () => {},
+        () => { },
         async () => {
           await runCommand('Amazon Update', async () => {
             logger.warn('Amazon update command not yet implemented.');
@@ -168,7 +167,7 @@ const cli = yargs(hideBin(process.argv))
       .command(
         'workflow',
         'Run the entire Amazon customization workflow',
-        () => {},
+        () => { },
         async () => {
           await runCommand('Amazon Workflow', async () => {
             logger.warn('Amazon workflow command not yet implemented.');
@@ -178,7 +177,7 @@ const cli = yargs(hideBin(process.argv))
       .command(
         'fix',
         'Find and fix orders with missing personalization data',
-        () => {},
+        () => { },
         async () => {
           await runCommand('Amazon Fix', async () => {
             logger.warn('Amazon fix command not yet implemented.');
