@@ -94,7 +94,27 @@ async function processTask(task: { id: number; custom_text: string | null; color
         console.log(`[${new Date().toISOString()}] Ensured output directory exists: ${STL_OUTPUT_DIR_ABS}`);
 
         // 2. Prepare data for OpenSCAD
-        const lines = (task.custom_text ?? '').split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
+        let lines = (task.custom_text ?? '').split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
+        
+        // Check if we have only one line and it contains a space (likely a full name)
+        // Only apply this logic if line2 is empty - don't override existing multiline input
+        if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
+            const nameParts = lines[0].split(' ');
+            // If we have exactly two parts, use them as first name and surname
+            if (nameParts.length === 2) {
+                lines = [nameParts[0], nameParts[1]];
+                console.log(`[${new Date().toISOString()}] Split full name "${lines[0]} ${lines[1]}" across two lines`);
+            }
+            // If we have more than two parts, try to intelligently split into first name(s) and surname
+            else if (nameParts.length > 2) {
+                // Use all but the last part as the first name(s) and the last part as the surname
+                const firstName = nameParts.slice(0, -1).join(' ');
+                const surname = nameParts[nameParts.length - 1];
+                lines = [firstName, surname];
+                console.log(`[${new Date().toISOString()}] Split multi-part name "${firstName} ${surname}" across two lines`);
+            }
+        }
+        
         const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
         const color1 = task.color_1 ?? 'Black'; // Default colors if null
         const color2 = task.color_2 ?? 'White';
@@ -175,10 +195,34 @@ async function processTask(task: { id: number; custom_text: string | null; color
     }
 }
 
+// Helper to fix invalid stl_render_state values 
+async function fixInvalidStlRenderStates() {
+    try {
+        // Find and update records with invalid stl_render_state values
+        const count = await prisma.$executeRawUnsafe(`
+            UPDATE PrintOrderTask 
+            SET stl_render_state = 'pending' 
+            WHERE stl_render_state = '' OR stl_render_state IS NULL
+        `);
+        
+        if (count > 0) {
+            console.log(`[${new Date().toISOString()}] Fixed ${count} records with invalid stl_render_state values`);
+        }
+        return count;
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] Error fixing invalid stl_render_state values:`, err);
+        return 0;
+    }
+}
+
 // Main Loop --------------------------
 // Simple version to run and process a single task batch (exported for testing)
 export async function runTaskBatch() {
     console.log(`[${new Date().toISOString()}] Checking for tasks to process...`);
+    
+    // First, fix any invalid stl_render_state values
+    await fixInvalidStlRenderStates();
+    
     const running: Promise<void>[] = [];
 
     // Get current running tasks
@@ -207,6 +251,9 @@ async function workerLoop() {
     // Function to handle a single iteration
     async function iteration() {
         console.log(`[${new Date().toISOString()}] Checking for pending STL render tasks...`);
+        
+        // Fix any invalid stl_render_state values at the start of each iteration
+        await fixInvalidStlRenderStates();
 
         // Clean up completed promises using Promise.allSettled
         if (running.length > 0) {
