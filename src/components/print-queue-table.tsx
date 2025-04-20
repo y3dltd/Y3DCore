@@ -32,7 +32,8 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
+// Fix import path to ensure proper module resolution during builds
+import { usePrintQueueModal } from '../contexts/PrintQueueModalContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
