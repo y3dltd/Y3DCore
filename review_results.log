@@ -1,0 +1,3250 @@
+{"level":30,"time":1745184896562,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Script Start: 2025-04-20T21:34:56.562Z ---"}
+{"level":30,"time":1745184896563,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Logging to file: /home/jayson/y3dhub/logs/review-existing-tasks-2025-04-20T21-34-56-560Z.log"}
+{"level":30,"time":1745184896564,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Loading prompts..."}
+{"level":30,"time":1745184896567,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Prompts loaded."}
+{"level":30,"time":1745184896568,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Options: {\"openaiApiKey\":\"***\",\"openaiModel\":\"gpt-4.1-mini\",\"verbose\":false,\"logLevel\":\"info\",\"systemPrompt\":\"...\",\"userPromptTemplate\":\"...\"}"}
+{"level":30,"time":1745184896568,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Fetching orders with existing tasks (awaiting_shipment or on_hold)..."}
+{"level":30,"time":1745184896902,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Found 141 orders with tasks to review."}
+{"level":30,"time":1745184896902,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 642 (205-5393799-9147500) ---"}
+{"level":30,"time":1745184896902,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 642] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184898522,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 642] Call response status: 200 (1620ms)."}
+{"level":30,"time":1745184898525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 642] AI response validated."}
+{"level":30,"time":1745184898525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 642] No significant discrepancies found."}
+{"level":30,"time":1745184898525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 641 (3662744561) ---"}
+{"level":30,"time":1745184898526,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 641] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184899973,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 641] Call response status: 200 (1447ms)."}
+{"level":30,"time":1745184899976,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 641] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 641 (3662744561) ===
+  Item ID: 1159
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Magenta',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: null,
+    color_1: 'Magenta',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1159 ---
+=== END Order ID: 641 ===
+{"level":30,"time":1745184899978,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 640 (3662745451) ---"}
+{"level":30,"time":1745184899978,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 640] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184903169,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 640] Call response status: 200 (3191ms)."}
+{"level":30,"time":1745184903172,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 640] AI response validated."}
+{"level":30,"time":1745184903172,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 640] No significant discrepancies found."}
+{"level":30,"time":1745184903172,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 639 (206-5010067-4465122) ---"}
+{"level":30,"time":1745184903172,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 639] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184904981,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 639] Call response status: 200 (1809ms)."}
+{"level":30,"time":1745184904982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 639] AI response validated."}
+{"level":30,"time":1745184904982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 639] No significant discrepancies found."}
+{"level":30,"time":1745184904982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 638 (206-2919628-0901123) ---"}
+{"level":30,"time":1745184904982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 638] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184907633,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 638] Call response status: 200 (2651ms)."}
+{"level":30,"time":1745184907637,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 638] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 638 (206-2919628-0901123) ===
+  Item ID: 1155
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Sofia',
+    color1: 'Magenta',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Sofia',
+    color_1: 'Magenta',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1155 ---
+=== END Order ID: 638 ===
+{"level":30,"time":1745184907638,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 637 (06-12983-84200) ---"}
+{"level":30,"time":1745184907638,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 637] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184909313,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 637] Call response status: 200 (1675ms)."}
+{"level":30,"time":1745184909314,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 637] AI response validated."}
+{"level":30,"time":1745184909314,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 637] No significant discrepancies found."}
+{"level":30,"time":1745184909314,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 636 (26-12958-25750) ---"}
+{"level":30,"time":1745184909315,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 636] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184911268,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 636] Call response status: 200 (1953ms)."}
+{"level":30,"time":1745184911271,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 636] AI response validated."}
+{"level":30,"time":1745184911271,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 636] No significant discrepancies found."}
+{"level":30,"time":1745184911271,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 635 (203-1763049-5404346) ---"}
+{"level":30,"time":1745184911271,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 635] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184913290,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 635] Call response status: 200 (2019ms)."}
+{"level":30,"time":1745184913291,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 635] AI response validated."}
+{"level":30,"time":1745184913291,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 635] No significant discrepancies found."}
+{"level":30,"time":1745184913291,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 634 (19-12966-89317) ---"}
+{"level":30,"time":1745184913291,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 634] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184915013,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 634] Call response status: 200 (1722ms)."}
+{"level":30,"time":1745184915014,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 634] AI response validated."}
+{"level":30,"time":1745184915014,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 634] No significant discrepancies found."}
+{"level":30,"time":1745184915014,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 633 (04-12985-64263) ---"}
+{"level":30,"time":1745184915014,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 633] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184917290,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 633] Call response status: 200 (2276ms)."}
+{"level":30,"time":1745184917299,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 633] AI response validated."}
+{"level":30,"time":1745184917299,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 633] No significant discrepancies found."}
+{"level":30,"time":1745184917299,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 632 (07-12982-17022) ---"}
+{"level":30,"time":1745184917299,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 632] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184922034,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 632] Call response status: 200 (4735ms)."}
+{"level":30,"time":1745184922034,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 632] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 632 (07-12982-17022) ===
+  Item ID: 1139
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    DISCREPANCY: Task 1: Review flag mismatch: DB=true, AI=false
+    DISCREPANCY: Task 2: Review flag mismatch: DB=true, AI=false
+    DISCREPANCY: Task 3: Review flag mismatch: DB=true, AI=false
+    DISCREPANCY: Task 4: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (5 tasks):
+      [
+  {
+    customText: 'Sarah',
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Lee',
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Charlotte',
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Nick',
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Tracey',
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (5 tasks):
+      [
+  {
+    custom_text: 'Sarah',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'RANDOM_COLOR',
+    annotation: null
+  },
+  {
+    custom_text: 'Lee',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'RANDOM_COLOR',
+    annotation: null
+  },
+  {
+    custom_text: 'Charlotte',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'RANDOM_COLOR',
+    annotation: null
+  },
+  {
+    custom_text: 'Nick',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'RANDOM_COLOR',
+    annotation: null
+  },
+  {
+    custom_text: 'Tracey',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'RANDOM_COLOR',
+    annotation: null
+  }
+]
+  --- End Item 1139 ---
+=== END Order ID: 632 ===
+{"level":30,"time":1745184922035,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 631 (04-12985-65660) ---"}
+{"level":30,"time":1745184922036,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 631] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184923772,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 631] Call response status: 200 (1736ms)."}
+{"level":30,"time":1745184923778,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 631] AI response validated."}
+{"level":30,"time":1745184923778,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 631] No significant discrepancies found."}
+{"level":30,"time":1745184923778,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 630 (206-0666452-3463544) ---"}
+{"level":30,"time":1745184923778,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 630] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184937101,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 630] Call response status: 200 (13323ms)."}
+{"level":30,"time":1745184937105,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 630] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 630 (206-0666452-3463544) ===
+  Item ID: 1128
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Jack',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Jack',
+    color_1: 'Red',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1128 ---
+  Item ID: 1131
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Harrison',
+    color1: 'Pine Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Harrison',
+    color_1: 'Pine Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'Harrison ' → 'Harrison' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1131 ---
+  Item ID: 1132
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Davin',
+    color1: 'Grey',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Davin',
+    color_1: 'Grey',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'Davin ' → 'Davin' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1132 ---
+  Item ID: 1134
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'James',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'James',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'James ' → 'James' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1134 ---
+  Item ID: 1135
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Lucas',
+    color1: 'Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Lucas',
+    color_1: 'Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'Lucas ' → 'Lucas' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1135 ---
+  Item ID: 1136
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Nikolas',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Nikolas',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'Nikolas ' → 'Nikolas' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1136 ---
+  Item ID: 1137
+    DISCREPANCY: Task 0: Review flag mismatch: DB=true, AI=false
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Samson',
+    color1: 'Grey',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Samson',
+    color_1: 'Grey',
+    color_2: null,
+    quantity: 1,
+    needs_review: true,
+    review_reason: "Changed 'Samson ' → 'Samson' (reason: trimmed trailing whitespace)",
+    annotation: null
+  }
+]
+  --- End Item 1137 ---
+=== END Order ID: 630 ===
+{"level":30,"time":1745184937107,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 629 (026-3018411-6985933) ---"}
+{"level":30,"time":1745184937107,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 629] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184940492,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 629] Call response status: 200 (3385ms)."}
+{"level":30,"time":1745184940500,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 629] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 629 (026-3018411-6985933) ===
+  Item ID: 1124
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Alexis',
+    color1: 'Light Blue',
+    color2: 'Gold',
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'Single personalization found but Order Qty is 2',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Alexis',
+    color_1: 'Light Blue',
+    color_2: 'Gold',
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1124 ---
+  Item ID: 1125
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Natasha',
+    color1: 'Black',
+    color2: 'Peak Green',
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'Single personalization found but Order Qty is 2',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Natasha',
+    color_1: 'Black',
+    color_2: 'Peak Green',
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1125 ---
+=== END Order ID: 629 ===
+{"level":30,"time":1745184940500,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 628 (17-12968-91130) ---"}
+{"level":30,"time":1745184940500,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 628] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184942632,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 628] Call response status: 200 (2132ms)."}
+{"level":30,"time":1745184942632,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 628] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 628 (17-12968-91130) ===
+  Item ID: 1110
+    DISCREPANCY: Task 0: Text mismatch: DB='OakleyM', AI='Oakleym'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Oakleym',
+    color1: 'Blue',
+    color2: null,
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'Quantity mismatch: Expected Qty 2, but parsed 1 items from text.',
+    annotation: 'CustomerNotes text used; quantity mismatch with order quantity'
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'OakleyM',
+    color_1: 'Blue',
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1110 ---
+=== END Order ID: 628 ===
+{"level":30,"time":1745184942633,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 627 (20-12965-19503) ---"}
+{"level":30,"time":1745184942633,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 627] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184944521,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 627] Call response status: 200 (1888ms)."}
+{"level":30,"time":1745184944522,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 627] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 627 (20-12965-19503) ===
+  Item ID: 1109
+    DISCREPANCY: Task 0: Text mismatch: DB='❤️xSUEx❤️', AI='❤️xSuex❤️'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: '❤️xSuex❤️',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: 'Contains emoji/special character'
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: '❤️xSUEx❤️',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1109 ---
+=== END Order ID: 627 ===
+{"level":30,"time":1745184944523,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 626 (19-12966-45818) ---"}
+{"level":30,"time":1745184944523,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 626] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184946697,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 626] Call response status: 200 (2174ms)."}
+{"level":30,"time":1745184946701,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 626] AI response validated."}
+{"level":30,"time":1745184946701,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 626] No significant discrepancies found."}
+{"level":30,"time":1745184946701,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 625 (3655924936) ---"}
+{"level":30,"time":1745184946701,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 625] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184948971,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 625] Call response status: 200 (2270ms)."}
+{"level":30,"time":1745184948982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 625] AI response validated."}
+{"level":30,"time":1745184948982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 625] No significant discrepancies found."}
+{"level":30,"time":1745184948982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 624 (026-6920156-4332330) ---"}
+{"level":30,"time":1745184948982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 624] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184950518,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 624] Call response status: 200 (1536ms)."}
+{"level":30,"time":1745184950519,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 624] AI response validated."}
+{"level":30,"time":1745184950519,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 624] No significant discrepancies found."}
+{"level":30,"time":1745184950519,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 623 (3655900116) ---"}
+{"level":30,"time":1745184950519,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 623] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184952662,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 623] Call response status: 200 (2143ms)."}
+{"level":30,"time":1745184952664,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 623] AI response validated."}
+{"level":30,"time":1745184952664,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 623] No significant discrepancies found."}
+{"level":30,"time":1745184952664,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 622 (206-5926341-4985165) ---"}
+{"level":30,"time":1745184952664,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 622] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184954733,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 622] Call response status: 200 (2069ms)."}
+{"level":30,"time":1745184954737,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 622] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 622 (206-5926341-4985165) ===
+  Item ID: 1096
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Yellow & Black', AI='Yellow'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Black'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'JAMES',
+    color1: 'Yellow',
+    color2: 'Black',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'JAMES',
+    color_1: 'Yellow & Black',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 1096 ---
+=== END Order ID: 622 ===
+{"level":30,"time":1745184954738,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 621 (3655879966) ---"}
+{"level":30,"time":1745184954738,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 621] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184970377,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 621] Call response status: 200 (15639ms)."}
+{"level":30,"time":1745184970389,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 621] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 621 (3655879966) ===
+  Item ID: 1089
+    DISCREPANCY: Task count mismatch: DB has 1, AI suggests 3
+    DISCREPANCY: Task 0: Text mismatch: DB='Stop•Breathe•Reset', AI='Stop'
+    DISCREPANCY: Task 0: Quantity mismatch: DB=4, AI=1
+    AI Suggestion (3 tasks):
+      [
+  {
+    customText: 'Stop',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Breathe',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Reset',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Stop•Breathe•Reset',
+    color_1: 'Dark Blue',
+    color_2: null,
+    quantity: 4,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 1089 ---
+  Item ID: 1090
+    DISCREPANCY: Task count mismatch: DB has 1, AI suggests 3
+    DISCREPANCY: Task 0: Text mismatch: DB='Stop•Breathe•Reset', AI='Stop'
+    DISCREPANCY: Task 0: Quantity mismatch: DB=5, AI=1
+    AI Suggestion (3 tasks):
+      [
+  {
+    customText: 'Stop',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Breathe',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Reset',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Stop•Breathe•Reset',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 5,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 1090 ---
+  Item ID: 1091
+    DISCREPANCY: Task count mismatch: DB has 1, AI suggests 3
+    DISCREPANCY: Task 0: Text mismatch: DB='Actually•I•Can', AI='Actually'
+    AI Suggestion (3 tasks):
+      [
+  {
+    customText: 'Actually',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'I',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Can',
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Actually•I•Can',
+    color_1: 'Dark Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 1091 ---
+=== END Order ID: 621 ===
+{"level":30,"time":1745184970390,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 620 (026-2889553-9253166) ---"}
+{"level":30,"time":1745184970390,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 620] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184972125,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 620] Call response status: 200 (1735ms)."}
+{"level":30,"time":1745184972131,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 620] AI response validated."}
+{"level":30,"time":1745184972131,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 620] No significant discrepancies found."}
+{"level":30,"time":1745184972131,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 619 (3655850966) ---"}
+{"level":30,"time":1745184972132,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 619] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184976713,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 619] Call response status: 200 (4581ms)."}
+{"level":30,"time":1745184976714,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 619] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 619 (3655850966) ===
+  Item ID: 1083
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Dark Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: null,
+    color_1: 'Dark Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1083 ---
+=== END Order ID: 619 ===
+{"level":30,"time":1745184976715,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 618 (02-12987-48140) ---"}
+{"level":30,"time":1745184976715,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 618] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184978974,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 618] Call response status: 200 (2259ms)."}
+{"level":30,"time":1745184978978,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 618] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 618 (02-12987-48140) ===
+  Item ID: 1074
+    DISCREPANCY: Task count mismatch: DB has 2, AI suggests 1
+    DISCREPANCY: Task 0: Quantity mismatch: DB=1, AI=2
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Ynwa',
+    color1: 'Red',
+    color2: null,
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'Single personalization found but Order Qty is 2',
+    annotation: null
+  }
+]
+    Existing Tasks (2 tasks):
+      [
+  {
+    custom_text: 'Ynwa',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  },
+  {
+    custom_text: 'Ynwa',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1074 ---
+=== END Order ID: 618 ===
+{"level":30,"time":1745184978978,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 617 (3655769102) ---"}
+{"level":30,"time":1745184978978,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 617] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184983295,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 617] Call response status: 200 (4317ms)."}
+{"level":30,"time":1745184983299,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 617] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 617 (3655769102) ===
+  Item ID: 1069
+    DISCREPANCY: Task count mismatch: DB has 1, AI suggests 2
+    DISCREPANCY: Task 0: Text mismatch: DB='Ketxialis
+Salgado', AI='Ketxialis'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Magenta'
+    DISCREPANCY: Task 0: Quantity mismatch: DB=2, AI=1
+    AI Suggestion (2 tasks):
+      [
+  {
+    customText: 'Ketxialis',
+    color1: 'Light Blue',
+    color2: 'Magenta',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Salgado',
+    color1: 'Light Blue',
+    color2: 'Magenta',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ketxialis\nSalgado',
+    color_1: 'Light Blue',
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 1069 ---
+=== END Order ID: 617 ===
+{"level":30,"time":1745184983300,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 616 (202-9474947-1322741) ---"}
+{"level":30,"time":1745184983300,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 616] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184986168,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 616] Call response status: 200 (2868ms)."}
+{"level":30,"time":1745184986174,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 616] AI response validated."}
+{"level":30,"time":1745184986175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 616] No significant discrepancies found."}
+{"level":30,"time":1745184986175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 615 (203-1931959-1639520) ---"}
+{"level":30,"time":1745184986175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 615] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184990074,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 615] Call response status: 200 (3899ms)."}
+{"level":30,"time":1745184990074,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 615] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 615 (203-1931959-1639520) ===
+  Item ID: 1036
+    DISCREPANCY: Task 0: Text mismatch: DB='Nancy', AI='null'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pink', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Nancy',
+    color_1: 'Pink',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 1036 ---
+  Item ID: 1037
+    DISCREPANCY: Task 0: Text mismatch: DB='Brooklyn', AI='null'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pink', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Brooklyn',
+    color_1: 'Pink',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 1037 ---
+=== END Order ID: 615 ===
+{"level":30,"time":1745184990075,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 613 (10-12975-83458) ---"}
+{"level":30,"time":1745184990076,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 613] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184992618,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 613] Call response status: 200 (2542ms)."}
+{"level":30,"time":1745184992624,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 613] AI response validated."}
+{"level":30,"time":1745184992624,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 613] No significant discrepancies found."}
+{"level":30,"time":1745184992624,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 612 (3662059003) ---"}
+{"level":30,"time":1745184992624,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 612] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184995080,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 612] Call response status: 200 (2456ms)."}
+{"level":30,"time":1745184995087,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 612] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 612 (3662059003) ===
+  Item ID: 1028
+    DISCREPANCY: Task 0: Text mismatch: DB='N/A', AI='null'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'N/A',
+    color_1: 'Pink',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1028 ---
+=== END Order ID: 612 ===
+{"level":30,"time":1745184995087,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 611 (18-12965-64067) ---"}
+{"level":30,"time":1745184995087,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 611] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184997164,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 611] Call response status: 200 (2077ms)."}
+{"level":30,"time":1745184997175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 611] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 611 (18-12965-64067) ===
+  Item ID: 1023
+    DISCREPANCY: Task 0: Text mismatch: DB='Dixon KP9', AI='Dixon Kp9'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Dixon Kp9',
+    color1: 'Blue',
+    color2: null,
+    quantity: 3,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Dixon KP9',
+    color_1: 'Blue',
+    color_2: null,
+    quantity: 3,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1023 ---
+=== END Order ID: 611 ===
+{"level":30,"time":1745184997175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 610 (202-4734153-8919531) ---"}
+{"level":30,"time":1745184997175,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 610] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745184998863,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 610] Call response status: 200 (1688ms)."}
+{"level":30,"time":1745184998870,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 610] AI response validated."}
+{"level":30,"time":1745184998870,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 610] No significant discrepancies found."}
+{"level":30,"time":1745184998871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 609 (205-5234382-5374743) ---"}
+{"level":30,"time":1745184998871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 609] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185000762,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 609] Call response status: 200 (1891ms)."}
+{"level":30,"time":1745185000769,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 609] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 609 (205-5234382-5374743) ===
+  Item ID: 1021
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Villa',
+    color1: 'Red',
+    color2: null,
+    quantity: 3,
+    needsReview: true,
+    reviewReason: 'Single personalization found but Order Qty is 3',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Villa',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 3,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 1021 ---
+=== END Order ID: 609 ===
+{"level":30,"time":1745185000769,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 608 (206-9606887-2022751) ---"}
+{"level":30,"time":1745185000769,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 608] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185003179,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 608] Call response status: 200 (2410ms)."}
+{"level":30,"time":1745185003184,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 608] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 608 (206-9606887-2022751) ===
+  Item ID: 1020
+    DISCREPANCY: Task 0: Text mismatch: DB='4335 BRYSON', AI='4335 Bryson'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: '4335 Bryson',
+    color1: 'Dark Blue',
+    color2: 'Blue',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: '4335 BRYSON',
+    color_1: 'Dark Blue',
+    color_2: 'Blue',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1020 ---
+=== END Order ID: 608 ===
+{"level":30,"time":1745185003184,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 607 (15-12969-08189) ---"}
+{"level":30,"time":1745185003184,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 607] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185008209,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 607] Call response status: 200 (5025ms)."}
+{"level":30,"time":1745185008216,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 607] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 607 (15-12969-08189) ===
+  Item ID: 1015
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Preston',
+    color1: 'Light Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Preston',
+    color_1: 'Light Blue',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1015 ---
+=== END Order ID: 607 ===
+{"level":30,"time":1745185008216,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 606 (3661955555) ---"}
+{"level":30,"time":1745185008216,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 606] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185010462,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 606] Call response status: 200 (2246ms)."}
+{"level":30,"time":1745185010463,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 606] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 606 (3661955555) ===
+  Item ID: 1014
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Blue'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Magenta'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Bobby',
+    color1: 'Blue',
+    color2: 'Magenta',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Bobby',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 1014 ---
+=== END Order ID: 606 ===
+{"level":30,"time":1745185010463,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 605 (3655324086) ---"}
+{"level":30,"time":1745185010463,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 605] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185012026,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 605] Call response status: 200 (1563ms)."}
+{"level":30,"time":1745185012027,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 605] AI response validated."}
+{"level":30,"time":1745185012027,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 605] No significant discrepancies found."}
+{"level":30,"time":1745185012028,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 604 (3661978025) ---"}
+{"level":30,"time":1745185012028,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 604] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185013924,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 604] Call response status: 200 (1896ms)."}
+{"level":30,"time":1745185013929,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 604] AI response validated."}
+{"level":30,"time":1745185013929,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 604] No significant discrepancies found."}
+{"level":30,"time":1745185013929,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 603 (3655321708) ---"}
+{"level":30,"time":1745185013929,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 603] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185019551,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 603] Call response status: 200 (5622ms)."}
+{"level":30,"time":1745185019561,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 603] AI response validated."}
+{"level":30,"time":1745185019561,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 603] No significant discrepancies found."}
+{"level":30,"time":1745185019561,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 602 (205-8823661-5729936) ---"}
+{"level":30,"time":1745185019561,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 602] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185023232,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 602] Call response status: 200 (3671ms)."}
+{"level":30,"time":1745185023237,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 602] AI response validated."}
+{"level":30,"time":1745185023237,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 602] No significant discrepancies found."}
+{"level":30,"time":1745185023238,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 601 (20-12962-62455) ---"}
+{"level":30,"time":1745185023238,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 601] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185025020,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 601] Call response status: 200 (1782ms)."}
+{"level":30,"time":1745185025022,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 601] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 601 (20-12962-62455) ===
+  Item ID: 1003
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Scottie',
+    color1: 'Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Scottie',
+    color_1: 'Blue',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 1003 ---
+=== END Order ID: 601 ===
+{"level":30,"time":1745185025023,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 600 (204-1479145-7584305) ---"}
+{"level":30,"time":1745185025023,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 600] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185026758,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 600] Call response status: 200 (1735ms)."}
+{"level":30,"time":1745185026761,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 600] AI response validated."}
+{"level":30,"time":1745185026761,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 600] No significant discrepancies found."}
+{"level":30,"time":1745185026761,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 599 (3661884179) ---"}
+{"level":30,"time":1745185026761,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 599] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185030167,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 599] Call response status: 200 (3406ms)."}
+{"level":30,"time":1745185030179,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 599] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 599 (3661884179) ===
+  Item ID: 996
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Light Blue'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Black'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Stan',
+    color1: 'Light Blue',
+    color2: 'Black',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Stan',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 996 ---
+  Item ID: 997
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Orange'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Dark Blue'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Ernie',
+    color1: 'Orange',
+    color2: 'Dark Blue',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ernie',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 997 ---
+=== END Order ID: 599 ===
+{"level":30,"time":1745185030179,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 598 (205-8979897-6718748) ---"}
+{"level":30,"time":1745185030180,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 598] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185033398,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 598] Call response status: 200 (3218ms)."}
+{"level":30,"time":1745185033402,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 598] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 598 (205-8979897-6718748) ===
+  Item ID: 995
+    DISCREPANCY: Task 0: Text mismatch: DB='Ryan ', AI='null'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Red', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ryan ',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 995 ---
+=== END Order ID: 598 ===
+{"level":30,"time":1745185033402,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 597 (203-8764111-2179548) ---"}
+{"level":30,"time":1745185033402,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 597] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185035144,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 597] Call response status: 200 (1742ms)."}
+{"level":30,"time":1745185035152,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 597] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 597 (203-8764111-2179548) ===
+  Item ID: 994
+    DISCREPANCY: Task 0: Text mismatch: DB='Bryan.', AI='Bryan'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Bryan',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Bryan.',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 994 ---
+=== END Order ID: 597 ===
+{"level":30,"time":1745185035152,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 596 (3661825001) ---"}
+{"level":30,"time":1745185035153,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 596] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185036878,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 596] Call response status: 200 (1725ms)."}
+{"level":30,"time":1745185036880,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 596] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 596 (3661825001) ===
+  Item ID: 989
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Sofia#19',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Sofia#19',
+    color_1: 'Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 989 ---
+=== END Order ID: 596 ===
+{"level":30,"time":1745185036881,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 595 (04-12982-42737) ---"}
+{"level":30,"time":1745185036881,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 595] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185038615,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 595] Call response status: 200 (1734ms)."}
+{"level":30,"time":1745185038616,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 595] AI response validated."}
+{"level":30,"time":1745185038616,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 595] No significant discrepancies found."}
+{"level":30,"time":1745185038616,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 594 (203-5320467-6461163) ---"}
+{"level":30,"time":1745185038616,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 594] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185040474,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 594] Call response status: 200 (1858ms)."}
+{"level":30,"time":1745185040475,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 594] AI response validated."}
+{"level":30,"time":1745185040475,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 594] No significant discrepancies found."}
+{"level":30,"time":1745185040475,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 593 (02-12983-59653) ---"}
+{"level":30,"time":1745185040475,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 593] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185042385,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 593] Call response status: 200 (1910ms)."}
+{"level":30,"time":1745185042387,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 593] AI response validated."}
+{"level":30,"time":1745185042387,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 593] No significant discrepancies found."}
+{"level":30,"time":1745185042387,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 591 (26-12954-04628) ---"}
+{"level":30,"time":1745185042387,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 591] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185043911,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 591] Call response status: 200 (1524ms)."}
+{"level":30,"time":1745185043916,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 591] AI response validated."}
+{"level":30,"time":1745185043916,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 591] No significant discrepancies found."}
+{"level":30,"time":1745185043916,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 589 (01-12985-87137) ---"}
+{"level":30,"time":1745185043916,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 589] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185045706,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 589] Call response status: 200 (1789ms)."}
+{"level":30,"time":1745185045707,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 589] AI response validated."}
+{"level":30,"time":1745185045707,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 589] No significant discrepancies found."}
+{"level":30,"time":1745185045707,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 588 (01-12985-84840) ---"}
+{"level":30,"time":1745185045707,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 588] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185049916,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 588] Call response status: 200 (4209ms)."}
+{"level":30,"time":1745185049933,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 588] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 588 (01-12985-84840) ===
+  Item ID: 978
+    DISCREPANCY: Task count mismatch: DB has 1, AI suggests 4
+    DISCREPANCY: Task 0: Text mismatch: DB='Evelyn Alice Joe Livia', AI='Evelyn'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Quantity mismatch: DB=4, AI=1
+    AI Suggestion (4 tasks):
+      [
+  {
+    customText: 'Evelyn',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Alice',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Joe',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  },
+  {
+    customText: 'Livia',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Evelyn Alice Joe Livia',
+    color_1: 'Green',
+    color_2: null,
+    quantity: 4,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 978 ---
+=== END Order ID: 588 ===
+{"level":30,"time":1745185049934,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 587 (3661713623) ---"}
+{"level":30,"time":1745185049934,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 587] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185051749,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 587] Call response status: 200 (1815ms)."}
+{"level":30,"time":1745185051753,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 587] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 587 (3661713623) ===
+  Item ID: 977
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Black'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='White'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Charlie',
+    color1: 'Black',
+    color2: 'White',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Charlie',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 977 ---
+=== END Order ID: 587 ===
+{"level":30,"time":1745185051754,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 586 (206-4664286-2052351) ---"}
+{"level":30,"time":1745185051754,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 586] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185054380,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 586] Call response status: 200 (2626ms)."}
+{"level":30,"time":1745185054385,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 586] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 586 (206-4664286-2052351) ===
+  Item ID: 976
+    DISCREPANCY: Task 0: Color2 mismatch: DB='Bone White', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Zayed',
+    color1: 'Black',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'Unknown color: Bone White',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Zayed',
+    color_1: 'Black',
+    color_2: 'Bone White',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 976 ---
+=== END Order ID: 586 ===
+{"level":30,"time":1745185054385,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 585 (206-0964511-1935554) ---"}
+{"level":30,"time":1745185054386,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 585] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185055959,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 585] Call response status: 200 (1573ms)."}
+{"level":30,"time":1745185055962,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 585] AI response validated."}
+{"level":30,"time":1745185055962,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 585] No significant discrepancies found."}
+{"level":30,"time":1745185055962,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 584 (14-12969-37547) ---"}
+{"level":30,"time":1745185055962,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 584] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185060259,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 584] Call response status: 200 (4297ms)."}
+{"level":30,"time":1745185060266,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 584] AI response validated."}
+{"level":30,"time":1745185060267,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 584] No significant discrepancies found."}
+{"level":30,"time":1745185060267,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 583 (203-5446716-4199558) ---"}
+{"level":30,"time":1745185060267,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 583] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185064858,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 583] Call response status: 200 (4591ms)."}
+{"level":30,"time":1745185064861,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 583] AI response validated."}
+{"level":30,"time":1745185064861,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 583] No significant discrepancies found."}
+{"level":30,"time":1745185064861,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 582 (3661734895) ---"}
+{"level":30,"time":1745185064861,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 582] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185066622,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 582] Call response status: 200 (1761ms)."}
+{"level":30,"time":1745185066623,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 582] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 582 (3661734895) ===
+  Item ID: 969
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Light Blue'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Yellow'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Cooper',
+    color1: 'Light Blue',
+    color2: 'Yellow',
+    quantity: 2,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Cooper',
+    color_1: null,
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 969 ---
+=== END Order ID: 582 ===
+{"level":30,"time":1745185066623,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 581 (12-12972-09310) ---"}
+{"level":30,"time":1745185066623,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 581] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185068284,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 581] Call response status: 200 (1661ms)."}
+{"level":30,"time":1745185068288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 581] AI response validated."}
+{"level":30,"time":1745185068288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 581] No significant discrepancies found."}
+{"level":30,"time":1745185068288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 580 (026-6941935-8678702) ---"}
+{"level":30,"time":1745185068288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 580] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185071979,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 580] Call response status: 200 (3691ms)."}
+{"level":30,"time":1745185071980,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 580] AI response validated."}
+{"level":30,"time":1745185071980,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 580] No significant discrepancies found."}
+{"level":30,"time":1745185071980,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 579 (202-3946477-1611557) ---"}
+{"level":30,"time":1745185071980,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 579] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185073766,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 579] Call response status: 200 (1786ms)."}
+{"level":30,"time":1745185073774,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 579] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 579 (202-3946477-1611557) ===
+  Item ID: 964
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Stretch',
+    color1: 'Red',
+    color2: null,
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'Single personalization found but Order Qty is 2',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Stretch',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 964 ---
+=== END Order ID: 579 ===
+{"level":30,"time":1745185073774,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 578 (18-12964-54495) ---"}
+{"level":30,"time":1745185073774,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 578] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185075889,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 578] Call response status: 200 (2115ms)."}
+{"level":30,"time":1745185075894,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 578] AI response validated."}
+{"level":30,"time":1745185075894,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 578] No significant discrepancies found."}
+{"level":30,"time":1745185075894,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 577 (3661777951) ---"}
+{"level":30,"time":1745185075894,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 577] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185077839,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 577] Call response status: 200 (1945ms)."}
+{"level":30,"time":1745185077840,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 577] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 577 (3661777951) ===
+  Item ID: 962
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Yellow'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Parker',
+    color1: 'Yellow',
+    color2: 'Peak Green',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Parker',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 962 ---
+=== END Order ID: 577 ===
+{"level":30,"time":1745185077841,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 576 (026-9930693-5998738) ---"}
+{"level":30,"time":1745185077841,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 576] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185081017,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 576] Call response status: 200 (3176ms)."}
+{"level":30,"time":1745185081018,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 576] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 576 (026-9930693-5998738) ===
+  Item ID: 960
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Olivia',
+    color1: 'Peak Green',
+    color2: 'Peak Green',
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'Unknown color: Green',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Olivia',
+    color_1: 'Green',
+    color_2: 'Peak Green',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 960 ---
+=== END Order ID: 576 ===
+{"level":30,"time":1745185081019,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 575 (202-9421184-5686740) ---"}
+{"level":30,"time":1745185081019,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 575] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185083281,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 575] Call response status: 200 (2262ms)."}
+{"level":30,"time":1745185083288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 575] AI response validated."}
+{"level":30,"time":1745185083288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 575] No significant discrepancies found."}
+{"level":30,"time":1745185083288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 574 (12-12972-25832) ---"}
+{"level":30,"time":1745185083288,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 574] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185085551,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 574] Call response status: 200 (2263ms)."}
+{"level":30,"time":1745185085552,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 574] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 574 (12-12972-25832) ===
+  Item ID: 957
+    DISCREPANCY: Task 0: Text mismatch: DB='CGW', AI='Cgw'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Cgw',
+    color1: 'Yellow',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'CGW',
+    color_1: 'Yellow',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 957 ---
+=== END Order ID: 574 ===
+{"level":30,"time":1745185085553,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 573 (026-6071403-3861935) ---"}
+{"level":30,"time":1745185085553,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 573] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185087158,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 573] Call response status: 200 (1605ms)."}
+{"level":30,"time":1745185087161,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 573] AI response validated."}
+{"level":30,"time":1745185087162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 573] No significant discrepancies found."}
+{"level":30,"time":1745185087162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 572 (026-3323307-9499567) ---"}
+{"level":30,"time":1745185087162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 572] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185088808,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 572] Call response status: 200 (1646ms)."}
+{"level":30,"time":1745185088811,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 572] AI response validated."}
+{"level":30,"time":1745185088811,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 572] No significant discrepancies found."}
+{"level":30,"time":1745185088811,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 571 (205-3211770-9599524) ---"}
+{"level":30,"time":1745185088811,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 571] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185090270,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 571] Call response status: 200 (1459ms)."}
+{"level":30,"time":1745185090271,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 571] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 571 (205-3211770-9599524) ===
+  Item ID: 954
+    DISCREPANCY: Task 0: Text mismatch: DB='Akki', AI='null'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Magenta', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: null,
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Akki',
+    color_1: 'Magenta',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 954 ---
+=== END Order ID: 571 ===
+{"level":30,"time":1745185090272,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 570 (202-7919203-4429935) ---"}
+{"level":30,"time":1745185090272,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 570] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185092215,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 570] Call response status: 200 (1943ms)."}
+{"level":30,"time":1745185092218,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 570] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 570 (202-7919203-4429935) ===
+  Item ID: 953
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pine Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Ralph',
+    color1: 'Peak Green',
+    color2: 'White',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ralph',
+    color_1: 'Pine Green',
+    color_2: 'White',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 953 ---
+=== END Order ID: 570 ===
+{"level":30,"time":1745185092219,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 568 (026-3120762-6851536) ---"}
+{"level":30,"time":1745185092219,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 568] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185093748,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 568] Call response status: 200 (1529ms)."}
+{"level":30,"time":1745185093754,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 568] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 568 (026-3120762-6851536) ===
+  Item ID: 951
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: null,
+    color2: null,
+    quantity: 2,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: null,
+    color_1: null,
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 951 ---
+=== END Order ID: 568 ===
+{"level":30,"time":1745185093754,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 567 (205-9799653-6277920) ---"}
+{"level":30,"time":1745185093754,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 567] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185096003,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 567] Call response status: 200 (2249ms)."}
+{"level":30,"time":1745185096005,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 567] AI response validated."}
+{"level":30,"time":1745185096005,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 567] No significant discrepancies found."}
+{"level":30,"time":1745185096005,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 565 (3661272151) ---"}
+{"level":30,"time":1745185096005,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 565] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185097747,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 565] Call response status: 200 (1742ms)."}
+{"level":30,"time":1745185097748,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 565] AI response validated."}
+{"level":30,"time":1745185097748,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 565] No significant discrepancies found."}
+{"level":30,"time":1745185097748,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 563 (#3838) ---"}
+{"level":30,"time":1745185097748,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 563] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185099700,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 563] Call response status: 200 (1952ms)."}
+{"level":30,"time":1745185099709,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 563] AI response validated."}
+{"level":30,"time":1745185099709,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 563] No significant discrepancies found."}
+{"level":30,"time":1745185099709,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 562 (09-12972-75635) ---"}
+{"level":30,"time":1745185099709,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 562] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185102465,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 562] Call response status: 200 (2756ms)."}
+{"level":30,"time":1745185102467,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 562] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 562 (09-12972-75635) ===
+  Item ID: 944
+    DISCREPANCY: Task 0: Text mismatch: DB='STOPP', AI='Stopp'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Stopp',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'STOPP',
+    color_1: 'Peak Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 944 ---
+  Item ID: 945
+    DISCREPANCY: Task 0: Text mismatch: DB='STOPP', AI='Stopp'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Stopp',
+    color1: 'Fire Engine Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'STOPP',
+    color_1: 'Fire Engine Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 945 ---
+=== END Order ID: 562 ===
+{"level":30,"time":1745185102468,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 561 (203-9388044-4983518) ---"}
+{"level":30,"time":1745185102468,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 561] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185104324,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 561] Call response status: 200 (1856ms)."}
+{"level":30,"time":1745185104330,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 561] AI response validated."}
+{"level":30,"time":1745185104330,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 561] No significant discrepancies found."}
+{"level":30,"time":1745185104330,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 560 (206-6019851-7681114) ---"}
+{"level":30,"time":1745185104330,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 560] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185106065,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 560] Call response status: 200 (1735ms)."}
+{"level":30,"time":1745185106070,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 560] AI response validated."}
+{"level":30,"time":1745185106070,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 560] No significant discrepancies found."}
+{"level":30,"time":1745185106070,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 559 (026-9141863-3142748) ---"}
+{"level":30,"time":1745185106070,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 559] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185108706,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 559] Call response status: 200 (2636ms)."}
+{"level":30,"time":1745185108713,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 559] AI response validated."}
+{"level":30,"time":1745185108713,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 559] No significant discrepancies found."}
+{"level":30,"time":1745185108713,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 558 (21-12957-34735) ---"}
+{"level":30,"time":1745185108713,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 558] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185110375,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 558] Call response status: 200 (1662ms)."}
+{"level":30,"time":1745185110380,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 558] AI response validated."}
+{"level":30,"time":1745185110380,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 558] No significant discrepancies found."}
+{"level":30,"time":1745185110380,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 557 (202-4041746-3809123) ---"}
+{"level":30,"time":1745185110380,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 557] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185112896,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 557] Call response status: 200 (2516ms)."}
+{"level":30,"time":1745185112901,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 557] AI response validated."}
+{"level":30,"time":1745185112901,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 557] No significant discrepancies found."}
+{"level":30,"time":1745185112901,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 556 (204-4559925-0849946) ---"}
+{"level":30,"time":1745185112901,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 556] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185115855,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 556] Call response status: 200 (2954ms)."}
+{"level":30,"time":1745185115859,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 556] AI response validated."}
+{"level":30,"time":1745185115859,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 556] No significant discrepancies found."}
+{"level":30,"time":1745185115859,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 555 (203-0067356-3305936) ---"}
+{"level":30,"time":1745185115859,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 555] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185117705,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 555] Call response status: 200 (1846ms)."}
+{"level":30,"time":1745185117708,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 555] AI response validated."}
+{"level":30,"time":1745185117708,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 555] No significant discrepancies found."}
+{"level":30,"time":1745185117708,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 553 (03-12979-89363) ---"}
+{"level":30,"time":1745185117708,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 553] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185121142,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 553] Call response status: 200 (3434ms)."}
+{"level":30,"time":1745185121143,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 553] AI response validated."}
+{"level":30,"time":1745185121143,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 553] No significant discrepancies found."}
+{"level":30,"time":1745185121144,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 551 (06-12976-20687) ---"}
+{"level":30,"time":1745185121144,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 551] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185122803,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 551] Call response status: 200 (1659ms)."}
+{"level":30,"time":1745185122804,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 551] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 551 (06-12976-20687) ===
+  Item ID: 933
+    DISCREPANCY: Task 0: Text mismatch: DB='SHIRTY BERTY', AI='Shirty Berty'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Shirty Berty',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'SHIRTY BERTY',
+    color_1: 'Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from eBay Customer Notes (Special Case)'
+  }
+]
+  --- End Item 933 ---
+=== END Order ID: 551 ===
+{"level":30,"time":1745185122805,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 550 (205-7030749-2140360) ---"}
+{"level":30,"time":1745185122805,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 550] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185124431,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 550] Call response status: 200 (1626ms)."}
+{"level":30,"time":1745185124433,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 550] AI response validated."}
+{"level":30,"time":1745185124433,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 550] No significant discrepancies found."}
+{"level":30,"time":1745185124433,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 549 (203-0553323-8161168) ---"}
+{"level":30,"time":1745185124433,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 549] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185128724,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 549] Call response status: 200 (4291ms)."}
+{"level":30,"time":1745185128728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 549] AI response validated."}
+{"level":30,"time":1745185128728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 549] No significant discrepancies found."}
+{"level":30,"time":1745185128728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 548 (203-8388084-3881143) ---"}
+{"level":30,"time":1745185128728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 548] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185131414,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 548] Call response status: 200 (2686ms)."}
+{"level":30,"time":1745185131418,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 548] AI response validated."}
+{"level":30,"time":1745185131418,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 548] No significant discrepancies found."}
+{"level":30,"time":1745185131418,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 545 (026-2800075-3153113) ---"}
+{"level":30,"time":1745185131418,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 545] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185133101,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 545] Call response status: 200 (1683ms)."}
+{"level":30,"time":1745185133102,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 545] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 545 (026-2800075-3153113) ===
+  Item ID: 926
+    DISCREPANCY: Task 0: Text mismatch: DB='Ruby ', AI='Ruby'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Ruby',
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ruby ',
+    color_1: 'Pink',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 926 ---
+=== END Order ID: 545 ===
+{"level":30,"time":1745185133102,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 544 (20-12957-97441) ---"}
+{"level":30,"time":1745185133102,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 544] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185134984,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 544] Call response status: 200 (1882ms)."}
+{"level":30,"time":1745185134989,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 544] AI response validated."}
+{"level":30,"time":1745185134989,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 544] No significant discrepancies found."}
+{"level":30,"time":1745185134989,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 543 (06-12975-68566) ---"}
+{"level":30,"time":1745185134989,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 543] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185136938,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 543] Call response status: 200 (1949ms)."}
+{"level":30,"time":1745185136946,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 543] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 543 (06-12975-68566) ===
+  Item ID: 924
+    DISCREPANCY: Task 0: Text mismatch: DB='WENDY', AI='Wendy'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Wendy',
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'WENDY',
+    color_1: 'Pink',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from eBay Customer Notes (Special Case)'
+  }
+]
+  --- End Item 924 ---
+=== END Order ID: 543 ===
+{"level":30,"time":1745185136947,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 541 (206-9256584-3032349) ---"}
+{"level":30,"time":1745185136947,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 541] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185138669,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 541] Call response status: 200 (1722ms)."}
+{"level":30,"time":1745185138670,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 541] AI response validated."}
+{"level":30,"time":1745185138670,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 541] No significant discrepancies found."}
+{"level":30,"time":1745185138670,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 540 (206-6386724-4534720) ---"}
+{"level":30,"time":1745185138670,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 540] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185140165,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 540] Call response status: 200 (1495ms)."}
+{"level":30,"time":1745185140166,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 540] AI response validated."}
+{"level":30,"time":1745185140166,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 540] No significant discrepancies found."}
+{"level":30,"time":1745185140166,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 538 (202-7000257-9045951) ---"}
+{"level":30,"time":1745185140166,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 538] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185141693,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 538] Call response status: 200 (1527ms)."}
+{"level":30,"time":1745185141699,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 538] AI response validated."}
+{"level":30,"time":1745185141699,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 538] No significant discrepancies found."}
+{"level":30,"time":1745185141699,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 537 (203-9580217-8667514) ---"}
+{"level":30,"time":1745185141699,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 537] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185145048,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 537] Call response status: 200 (3349ms)."}
+{"level":30,"time":1745185145056,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 537] AI response validated."}
+{"level":30,"time":1745185145056,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 537] No significant discrepancies found."}
+{"level":30,"time":1745185145056,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 534 (204-1836577-9295566) ---"}
+{"level":30,"time":1745185145056,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 534] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185152808,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 534] Call response status: 200 (7752ms)."}
+{"level":30,"time":1745185152813,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 534] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 534 (204-1836577-9295566) ===
+  Item ID: 904
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pine Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Arian Dada',
+    color1: 'Peak Green',
+    color2: 'Silver',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Arian Dada',
+    color_1: 'Pine Green',
+    color_2: 'Silver',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 904 ---
+  Item ID: 906
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pine Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Aaral Didi',
+    color1: 'Peak Green',
+    color2: 'White',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Aaral Didi',
+    color_1: 'Pine Green',
+    color_2: 'White',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 906 ---
+=== END Order ID: 534 ===
+{"level":30,"time":1745185152814,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 532 (3660574417) ---"}
+{"level":30,"time":1745185152814,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 532] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185154358,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 532] Call response status: 200 (1544ms)."}
+{"level":30,"time":1745185154359,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 532] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 532 (3660574417) ===
+  Item ID: 901
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Mini Handball',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Mini Handball',
+    color_1: 'Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 901 ---
+=== END Order ID: 532 ===
+{"level":30,"time":1745185154359,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 528 (13-12966-21589) ---"}
+{"level":30,"time":1745185154359,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 528] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185156218,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 528] Call response status: 200 (1859ms)."}
+{"level":30,"time":1745185156228,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 528] AI response validated."}
+{"level":30,"time":1745185156228,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 528] No significant discrepancies found."}
+{"level":30,"time":1745185156228,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 527 (026-1422434-0340341) ---"}
+{"level":30,"time":1745185156228,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 527] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185167437,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 527] Call response status: 200 (11209ms)."}
+{"level":30,"time":1745185167442,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 527] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 527 (026-1422434-0340341) ===
+  Item ID: 893
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Emily',
+    color1: 'Peak Green',
+    color2: 'Peak Green',
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'UNKNOWN_COLOR',
+    annotation: 'Mapped Green to Peak Green for color1'
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Emily',
+    color_1: 'Green',
+    color_2: 'Peak Green',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 893 ---
+  Item ID: 894
+    DISCREPANCY: Task 0: Color2 mismatch: DB='Bone White', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Theo',
+    color1: 'Yellow',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'UNKNOWN_COLOR',
+    annotation: 'Unknown color2: Bone White'
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Theo',
+    color_1: 'Yellow',
+    color_2: 'Bone White',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 894 ---
+  Item ID: 896
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Ava',
+    color1: 'Peak Green',
+    color2: 'Peak Green',
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'UNKNOWN_COLOR',
+    annotation: 'Mapped Green to Peak Green for color1'
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Ava',
+    color_1: 'Green',
+    color_2: 'Peak Green',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 896 ---
+=== END Order ID: 527 ===
+{"level":30,"time":1745185167443,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 523 (204-0844454-7089115) ---"}
+{"level":30,"time":1745185167443,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 523] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185170428,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 523] Call response status: 200 (2985ms)."}
+{"level":30,"time":1745185170429,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 523] AI response validated."}
+{"level":30,"time":1745185170430,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 523] No significant discrepancies found."}
+{"level":30,"time":1745185170430,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 522 (3660126939) ---"}
+{"level":30,"time":1745185170430,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 522] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185172147,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 522] Call response status: 200 (1717ms)."}
+{"level":30,"time":1745185172151,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 522] AI response validated."}
+{"level":30,"time":1745185172151,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 522] No significant discrepancies found."}
+{"level":30,"time":1745185172151,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 518 (06-12973-70054) ---"}
+{"level":30,"time":1745185172151,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 518] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185176492,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 518] Call response status: 200 (4341ms)."}
+{"level":30,"time":1745185176493,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 518] AI response validated."}
+{"level":30,"time":1745185176493,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 518] No significant discrepancies found."}
+{"level":30,"time":1745185176493,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 514 (204-1715009-0162749) ---"}
+{"level":30,"time":1745185176493,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 514] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185178421,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 514] Call response status: 200 (1928ms)."}
+{"level":30,"time":1745185178424,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 514] AI response validated."}
+{"level":30,"time":1745185178424,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 514] No significant discrepancies found."}
+{"level":30,"time":1745185178424,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 513 (026-0887867-5229123) ---"}
+{"level":30,"time":1745185178424,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 513] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185182237,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 513] Call response status: 200 (3813ms)."}
+{"level":30,"time":1745185182248,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 513] AI response validated."}
+{"level":30,"time":1745185182248,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 513] No significant discrepancies found."}
+{"level":30,"time":1745185182248,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 510 (3660439145) ---"}
+{"level":30,"time":1745185182248,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 510] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185184005,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 510] Call response status: 200 (1757ms)."}
+{"level":30,"time":1745185184008,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 510] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 510 (3660439145) ===
+  Item ID: 868
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Cold White'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Pink'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Penny',
+    color1: 'Cold White',
+    color2: 'Pink',
+    quantity: 2,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Penny',
+    color_1: null,
+    color_2: null,
+    quantity: 2,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 868 ---
+=== END Order ID: 510 ===
+{"level":30,"time":1745185184008,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 506 (205-6903991-8214743) ---"}
+{"level":30,"time":1745185184009,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 506] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185192067,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 506] Call response status: 200 (8058ms)."}
+{"level":30,"time":1745185192076,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 506] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 506 (205-6903991-8214743) ===
+  Item ID: 859
+    DISCREPANCY: Task 0: Text mismatch: DB='Kane ', AI='Kane'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Kane',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Kane ',
+    color_1: 'Peak Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 859 ---
+  Item ID: 860
+    DISCREPANCY: Task 0: Text mismatch: DB='Luke ', AI='Luke'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Luke',
+    color1: 'Red',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Luke ',
+    color_1: 'Red',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 860 ---
+  Item ID: 861
+    DISCREPANCY: Task 0: Text mismatch: DB='Daisy ', AI='Daisy'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Daisy',
+    color1: 'Yellow',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Daisy ',
+    color_1: 'Yellow',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 861 ---
+  Item ID: 862
+    DISCREPANCY: Task 0: Text mismatch: DB='Amos ', AI='Amos'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Amos',
+    color1: 'Orange',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Amos ',
+    color_1: 'Orange',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 862 ---
+  Item ID: 864
+    DISCREPANCY: Task 0: Text mismatch: DB='Bobby ', AI='Bobby'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Bobby',
+    color1: 'Light Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Bobby ',
+    color_1: 'Light Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 864 ---
+=== END Order ID: 506 ===
+{"level":30,"time":1745185192077,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 503 (16-12959-55665) ---"}
+{"level":30,"time":1745185192077,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 503] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185195130,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 503] Call response status: 200 (3053ms)."}
+{"level":30,"time":1745185195141,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 503] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 503 (16-12959-55665) ===
+  Item ID: 853
+    DISCREPANCY: Task 0: Text mismatch: DB='Dylan Tablet', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Dylan Tablet',
+    color_1: 'Peak Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from eBay Customer Notes (Special Case)'
+  }
+]
+  --- End Item 853 ---
+  Item ID: 854
+    DISCREPANCY: Task 0: Text mismatch: DB='', AI='null'
+    DISCREPANCY: Task 0: Color1 mismatch: DB='', AI='Pink'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: '',
+    color_1: '',
+    color_2: '',
+    quantity: 1,
+    needs_review: true,
+    review_reason: 'No personalization details found',
+    annotation: null
+  }
+]
+  --- End Item 854 ---
+=== END Order ID: 503 ===
+{"level":30,"time":1745185195142,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 501 (026-7249305-5336315) ---"}
+{"level":30,"time":1745185195142,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 501] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185207069,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 501] Call response status: 200 (11927ms)."}
+{"level":30,"time":1745185207086,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 501] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 501 (026-7249305-5336315) ===
+  Item ID: 850
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='Bone White', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'WU19YDG',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'Unknown color: Bone White',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'WU19YDG',
+    color_1: 'Green',
+    color_2: 'Bone White',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'STL render error (3/3): Error: \n' +
+      'Invalid `prisma.printOrderTask.update()` invocation:\n' +
+      '\n' +
+      '\n' +
+      "Value '' not found in enum 'StlRenderStatus'\n" +
+      'Output:\n'
+  }
+]
+  --- End Item 850 ---
+=== END Order ID: 501 ===
+{"level":30,"time":1745185207087,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 498 (202-5964045-2751568) ---"}
+{"level":30,"time":1745185207087,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 498] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185208985,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 498] Call response status: 200 (1898ms)."}
+{"level":30,"time":1745185208986,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 498] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 498 (202-5964045-2751568) ===
+  Item ID: 843
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Amber',
+    color1: 'Purple',
+    color2: 'Pink',
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'Unknown color: Purple; Unknown color: Pink',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Amber',
+    color_1: 'Purple',
+    color_2: 'Pink',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'STL render error (3/3): Error: \n' +
+      'Invalid `prisma.printOrderTask.update()` invocation:\n' +
+      '\n' +
+      '\n' +
+      "Value '' not found in enum 'StlRenderStatus'\n" +
+      'Output:\n'
+  }
+]
+  --- End Item 843 ---
+=== END Order ID: 498 ===
+{"level":30,"time":1745185208987,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 497 (203-6626842-6433927) ---"}
+{"level":30,"time":1745185208987,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 497] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185210932,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 497] Call response status: 200 (1945ms)."}
+{"level":30,"time":1745185210940,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 497] AI response validated."}
+{"level":30,"time":1745185210940,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 497] No significant discrepancies found."}
+{"level":30,"time":1745185210940,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 496 (205-2163483-4200322) ---"}
+{"level":30,"time":1745185210940,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 496] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185218138,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 496] Call response status: 200 (7198ms)."}
+{"level":30,"time":1745185218147,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 496] AI response validated."}
+{"level":30,"time":1745185218147,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 496] No significant discrepancies found."}
+{"level":30,"time":1745185218147,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 495 (204-2906896-7490758) ---"}
+{"level":30,"time":1745185218147,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 495] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185223612,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 495] Call response status: 200 (5465ms)."}
+{"level":30,"time":1745185223613,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 495] AI response validated."}
+{"level":30,"time":1745185223613,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 495] No significant discrepancies found."}
+{"level":30,"time":1745185223613,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 492 (203-8707742-9277148) ---"}
+{"level":30,"time":1745185223613,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 492] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185228219,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 492] Call response status: 200 (4606ms)."}
+{"level":30,"time":1745185228222,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 492] AI response validated."}
+{"level":30,"time":1745185228222,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 492] No significant discrepancies found."}
+{"level":30,"time":1745185228222,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 490 (026-9223348-9570723) ---"}
+{"level":30,"time":1745185228222,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 490] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185229859,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 490] Call response status: 200 (1637ms)."}
+{"level":30,"time":1745185229860,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 490] AI response validated."}
+{"level":30,"time":1745185229860,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 490] No significant discrepancies found."}
+{"level":30,"time":1745185229860,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 489 (16-12959-16118) ---"}
+{"level":30,"time":1745185229860,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 489] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185233313,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 489] Call response status: 200 (3453ms)."}
+{"level":30,"time":1745185233316,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 489] AI response validated."}
+{"level":30,"time":1745185233316,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 489] No significant discrepancies found."}
+{"level":30,"time":1745185233316,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 488 (13-12963-19069) ---"}
+{"level":30,"time":1745185233317,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 488] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185243029,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 488] Call response status: 200 (9712ms)."}
+{"level":30,"time":1745185243042,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 488] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 488 (13-12963-19069) ===
+  Item ID: 820
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pine Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Pinetrees',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Pinetrees',
+    color_1: 'Pine Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 820 ---
+  Item ID: 822
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Light Brown', AI='Brown'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Workshop',
+    color1: 'Brown',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Workshop',
+    color_1: 'Light Brown',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 822 ---
+  Item ID: 824
+    DISCREPANCY: Task 0: Text mismatch: DB='motorhome', AI='Motorhome'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Motorhome',
+    color1: 'Gold',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'motorhome',
+    color_1: 'Gold',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 824 ---
+=== END Order ID: 488 ===
+{"level":30,"time":1745185243042,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 486 (3659918133) ---"}
+{"level":30,"time":1745185243042,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 486] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185244982,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 486] Call response status: 200 (1940ms)."}
+{"level":30,"time":1745185244986,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 486] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 486 (3659918133) ===
+  Item ID: 818
+    DISCREPANCY: Task 0: Text mismatch: DB='None / N/A', AI='null'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'None / N/A',
+    color_1: 'Pink',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 818 ---
+=== END Order ID: 486 ===
+{"level":30,"time":1745185244987,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 302 (15-12947-40660) ---"}
+{"level":30,"time":1745185244987,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 302] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185246822,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 302] Call response status: 200 (1835ms)."}
+{"level":30,"time":1745185246825,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 302] AI response validated."}
+{"level":30,"time":1745185246825,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 302] No significant discrepancies found."}
+{"level":30,"time":1745185246825,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 223 (05-12961-42874) ---"}
+{"level":30,"time":1745185246825,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 223] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185254477,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 223] Call response status: 200 (7652ms)."}
+{"level":30,"time":1745185254485,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 223] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 223 (05-12961-42874) ===
+  Item ID: 376
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Thomas',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'UNKNOWN_COLOR',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Thomas',
+    color_1: 'Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 376 ---
+=== END Order ID: 223 ===
+{"level":30,"time":1745185254485,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 222 (20-12941-88906) ---"}
+{"level":30,"time":1745185254485,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 222] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185256032,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 222] Call response status: 200 (1547ms)."}
+{"level":30,"time":1745185256037,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 222] AI response validated."}
+{"level":30,"time":1745185256037,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 222] No significant discrepancies found."}
+{"level":30,"time":1745185256037,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 220 (20-12941-53839) ---"}
+{"level":30,"time":1745185256037,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 220] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185257680,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 220] Call response status: 200 (1643ms)."}
+{"level":30,"time":1745185257681,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 220] AI response validated."}
+{"level":30,"time":1745185257681,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 220] No significant discrepancies found."}
+{"level":30,"time":1745185257681,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 218 (27-12934-92290) ---"}
+{"level":30,"time":1745185257681,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 218] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185262387,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 218] Call response status: 200 (4706ms)."}
+{"level":30,"time":1745185262400,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 218] AI response validated."}
+{"level":30,"time":1745185262400,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 218] No significant discrepancies found."}
+{"level":30,"time":1745185262400,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 216 (15-12958-72344) ---"}
+{"level":30,"time":1745185262400,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 216] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185263821,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 216] Call response status: 200 (1421ms)."}
+{"level":30,"time":1745185263824,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 216] AI response validated."}
+{"level":30,"time":1745185263824,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 216] No significant discrepancies found."}
+{"level":30,"time":1745185263824,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 215 (04-12972-34871) ---"}
+{"level":30,"time":1745185263824,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 215] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185265174,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 215] Call response status: 200 (1350ms)."}
+{"level":30,"time":1745185265177,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 215] AI response validated."}
+{"level":30,"time":1745185265177,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 215] No significant discrepancies found."}
+{"level":30,"time":1745185265177,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 214 (026-1037187-0013942) ---"}
+{"level":30,"time":1745185265177,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 214] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185266640,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 214] Call response status: 200 (1463ms)."}
+{"level":30,"time":1745185266641,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 214] AI response validated."}
+{"level":30,"time":1745185266641,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 214] No significant discrepancies found."}
+{"level":30,"time":1745185266641,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 122 (09-12958-38222) ---"}
+{"level":30,"time":1745185266641,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 122] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185268094,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 122] Call response status: 200 (1453ms)."}
+{"level":30,"time":1745185268096,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 122] AI response validated."}
+{"level":30,"time":1745185268096,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 122] No significant discrepancies found."}
+{"level":30,"time":1745185268096,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 121 (23-12940-13285) ---"}
+{"level":30,"time":1745185268096,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 121] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185270014,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 121] Call response status: 200 (1918ms)."}
+{"level":30,"time":1745185270016,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 121] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 121 (23-12940-13285) ===
+  Item ID: 203
+    DISCREPANCY: Task 0: Text mismatch: DB='None / N/A', AI='null'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='', AI='null'
+    DISCREPANCY: Task 0: Review flag mismatch: DB=false, AI=true
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: null,
+    color1: 'Orange',
+    color2: null,
+    quantity: 1,
+    needsReview: true,
+    reviewReason: 'No personalization details found',
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'None / N/A',
+    color_1: 'Orange',
+    color_2: '',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 203 ---
+=== END Order ID: 121 ===
+{"level":30,"time":1745185270017,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 71 (202-2458726-5256332) ---"}
+{"level":30,"time":1745185270017,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 71] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185271878,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 71] Call response status: 200 (1861ms)."}
+{"level":30,"time":1745185271879,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 71] AI response validated."}
+{"level":30,"time":1745185271879,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 71] No significant discrepancies found."}
+{"level":30,"time":1745185271879,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 66 (204-0816355-6207508) ---"}
+{"level":30,"time":1745185271879,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 66] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185273796,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 66] Call response status: 200 (1917ms)."}
+{"level":30,"time":1745185273799,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 66] AI response validated."}
+{"level":30,"time":1745185273799,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 66] No significant discrepancies found."}
+{"level":30,"time":1745185273799,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 65 (026-5585200-4785105) ---"}
+{"level":30,"time":1745185273799,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 65] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185286369,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 65] Call response status: 200 (12570ms)."}
+{"level":30,"time":1745185286383,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 65] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 65 (026-5585200-4785105) ===
+  Item ID: 109
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Tom',
+    color1: 'Peak Green',
+    color2: 'Yellow',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Tom',
+    color_1: 'Green',
+    color_2: 'Yellow',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 109 ---
+  Item ID: 112
+    DISCREPANCY: Task 0: Color2 mismatch: DB='Silver', AI='Silk Silver'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Sharon',
+    color1: 'Pink',
+    color2: 'Silk Silver',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Sharon',
+    color_1: 'Pink',
+    color_2: 'Silver',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 112 ---
+  Item ID: 113
+    DISCREPANCY: Task 0: Color2 mismatch: DB='Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Buddy',
+    color1: 'Blue',
+    color2: 'Peak Green',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Buddy',
+    color_1: 'Blue',
+    color_2: 'Green',
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 113 ---
+=== END Order ID: 65 ===
+{"level":30,"time":1745185286384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 42 (16-12952-80170) ---"}
+{"level":30,"time":1745185286384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 42] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185288381,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 42] Call response status: 200 (1997ms)."}
+{"level":30,"time":1745185288384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 42] AI response validated."}
+{"level":30,"time":1745185288384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 42] No significant discrepancies found."}
+{"level":30,"time":1745185288384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 35 (202-2575652-3791555) ---"}
+{"level":30,"time":1745185288384,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 35] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185290865,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 35] Call response status: 200 (2481ms)."}
+{"level":30,"time":1745185290871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 35] AI response validated."}
+{"level":30,"time":1745185290871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 35] No significant discrepancies found."}
+{"level":30,"time":1745185290871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 34 (3652412534) ---"}
+{"level":30,"time":1745185290871,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 34] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185293157,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 34] Call response status: 200 (2286ms)."}
+{"level":30,"time":1745185293162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 34] AI response validated."}
+{"level":30,"time":1745185293162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 34] No significant discrepancies found."}
+{"level":30,"time":1745185293162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 32 (204-5678075-4093927) ---"}
+{"level":30,"time":1745185293162,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 32] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185294727,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 32] Call response status: 200 (1565ms)."}
+{"level":30,"time":1745185294728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 32] AI response validated."}
+{"level":30,"time":1745185294728,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 32] No significant discrepancies found."}
+{"level":30,"time":1745185294729,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 18 (202-5372118-2925947) ---"}
+{"level":30,"time":1745185294729,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 18] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185298033,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 18] Call response status: 200 (3304ms)."}
+{"level":30,"time":1745185298034,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 18] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 18 (202-5372118-2925947) ===
+  Item ID: 19
+    DISCREPANCY: Task 0: Text mismatch: DB='MIA', AI='Mia'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Mia',
+    color1: 'Pink',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'MIA',
+    color_1: 'Pink',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 19 ---
+  Item ID: 20
+    DISCREPANCY: Task 0: Text mismatch: DB='MILAN
+', AI='Milan'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Milan',
+    color1: 'Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'MILAN\n',
+    color_1: 'Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 20 ---
+  Item ID: 21
+    DISCREPANCY: Task 0: Text mismatch: DB='MASON', AI='Mason'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Mason',
+    color1: 'Light Blue',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'MASON',
+    color_1: 'Light Blue',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Amazon CustomizedURL'
+  }
+]
+  --- End Item 21 ---
+=== END Order ID: 18 ===
+{"level":30,"time":1745185298036,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 16 (3652591162) ---"}
+{"level":30,"time":1745185298036,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 16] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185299647,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 16] Call response status: 200 (1611ms)."}
+{"level":30,"time":1745185299652,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 16] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 16 (3652591162) ===
+  Item ID: 17
+    DISCREPANCY: Task 0: Color1 mismatch: DB='null', AI='Blue'
+    DISCREPANCY: Task 0: Color2 mismatch: DB='null', AI='Silver'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Addison',
+    color1: 'Blue',
+    color2: 'Silver',
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Addison',
+    color_1: null,
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: 'Data from Etsy item options'
+  }
+]
+  --- End Item 17 ---
+=== END Order ID: 16 ===
+{"level":30,"time":1745185299653,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 12 (204-2001744-1305139) ---"}
+{"level":30,"time":1745185299653,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 12] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185301187,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 12] Call response status: 200 (1534ms)."}
+{"level":30,"time":1745185301189,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 12] AI response validated."}
+{"level":30,"time":1745185301189,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 12] No significant discrepancies found."}
+{"level":30,"time":1745185301189,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 11 (026-6282226-3301143) ---"}
+{"level":30,"time":1745185301189,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 11] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185302760,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 11] Call response status: 200 (1571ms)."}
+{"level":30,"time":1745185302764,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 11] AI response validated."}
+{"level":30,"time":1745185302764,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 11] No significant discrepancies found."}
+{"level":30,"time":1745185302765,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 10 (22-12949-14309) ---"}
+{"level":30,"time":1745185302765,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 10] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185305218,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 10] Call response status: 200 (2453ms)."}
+{"level":30,"time":1745185305224,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 10] AI response validated."}
+
+=== DISCREPANCIES FOUND: Order ID: 10 (22-12949-14309) ===
+  Item ID: 10
+    DISCREPANCY: Task 0: Color1 mismatch: DB='Pine Green', AI='Peak Green'
+    AI Suggestion (1 tasks):
+      [
+  {
+    customText: 'Julian',
+    color1: 'Peak Green',
+    color2: null,
+    quantity: 1,
+    needsReview: false,
+    reviewReason: null,
+    annotation: null
+  }
+]
+    Existing Tasks (1 tasks):
+      [
+  {
+    custom_text: 'Julian',
+    color_1: 'Pine Green',
+    color_2: null,
+    quantity: 1,
+    needs_review: false,
+    review_reason: null,
+    annotation: null
+  }
+]
+  --- End Item 10 ---
+=== END Order ID: 10 ===
+{"level":30,"time":1745185305225,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 8 (206-9697529-8476324) ---"}
+{"level":30,"time":1745185305225,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 8] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185308516,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 8] Call response status: 200 (3291ms)."}
+{"level":30,"time":1745185308525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 8] AI response validated."}
+{"level":30,"time":1745185308525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 8] No significant discrepancies found."}
+{"level":30,"time":1745185308525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 7 (205-7716493-7384315) ---"}
+{"level":30,"time":1745185308525,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 7] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185310559,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 7] Call response status: 200 (2034ms)."}
+{"level":30,"time":1745185310567,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 7] AI response validated."}
+{"level":30,"time":1745185310567,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 7] No significant discrepancies found."}
+{"level":30,"time":1745185310567,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Reviewing Order ID: 6 (03-12973-13180) ---"}
+{"level":30,"time":1745185310567,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 6] Calling OpenAI (gpt-4.1-mini)..."}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 6] Call response status: 200 (1904ms)."}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Review][Order 6] AI response validated."}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 6] No significant discrepancies found."}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"--- Review Complete ---"}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"Processed 141 orders."}
+{"level":30,"time":1745185312471,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"55 orders had discrepancies logged to console."}
+{"level":30,"time":1745185312477,"pid":7800,"hostname":"DESKTOP-9HEOMKE","msg":"DB disconnected. Script finished."}
