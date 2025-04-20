@@ -2,20 +2,37 @@
   command = "npm run build"
   publish = ".next"
 
+# Make sure to disable processing - this is VERY important for Next.js
+[build.processing]
+  skip_processing = true
+
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--no-audit --no-fund"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# This is crucial - DO NOT skip processing for Next.js apps
-[build.processing]
-  skip_processing = false
+# Let Next.js handle all routes
+[[redirects]]
+  from = "/_next/*"
+  to = "/_next/:splat"
+  status = 200
 
-# Important for static assets
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/nextjs:api/*"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/nextjs"
+  status = 200
+  force = true
+
+# Use the essential Netlify Next.js plugin
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Cache Netlify build plugins
+# Cache dependencies between builds
 [[plugins]]
   package = "netlify-plugin-cache"
   [plugins.inputs]
