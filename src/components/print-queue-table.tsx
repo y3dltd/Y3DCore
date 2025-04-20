@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,8 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+import { ClientPrintTaskData } from '@/types/print-tasks';
 
 import { PrintTaskDetailModal } from './print-task-detail-modal';
 
@@ -244,7 +247,7 @@ const formatRelativeDate = (date: Date | null): string => {
 
 // Define interfaces for table meta
 interface TableMeta {
-  openModal: (task: PrintTaskData) => void;
+  openModal: (task: ClientPrintTaskData) => void;
 }
 interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
@@ -252,7 +255,7 @@ interface ExtendedTableMeta extends TableMeta {
 
 // Define Table Columns
 // Reordering columns to ensure critical columns are always visible
-export const columns: ColumnDef<PrintTaskData>[] = [
+export const columns: ColumnDef<ClientPrintTaskData>[] = [
   {
     accessorKey: 'product.sku',
     header: ({ column }) => (
@@ -870,26 +873,26 @@ export const columns: ColumnDef<PrintTaskData>[] = [
 
 // Define Props Interface
 interface PrintQueueTableProps {
-  data: PrintTaskData[];
+  data: ClientPrintTaskData[];
 }
 
 // Main Component
 export function PrintQueueTable({ data }: PrintQueueTableProps) {
+  const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
+  const router = useRouter();
+
+  const onTaskClick = (task: ClientPrintTaskData) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
   const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<PrintTaskData | null>(null);
-  const router = useRouter();
 
-  const openModal = (task: PrintTaskData) => {
-    setSelectedTask(task);
-    setModalOpen(true);
-  };
-
-  const table = useReactTable<PrintTaskData>({
+  const table = useReactTable<ClientPrintTaskData>({
     data,
     columns,
     onSortingChange: setSorting,
@@ -911,7 +914,7 @@ export function PrintQueueTable({ data }: PrintQueueTableProps) {
     onRowSelectionChange: setRowSelection,
     state: { sorting, columnFilters, columnVisibility, rowSelection },
     enableRowSelection: true,
-    meta: { openModal, router } as ExtendedTableMeta,
+    meta: { openModal: onTaskClick, router } as ExtendedTableMeta,
   });
 
   const selectedRowIds = Object.keys(rowSelection)
@@ -1157,7 +1160,7 @@ export function PrintQueueTable({ data }: PrintQueueTableProps) {
           </TableBody>
         </Table>
       </div>
-      <PrintTaskDetailModal task={selectedTask} isOpen={modalOpen} onOpenChange={setModalOpen} />{' '}
+      <PrintTaskDetailModal /> {' '}
       {/* Reverted back to self-closing */}
     </div>
   );

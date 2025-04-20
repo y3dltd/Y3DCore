@@ -259,7 +259,7 @@ export const upsertProductFromItem = async (
               data: {
                 // Remove name from update to preserve existing product names
                 ...(() => {
-                  const { name, ...productDataWithoutName } = productData;
+                  const { name: _name, ...productDataWithoutName } = productData;
                   return productDataWithoutName;
                 })(),
                 shipstation_product_id: shipstationProductId,
@@ -319,7 +319,7 @@ export const upsertProductFromItem = async (
           update: {
             // Remove name from update to preserve existing product names
             ...(() => {
-              const { name, ...productDataWithoutName } = productData;
+              const { name: _name, ...productDataWithoutName } = productData;
               return productDataWithoutName;
             })(),
             updatedAt: new Date(),
