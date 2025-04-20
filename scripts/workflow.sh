@@ -102,12 +102,12 @@ echo "Running: $cmd"
 eval $cmd
 log_and_exit_on_error $? "Print task population failed"
 
-# 3. Cleanup Print Tasks (uses the same CLI)
-echo "Step 3: Cleanup completed tasks..."
-cmd="tsx src/scripts/populate-print-queue.ts --clear-all $DRY_OPTION $VERBOSE_OPTION"
+# 3. Update status of tasks for shipped orders
+echo "Step 3: Update tasks for shipped orders to COMPLETED..."
+cmd="tsx src/scripts/complete-shipped-print-tasks.ts $DRY_OPTION $VERBOSE_OPTION --confirm"
 echo "Running: $cmd"
 eval $cmd
-log_and_exit_on_error $? "Print task cleanup failed"
+log_and_exit_on_error $? "Print task status update failed"
 
 # 4. Crontab Maintenance/Cleanups
 # (Handled outside this script by crontab - see docs/scripts/cleanup.md)
