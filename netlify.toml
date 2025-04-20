@@ -14,9 +14,6 @@
 # Important for static assets
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-  [plugins.inputs]
-    # Set this to false to ensure Next.js handles all routes
-    fallback = false
 
 # Cache Netlify build plugins
 [[plugins]]
