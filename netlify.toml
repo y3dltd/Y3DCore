@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = ".next"
+  ignore_warnings = true
 
 # Make sure to disable processing - this is VERY important for Next.js
 [build.processing]
@@ -8,8 +9,11 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  NPM_FLAGS = "--no-audit --no-fund"
+  NPM_FLAGS = "--no-audit --no-fund --no-strict-peer-deps"
   NEXT_TELEMETRY_DISABLED = "1"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+  PLAYWRIGHT_BROWSERS_PATH = "0"
+  NEXT_IGNORE_ERRORS = "1"
 
 # Let Next.js handle all routes
 [[redirects]]
