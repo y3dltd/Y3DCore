@@ -382,11 +382,27 @@ export async function updateOrderItemsOptionsBatch(
   const endpoint = '/orders/createorder'
 
   // Build updated items list, only patch targeted items
-  const updatedItems = fetchedOrder.items.map(item =>
-    itemsToPatch[item.lineItemKey]
-      ? { ...item, options: itemsToPatch[item.lineItemKey].filter(o => o.value !== null) }
-      : item
-  )
+  const updatedItems = fetchedOrder.items.map(item => {
+    const key = item.lineItemKey;
+    // Only attempt patch if lineItemKey exists (is not null/undefined)
+    // and is actually a key present in itemsToPatch
+    if (key != null && itemsToPatch.hasOwnProperty(key)) {
+      // Ensure itemsToPatch[key] is an array before calling filter
+      const optionsToPatch = Array.isArray(itemsToPatch[key]) ? itemsToPatch[key] : [];
+
+      // Filter out null values using a type predicate to satisfy ShipStationItemOption type
+      const validatedOptions = optionsToPatch.filter(
+        (o): o is { name: string; value: string } => o.value !== null
+      );
+
+      return {
+        ...item,
+        options: validatedOptions, // Assign the correctly typed array
+      };
+    }
+    // Otherwise, return the original item unchanged
+    return item;
+  });
 
   // Build human‑friendly summaries for Internal Notes / Custom Field 1
   const summaryLines = Object.entries(itemsToPatch).map(([_, opts]) => {

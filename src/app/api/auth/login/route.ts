@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getSession } from '@/lib/auth';
-import { handleApiError } from '@/lib/errors';
+// Import iron-session necessities directly
+import { getIronSession, IronSessionData } from 'iron-session';
+import { sessionOptions } from '@/lib/auth'; // Assuming sessionOptions is exported from here
+
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/server-only/auth-password';
 
 export async function POST(request: NextRequest) {
+  // Create the response object early to attach the session cookie to it
+  const response = NextResponse.json({}); // Start with an empty JSON response
+
   try {
     const { email, password } = await request.json();
 
@@ -29,17 +34,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 }); // Generic message
     }
 
-    // Create session
-    const session = await getSession();
+    // Create session using getIronSession directly with request and response
+    const session = await getIronSession<IronSessionData>(request, response, sessionOptions);
     session.userId = user.id;
     await session.save();
 
     // Return user info (excluding password)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
+
+    // Update the response body with user info AFTER session is saved
+    // Re-create response with user data and existing headers (including session cookie)
+    return NextResponse.json(userWithoutPassword, { headers: response.headers });
   } catch (error) {
     console.error('[API Auth Login] Error:', error);
-    return handleApiError(error); // Use your existing error handler
+    // Ensure we return the response object even in case of error, 
+    // potentially updating its status/body via handleApiError if it modifies the response.
+    // For now, just return a generic error on the initial response object.
+    // Adjust based on how handleApiError works.
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500, headers: response.headers });
   }
 }

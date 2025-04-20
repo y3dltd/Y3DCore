@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { PrintTaskStatus } from '@prisma/client';
 
 // Import the PrintTaskData interface directly from the component file
-import type { PrintTaskData } from '@/components/print-queue-table';
+import type { PrintTaskData } from '@/types/print-tasks';
 import { toast } from 'sonner';
 
 interface CSVExportRow {
@@ -36,7 +36,8 @@ export function convertToCSV(data: PrintTaskData[]): string {
       : 'N/A';
     
     // Extract customer name or use placeholder if not available
-    const customerName = task.order?.customer_name || '';
+    // Access via task.order.customer.name (assuming 'name' is the correct field on PrismaCustomer)
+    const customerName = task.order?.customer?.name || '';
     
     // Format the review field based on needs_review flag and review_reason
     const reviewInfo = task.needs_review

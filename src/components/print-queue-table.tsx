@@ -32,8 +32,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-// Fix import path to ensure proper module resolution during builds
-import { usePrintQueueModal } from '../contexts/PrintQueueModalContext';
+// Remove context dependencies completely
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -873,18 +872,19 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 ];
 
 // Define Props Interface
-interface PrintQueueTableProps {
+export interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
+  onSelectTask?: (task: ClientPrintTaskData) => void;
 }
 
 // Main Component
-export function PrintQueueTable({ data }: PrintQueueTableProps) {
-  const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
+export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
   const router = useRouter();
 
   const onTaskClick = (task: ClientPrintTaskData) => {
-    setSelectedTask(task);
-    setIsModalOpen(true);
+    if (onSelectTask) {
+      onSelectTask(task);
+    }
   };
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }]);

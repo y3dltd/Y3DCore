@@ -1,4 +1,4 @@
-import { PrintTaskData } from '@/components/print-queue-table';
+import { PrintTaskData } from '@/types/print-tasks'; // Correct import path
 import { getPrintPlan } from '@/lib/ai/print-plan';
 
 export default async function PrintPlanPage() {

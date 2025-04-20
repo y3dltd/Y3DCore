@@ -155,8 +155,8 @@ async function main(args: ArgvType) {
           throw new Error('Order ID is required for single order sync mode');
         }
         logger.info(`[Script] Syncing single order: ${args.orderId}...`);
-        // Pass options to syncSingleOrder and convert orderId to number
-        syncResult = await syncSingleOrder(parseInt(args.orderId, 10), syncOptions);
+        // Pass options to syncSingleOrder and ensure orderId is passed as string
+        syncResult = await syncSingleOrder(args.orderId, syncOptions);
         break;
 
       // 'tags' mode is handled above

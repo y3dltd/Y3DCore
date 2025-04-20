@@ -34,28 +34,33 @@ Y3DHub is a modern Next.js application for managing 3D printing tasks and orders
 ### Installation
 
 1. Clone the repository
+
    ```bash
    git clone https://github.com/y3dltd/Y3DCore.git
    cd y3dhub
    ```
 
 2. Install dependencies
+
    ```bash
    npm install
    ```
 
 3. Set up environment variables
+
    ```bash
    cp .env.example .env
    # Edit .env with your database, ShipStation, and OpenAI credentials
    ```
 
 4. Generate Prisma client
+
    ```bash
    npx prisma generate
    ```
 
 5. Run database migrations
+
    ```bash
    npx prisma migrate dev
    ```
@@ -157,4 +162,4 @@ Detailed documentation is available in the `/docs` directory:
 
 ## License
 
-[Proprietary] © 2025 Y3D Ltd. All rights reserved.
+[Proprietary] © 2025 Yorkshire3D Limited. All rights reserved.

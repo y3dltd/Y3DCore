@@ -1,5 +1,5 @@
 import { PrintQueueSummary } from '@/components/print-queue-summary';
-import { PrintTaskData } from '@/components/print-queue-table';
+import { PrintTaskData } from '@/types/print-tasks';
 import { getPrintQueueSummary, PrintQueueSummaryData } from '@/lib/ai/print-queue-summary';
 
 interface Props {

@@ -153,6 +153,9 @@ model PrintOrderTask {
   color_2                  String?         @db.VarChar(50)
   ship_by_date             DateTime?       @db.Date
   status                   PrintTaskStatus @default(pending)
+  stl_render_state         StlRenderStatus @default(pending)
+  stl_path                 String?         @db.VarChar(512)
+  render_retries           Int             @default(0)
   needs_review             Boolean         @default(false)
   review_reason            String?         @db.Text
   created_at               DateTime        @default(now()) @db.Timestamp(0)
@@ -332,4 +335,11 @@ enum PrintTaskStatus {
   in_progress
   completed
   cancelled
+}
+
+enum StlRenderStatus {
+  pending
+  running
+  completed
+  failed
 }

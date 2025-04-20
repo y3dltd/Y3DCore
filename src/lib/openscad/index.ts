@@ -61,14 +61,14 @@ export async function renderScadToStl(
         // Use custom fonts directory if it exists
         const customFontsDir = path.join(process.cwd(), 'fonts');
         const fontPathExists = await fs.access(customFontsDir).then(() => true).catch(() => false);
-        
+
         const env = { ...process.env };
         if (fontPathExists) {
             console.log(`Using custom fonts from ${customFontsDir}`);
             env.FONTPATH = customFontsDir;
         }
-        
-        await execFile('openscad', args, { 
+
+        await execFile('openscad', args, {
             maxBuffer: 1024 * 1024 * 10,
             env
         })
@@ -88,13 +88,24 @@ export async function renderDualColourTag(
     line1: string,
     line2 = '',
     line3 = '',
-    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & { fileName?: string } = {}
+    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & {
+        fileName?: string,
+        fontNarrowWiden?: number,
+        characterSpacing?: number
+    } = {}
 ) {
     const projectRoot = process.cwd()
     const scad = path.join(projectRoot, 'openscad', 'DualColour.scad')
     return renderScadToStl(scad, {
         ...options,
-        variables: { line1, line2, line3 },
+        variables: {
+            line1,
+            line2,
+            line3,
+            // Add fixed width compensation values for Linux rendering
+            font_narrow_widen: options.fontNarrowWiden ?? -5, // Default to -5 to make text slightly narrower
+            character_spacing: options.characterSpacing ?? 0.95  // Default to 0.95 to bring characters closer together
+        },
         fileName: options.fileName,
     })
 }

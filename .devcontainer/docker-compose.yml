@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  app:
+    image: node:22-alpine # Use Node.js 22 Alpine for a smaller image
+    volumes:
+      # Mount the project directory to '/workspace'
+      - ..:/workspace:cached
+      # Named volume for node_modules to persist installs
+      - node_modules:/workspace/node_modules
+    working_dir: /workspace
+    # Keep the container running
+    command: sleep infinity
+    env_file:
+      - ../.env # Load environment variables from .env file in the root
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme} # Use env var or default
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-y3dhub}           # Use env var or default
+    volumes:
+      # Named volume for data persistence
+      - mysql-data:/var/lib/mysql
+    ports:
+      # Expose MySQL port to host (optional, for external tools)
+      - "3306:3306"
+
+volumes:
+  mysql-data:
+  node_modules: # Define the named volume for node_modules

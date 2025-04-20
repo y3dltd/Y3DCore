@@ -115,7 +115,7 @@ hole_extra_margin=0.4; //[0:0.2:25]
 bar_shift=0; //[-50:50]
 
 // in mm. Zero to remove.
-function barlenfun(y=7) = (len(line2)>0) ? 35 : 15 ;
+function barlenfun(y=7) = (len(line2)>0) ? 35 : 17 ;
 bar_width = barlenfun();//[0:.5:100]
 bar_length_trim=0; //[-50:100]
 

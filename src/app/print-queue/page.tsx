@@ -2,19 +2,20 @@
 // import { PrintOrderTask, PrintTaskStatus } from '@prisma/client';
 import { PrintTaskStatus, Prisma } from '@prisma/client'; // Import enum and Prisma namespace
 
-import { AutoRefresher } from '@/components/auto-refresher'; // Import the auto-refresher
-import { LimitSelector } from '@/components/limit-selector'; // Import limit selector
-import { OrdersPagination } from '@/components/orders-pagination'; // Import pagination
-import { PrintQueueFilters } from '@/components/print-queue-filters'; // Import new filter component
-import { PrintQueueHeader } from '@/components/print-queue-header'; // Revert back to alias path import
-import { PrintQueueTable, PrintTaskData } from '@/components/print-queue-table';
-import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals'; // Import task totals component
-// Use relative path temporarily for debugging
-import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
+// Unused imports removed:
+// import { AutoRefresher } from '@/components/auto-refresher';
+// import { LimitSelector } from '@/components/limit-selector';
+// import { OrdersPagination } from '@/components/orders-pagination';
+// import { PrintQueueFilters } from '@/components/print-queue-filters';
+// import { PrintQueueHeader } from '@/components/print-queue-header';
+import { ClientPrintTaskData } from '@/types/print-tasks'; // Import the new client-safe type
+// import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals';
+// import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
 import { detectMarketplaceOrderNumber } from '@/lib/order-utils'; // Import order number detection
 import { prisma } from '@/lib/prisma';
 
-import PrintQueueSummaryServer from './PrintQueueSummaryServer';
+// import PrintQueueSummaryServer from './PrintQueueSummaryServer';
+import PrintQueueClient from './PrintQueueClient'; // Import the new client component
 
 // Restore dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -49,31 +50,13 @@ async function getDistinctProductNamesForTasks(): Promise<string[]> {
   }
 }
 
-// Function to get distinct shipping methods for tasks
-async function getDistinctShippingMethodsForTasks(): Promise<string[]> {
-  try {
-    // Use raw SQL query to get distinct shipping methods
-    const result = await prisma.$queryRaw<{ requested_shipping_service: string }[]>`
-      SELECT DISTINCT o.requested_shipping_service
-      FROM \`Order\` o
-      JOIN PrintOrderTask pot ON o.id = pot.orderId
-      WHERE o.requested_shipping_service IS NOT NULL
-      ORDER BY o.requested_shipping_service ASC
-    `;
-
-    return result.map(item => item.requested_shipping_service);
-  } catch (error) {
-    console.error('Error fetching distinct shipping methods:', error);
-    return [];
-  }
-}
-
 // --- Add Interface for Search Params ---
-interface PrintQueuePageSearchParams {
+// Export the interface so Client component can use it
+export interface PrintQueuePageSearchParams {
   page?: string;
   limit?: string;
-  status?: string;
-  needsReview?: string;
+  status?: string; // Changed from PrintTaskStatus to string for easier validation
+  needsReview?: string; // Changed from boolean to string
   query?: string;
   shipByDateStart?: string;
   shipByDateEnd?: string;
@@ -110,7 +93,7 @@ async function getPrintTasks({
   validatedColor2?: string;
   validatedProductName?: string;
   validatedShippingMethod?: string;
-}): Promise<{ tasks: PrintTaskData[]; total: number }> {
+}): Promise<{ tasks: ClientPrintTaskData[]; total: number }> { // Update return type annotation
   // --- No more validation or getQueryParam needed here ---
 
   const skip = Math.max(0, (validatedPage - 1) * validatedLimit);
@@ -268,28 +251,54 @@ async function getPrintTasks({
     orderLink: `/orders/${task.orderId}`,
   }));
 
-  // --- Convert Decimal fields INSIDE getPrintTasks ---
-  const serializableTasks: PrintTaskData[] = tasksWithLinks.map(task => ({
-    ...task,
-    // Map product name to product_name field for the column
-    product_name: task.product?.name || 'N/A',
-    // Ensure the order object exists before accessing its properties
-    order: task.order
-      ? {
-          requested_shipping_service: task.order.requested_shipping_service,
-          marketplace: task.order.marketplace, // Pass marketplace through
-        }
-      : undefined,
-    product: {
-      ...task.product,
-      // Convert Decimal fields to strings, handling nulls
-      weight: task.product?.weight?.toString() ?? null,
-      item_weight_value: task.product?.item_weight_value?.toString() ?? null,
-      // Add any other Decimal fields from Product model if necessary
-    },
-  }));
+  // --- Filter tasks missing products and Convert Decimal/Date fields ---
+  const validTasks = tasksWithLinks.filter(task => task.product); // Filter out tasks without a product
 
-  // Return the data matching PrintTaskData[] type signature
+  const serializableTasks: ClientPrintTaskData[] = validTasks.map(task => { // Use ClientPrintTaskData here
+    // Now we know task.product is not null within this map
+    const product = task.product!; // Use non-null assertion as we've filtered
+
+    return {
+      ...task,
+      // Convert Date fields to strings
+      created_at: task.created_at.toISOString(), // Assuming created_at is non-null
+      updated_at: task.updated_at?.toISOString() ?? null, // Handle potential null
+      ship_by_date: task.ship_by_date?.toISOString() ?? null, // Handle potential null
+
+      // Map product name to product_name field for the column
+      product_name: product.name || 'N/A', // Use non-null product
+      // Ensure the order object exists before accessing its properties
+      order: task.order
+        ? {
+            requested_shipping_service: task.order.requested_shipping_service,
+            marketplace: task.order.marketplace, // Pass marketplace through
+          }
+        : undefined,
+      // Convert product fields and dates
+      product: {
+        ...product, // Spread the non-null product
+        // Convert Decimal fields to strings, handling nulls
+        weight: product.weight?.toString() ?? null,
+        item_weight_value: product.item_weight_value?.toString() ?? null,
+        // Also serialize product dates (using correct names)
+        createdAt: product.createdAt.toISOString(), // Corrected name
+        updatedAt: product.updatedAt?.toISOString() ?? null, // Corrected name
+        // Ensure all required fields from ClientSerializableProduct are present
+        name: product.name, // Already present via spread
+        id: product.id, // Already present via spread
+        sku: product.sku, // Already present via spread
+        imageUrl: product.imageUrl, // Already present via spread
+        notes: product.notes, // Already present via spread
+        // createdAt & updatedAt are handled above
+        fulfillment_sku: product.fulfillment_sku, // Already present via spread
+        item_weight_units: product.item_weight_units, // Already present via spread
+        shipstation_product_id: product.shipstation_product_id, // Already present via spread
+        warehouse_location: product.warehouse_location, // Already present via spread
+      },
+    };
+  });
+
+  // Return the data matching ClientPrintTaskData[] type signature
   return { tasks: serializableTasks, total };
 }
 
@@ -397,8 +406,8 @@ export default async function PrintQueuePage({
       productNameParam,
     });
 
-    // --- Call getPrintTasks & getDistinctProductNames & getDistinctShippingMethods --- Fetch in parallel
-    const [{ tasks, total }, availableProductNames, availableShippingMethods] = await Promise.all([
+    // --- Call getPrintTasks & getDistinctProductNames --- Fetch in parallel
+    const [{ tasks, total }, productNames] = await Promise.all([
       getPrintTasks({
         validatedPage,
         validatedLimit,
@@ -413,89 +422,62 @@ export default async function PrintQueuePage({
         validatedShippingMethod: validatedShippingMethod,
       }),
       getDistinctProductNamesForTasks(), // Fetch distinct product names
-      getDistinctShippingMethodsForTasks(), // Fetch distinct shipping methods
     ]);
 
-    const totalPages = Math.ceil(total / validatedLimit);
+    // Prepare initial filters object based on validated params for the client component
+    const initialFilters: PrintQueuePageSearchParams = {
+      page: String(validatedPage),
+      limit: String(validatedLimit),
+      status: validatedStatus,
+      needsReview: String(validatedNeedsReview),
+      query: validatedQuery,
+      shipByDateStart: shipByDateStartParam,
+      shipByDateEnd: shipByDateEndParam,
+      color1: color1Param,
+      color2: color2Param,
+      productName: validatedProductName,
+      shippingMethod: validatedShippingMethod,
+    };
 
-    // --- Add Logging ---
-    console.log(`[PrintQueuePage] Total tasks found: ${total}`);
-    console.log(
-      `[PrintQueuePage] Calculated total pages: ${totalPages} (total: ${total}, limit: ${validatedLimit})`
-    );
-    // --- End Logging ---
-
-    // --- Restore Main Render Logic ---
     return (
-      <div>
-        {/* Add the AutoRefresher component here (renders null) */}
-        <AutoRefresher intervalSeconds={30} />
-        {/* Print Queue Summary (AI-powered) */}
-        <PrintQueueSummaryServer tasks={tasks} />
-        {/* Add task totals component at the top level */}
-        <PrintQueueTaskTotals tasks={tasks} />
-
-        {/* Add a small gap between stats and main content */}
-        <div className="h-2"></div>
-
-        <div className="bg-card text-card-foreground rounded-lg border p-6">
-          {/* --- Pass the formatted string prop and the action --- */}
-          <PrintQueueHeader formattedNow={formattedNow} cleanupAction={cleanShippedOrderTasks} />
-
-          {/* --- Filters component --- */}
-          <PrintQueueFilters
-            currentFilters={resolvedSearchParams as PrintQueuePageSearchParams}
-            availableProductNames={availableProductNames} // Pass fetched names
-            availableShippingMethods={availableShippingMethods} // Pass fetched shipping methods
-          />
-
-          <div className="flex justify-between items-center mb-4">
-            {/* validatedLimit is passed to LimitSelector */}
-            <LimitSelector currentLimit={validatedLimit} />
-            {/* validatedLimit is passed to OrdersPagination */}
-            <OrdersPagination
-              currentPage={validatedPage}
-              totalPages={totalPages}
-              limit={validatedLimit}
-            />
-          </div>
-
-          {/* Pass the already serializable data to the Client Component */}
-          <div className="w-full overflow-hidden">
-            <PrintQueueTable data={tasks} />
-          </div>
-
-          <div className="flex justify-between items-center mt-4">
-            {/* validatedLimit is passed to LimitSelector */}
-            <LimitSelector currentLimit={validatedLimit} />
-            {/* validatedLimit is passed to OrdersPagination */}
-            <OrdersPagination
-              currentPage={validatedPage}
-              totalPages={totalPages}
-              limit={validatedLimit}
-            />
-          </div>
-          {tasks.length === 0 && (
-            <p className="text-center mt-4">No print tasks found matching your filters.</p>
-          )}
-        </div>
-      </div>
+      <PrintQueueClient
+        tasks={tasks} // This 'tasks' now conforms to ClientPrintTaskData[]
+        totalTasks={total}
+        page={validatedPage}
+        limit={validatedLimit}
+        productNames={productNames}
+        initialFilters={initialFilters}
+        formattedNow={formattedNow}
+      />
     );
   } catch (error) {
-    console.error('[PrintQueuePage] Error processing searchParams:', error);
-    // Render error state
+    console.error('[PrintQueuePage] Error fetching data:', error);
+    // Improved error display
+    let errorMessage = 'Failed to load print queue data.';
+    if (error instanceof Error) {
+      errorMessage += ` Error: ${error.message}`;
+    }
+
     return (
-      <div>
-        <div className="bg-card text-card-foreground rounded-lg border p-6">
-          <h1 className="text-3xl font-bold mb-6">Print Queue (Error)</h1>
-          <p className="text-red-500">Error processing searchParams. Check server console.</p>
-          {/* Displaying the awaited object in case of error */}
-          <pre>{JSON.stringify((await searchParams) || {}, null, 2)}</pre>
+      <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+        <div className="flex items-center justify-between space-y-2">
+          <h2 className="text-3xl font-bold tracking-tight">Print Queue</h2>
+        </div>
+        <div
+          className="flex h-[calc(100vh-200px)] items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50"
+        >
+          <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+            <p className="mt-4 text-lg font-semibold text-destructive">
+              Error Loading Data
+            </p>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              {errorMessage}
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 }
 
-// Optional: Add revalidation
-// export const revalidate = 30; // Revalidate every 30 seconds
+// TODO: Add tests for validation logic

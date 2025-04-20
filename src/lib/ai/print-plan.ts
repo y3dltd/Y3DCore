@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 
-import { PrintTaskData } from '@/components/print-queue-table';
+import { PrintTaskData } from '@/types/print-tasks';
 
 export interface PrintPlan {
   plan: string;

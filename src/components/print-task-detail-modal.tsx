@@ -28,15 +28,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-import { PrintTaskData } from './print-queue-table';
+import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 
-interface PrintTaskDetailModalProps {
-  task: PrintTaskData | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-// Interface for the editable form state
 interface EditableTaskData {
   product_name: string;
   sku: string;
@@ -49,13 +42,15 @@ interface EditableTaskData {
   review_reason: string;
 }
 
-export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDetailModalProps) {
+export function PrintTaskDetailModal() {
+  const { selectedTask: task, isModalOpen: isOpen, setIsModalOpen } = usePrintQueueModal();
+
   const [formData, setFormData] = useState<EditableTaskData | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
   const [isBulkNameUpdating, startBulkNameUpdateTransition] = useTransition();
   const router = useRouter();
 
-  // Initialize form data when task changes or modal opens
+  // Set form data when task changes
   useEffect(() => {
     if (task && isOpen) {
       setFormData({
@@ -70,31 +65,26 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
         review_reason: task.review_reason || '',
       });
     } else {
-      setFormData(null); // Clear form when closing or no task
+      setFormData(null);
     }
   }, [task, isOpen]);
 
-  // Handler for input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    // Use checked for checkbox, value otherwise
     const inputValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
     setFormData(prev =>
       prev ? { ...prev, [name]: type === 'number' ? parseInt(value, 10) || 0 : inputValue } : null
     );
   };
 
-  // Handler for Select changes (status)
   const handleStatusChange = (value: string) => {
     if (Object.values(PrintTaskStatus).includes(value as PrintTaskStatus)) {
       setFormData(prev => (prev ? { ...prev, status: value as PrintTaskStatus } : null));
     }
   };
 
-  // Handler for Checkbox changes (needs_review)
   const handleNeedsReviewChange = (checked: boolean | 'indeterminate') => {
     if (typeof checked === 'boolean') {
-      // Handle indeterminate case if needed
       setFormData(prev => (prev ? { ...prev, needs_review: checked } : null));
     }
   };
@@ -105,8 +95,7 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
     startSaveTransition(async () => {
       try {
         const response = await fetch(`/api/print-tasks/${task.id}`, {
-          // Use a PUT/PATCH route for full update
-          method: 'PATCH', // Or PUT
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
@@ -117,8 +106,8 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
         }
 
         toast.success(`Task ${task.id} updated successfully.`);
-        onOpenChange(false); // Close modal on success
-        router.refresh(); // Refresh table data
+        setIsModalOpen(false);
+        router.refresh();
       } catch (error: unknown) {
         console.error('Save failed:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -127,7 +116,6 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
     });
   };
 
-  // Handler for bulk name update
   const handleBulkNameUpdate = () => {
     if (!formData || !task) return;
 
@@ -165,11 +153,10 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
     });
   };
 
-  if (!task || !formData) return null;
+  if (!isOpen || !task || !formData) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* Increase max width */}
+    <Dialog open={isOpen} onOpenChange={setIsModalOpen}>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader className="border-b pb-3 mb-4">
           <DialogTitle className="text-xl font-semibold">
@@ -182,9 +169,7 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
           </DialogDescription>
         </DialogHeader>
 
-        {/* Use a more structured layout, e.g., grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {/* Column 1 */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="product_name">Product Name</Label>
@@ -256,7 +241,6 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
             </div>
           </div>
 
-          {/* Column 2 */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="custom_text">Custom Text</Label>
@@ -297,7 +281,7 @@ export function PrintTaskDetailModal({ task, isOpen, onOpenChange }: PrintTaskDe
         </div>
 
         <DialogFooter className="pt-4 border-t mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSaving}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>

@@ -39,7 +39,7 @@ export function StatsCard({
         borderColorClass,
         'border-l-4',
         'dark:bg-zinc-800',
-        'w-[180px]',
+        
         className
       )}
     >
