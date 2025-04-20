@@ -14,7 +14,6 @@ import z from 'zod';
 
 // Internal/local imports
 import { getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
-import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
 
 // Initialize database connection

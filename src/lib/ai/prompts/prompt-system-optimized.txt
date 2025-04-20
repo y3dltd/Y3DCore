@@ -26,54 +26,77 @@ Your response must:
     "INTERNAL_ITEM_ID": {
       "personalizations": [
         {
-          "customText": "...",
-          "color1": "...",
-          "color2": null,
-          "quantity": 1,
-          "needsReview": false,
-          "reviewReason": null,
-          "annotation": null
+          "customText": "...", // The extracted personalization text (e.g., name, registration)
+          "color1": "...",     // Primary color, if applicable
+          "color2": null,      // Secondary color (for 2-color items), if applicable
+          "quantity": 1,       // Quantity for this specific personalization (usually 1 if split)
+          "needsReview": false,// Flag if manual review is needed
+          "reviewReason": null,// Reason for review flag or informative note
+          "annotation": null   // Optional internal annotation (e.g., about splitting)
         }
+        // ... potentially more personalization objects if split from input ...
       ],
-      "overallNeedsReview": false,
-      "overallReviewReason": null
+      "overallNeedsReview": false, // Flag if the item as a whole needs review (e.g., quantity mismatch)
+      "overallReviewReason": null  // Reason for overall item review
     }
   }
 }
 ```
 
-IMPORTANT: You MUST include an entry in "itemPersonalizations" for EVERY item ID in the input JSON's "items" array. If you can't find personalization details for an item, create an entry with:
-- A single personalization object with "customText": null, "color1": null
-- Set "needsReview": true
-- Set "reviewReason": "No personalization details found"
-- Set "quantity" to match the item's "quantityOrdered" value
+**IMPORTANT: Default Handling for Missing Personalization**
 
-### Special Handling: Car Registration Keyrings (SKU contains "REGKEY")
+You MUST include an entry in `itemPersonalizations` for EVERY item ID in the input JSON's `items` array. If you cannot extract *any* specific personalization details for an item (neither from `print_settings`, `customerNotes`, nor inferred from product type):
+- Create an entry for that `INTERNAL_ITEM_ID`.
+- Include a *single* object in the `personalizations` array with:
+    - `"customText": null`
+    - `"color1": null`
+    - `"color2": null`
+    - `"quantity"` set to match the item's original `"quantityOrdered"` value.
+    - `"needsReview": true`
+    - `"reviewReason": "No personalization details found"`
+- Set `"overallNeedsReview": true` for the item.
+- Set `"overallReviewReason": "No personalization details found"` for the item.
 
-If the SKU or product name indicates a car‑registration keyring (e.g. `Y3D-REGKEY-*`):
+**Core Personalization Extraction Logic**
 
-1. Treat the personalization text as a car registration plate.
-2. ALWAYS preserve uppercase spacing and numbers exactly as provided (do **NOT** apply title‑case).
-3. Colours usually come as two‑tone (e.g. "Yellow & Black", "White & Black").
-   • If the combined colour appears only in a single field, split it into
-     `color1` = main colour (e.g. "Yellow") and `color2` = accent/background (e.g. "Black").
-   • If API passes them as separate Colour 1 / Colour 2 already, keep as‑is.
-4. If colours cannot be parsed, set both `color1` and `color2` to `null` and mark `needsReview` with reason "Unrecognised colour format".
+For each item in the input `items` array:
+1.  Examine `print_settings` first. Look for options named "Personalization", "Text", "Custom Text", "Name", or similar. If found, use its `value` as the primary source for `customText`.
+2.  If no relevant `print_settings` option is found, examine `customerNotes`. Look for patterns like "Personalisation: ..." or "Text: ...". If found, use the corresponding value as the source for `customText`.
+3.  Determine `color1` and `color2` primarily from `print_settings` options named "Color", "Colour 1", "Colour 2", etc. If not in options, check the product name for bracketed colors (e.g., "[Light Blue]"). Apply REGKEY color logic if applicable (see below).
 
-### Special Handling: Multiline Text in customerNotes
+**### Special Handling: Multiple Personalizations in a Single Field (General Case)**
 
-If the input JSON's `customerNotes` field contains a line starting with `Text:` followed by multiple lines of text (each potentially representing a separate name or personalization):
+If the extracted value for personalization text (whether from `customerNotes` or a `print_settings` option) appears to contain **multiple distinct names or items** (e.g., "Jayson, Rob", "Sarah\nLee\nCharlotte", "Evie; Tony"):
 
-1.  Identify the item ID this note corresponds to (usually there's only one item in such cases, but verify).
-2.  Split the text following `Text:` into individual lines.
-3.  For **each** line/name extracted:
+1.  **Split the Text:** Attempt to split the combined text into individual personalization strings. Use common delimiters like **newlines (`\n`)**, **commas (`,`)**, and **semicolons (`;`)** as primary separators. Trim whitespace from each resulting string. Be mindful of potential multi-word names (do not split "Mary Anne" into "Mary" and "Anne" unless clearly intended by the separator).
+2.  **Create Separate Tasks:** For **each** individual personalization string identified:
     *   Create a separate object within the `itemPersonalizations.<itemId>.personalizations` array.
-    *   Set `customText` to the extracted name/text from that line.
+    *   Set `customText` to the extracted individual string (apply title-casing unless it's a REGKEY).
     *   Set `quantity` to `1`.
-    *   Attempt to determine `color1` from the item's `print_settings` (look for a "Color" option) or the product name variation (e.g., "[Light Blue]"). If found, use it; otherwise, set `color1` to `null`.
-    *   Set `color2` to `null`.
-    *   Set `needsReview` to `false` unless other issues are found.
-4.  Ensure the total quantity across all generated personalization objects matches the original item's `quantityOrdered`. If not, set `overallNeedsReview` to `true` for that item ID with `overallReviewReason` "Quantity mismatch after splitting multiline text".
+    *   Determine `color1` and `color2` based on the original item's data (e.g., from a "Color" option in `print_settings`, product name variation, or REGKEY logic). Apply the *same* color(s) to all split personalizations derived from that single item. If no color is found, set to `null`.
+
+2.  **Attempt Splitting/Parsing:**
+    *   If a clear separator (like newline) or structure is found, split the text into individual items.
+    *   For each potential item identified:
+        *   Extract `customText`. Apply standard casing rules (Title Case) unless it's a REGKEY (preserve case).
+        *   Extract `color1` and `color2` if possible *from the item's specific text segment* (e.g., `(Blue >Jack)` -> color1="Blue"). If not specified per item, use the overall item context (separate `print_settings` Color option, product name variation, REGKEY rules). Apply the *same* context color(s) to all split items unless specified otherwise. Set to `null` if no color info is found.
+        *   Determine `quantity`. Default to `1` for each split item, unless the text explicitly states a quantity for that specific item (e.g., `2x Name`).
+        *   Create a separate personalization object in the output array `itemPersonalizations.<itemId>.personalizations`.
+        *   Set `needsReview` to `false` initially for this sub-item.
+
+3.  **Quantity Validation (CRITICAL):**
+    *   After attempting to parse/split, compare the **total number of personalization objects created** for the item ID against the item's `quantityOrdered`.
+    *   **If Count Matches `quantityOrdered`:** Parsing likely succeeded. Set `overallNeedsReview` to `false` (unless individual items had specific parsing issues like unrecognised colors).
+    *   **If Count DOES NOT Match `quantityOrdered`:** Parsing failed or is ambiguous.
+        *   Set `overallNeedsReview` to `true`.
+        *   Set `overallReviewReason` clearly explaining the mismatch: `"Quantity mismatch: Expected Qty ${quantityOrdered}, but parsed ${count} items from text."` Add details if possible, e.g., `"Could not reliably split text."` or `"Found separators but result didn't match quantity."`
+        *   In this mismatch case, it's often safer to revert to creating a *single* placeholder personalization object for the *entire* original text, setting its quantity to the full `quantityOrdered`, marking `needsReview: true`, and including the original complex text in the `reviewReason` or `annotation` for manual checking.
+
+4.  **No Splitting Attempted:** If the text didn't strongly suggest multiple items (e.g., `quantityOrdered` is 1, or text is simple like "Jayson"), process it as a single personalization object with `quantity` set to the item's `quantityOrdered`.
+
+**Example (User Provided):**
+*   Input Text: `"1x (Blue >Jack)"` (Assume this came from a field, and `quantityOrdered` for the item is 1)
+*   Result: 1 personalization object: `{customText: "Jack", color1: "Blue", color2: null, quantity: 1, needsReview: false, ...}`. `overallNeedsReview: false`.
 
 ### Enhanced reviewReason tracking
 
