@@ -3,6 +3,7 @@
   publish = ".next"
   ignore_warnings = true
 
+# Environment variables for the build
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--no-audit --no-fund --no-strict-peer-deps"
@@ -11,10 +12,32 @@
   PLAYWRIGHT_BROWSERS_PATH = "0"
   NEXT_IGNORE_ERRORS = "1"
 
-# Essential: This tells Netlify NOT to process the Next.js assets
+# Essential for Next.js - prevents Netlify from post-processing Next.js assets
 [build.processing]
   skip_processing = true
 
-# Essential Next.js plugin to handle server-side rendering and API routes
+# Essential redirects for Next.js App Router
+[[redirects]]
+  from = "/_next/static/*"
+  to = "/_next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/image*"
+  to = "/_next/image:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/nextjs-api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/nextjs-server"
+  status = 200
+  force = true
+
+# Use the Next.js plugin with proper configuration
 [[plugins]]
   package = "@netlify/plugin-nextjs"

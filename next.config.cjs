@@ -1,22 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Core settings for Netlify compatibility
+  // Core settings for build process
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Let the Netlify adapter handle output
-  output: "export", // This makes Next.js work better with Netlify
-  // Needed to ensure proper links
+  // Server-side rendering settings
+  distDir: ".next",
+  // Proper trailing slash handling
   trailingSlash: true,
-  // Basic performance settings
+  // Performance settings
   poweredByHeader: false,
   compress: true,
-  // Image optimization settings
+  // Image optimization
   images: {
-    unoptimized: true, // Let Netlify handle the image optimization
+    domains: ['y3dhub-app.windsurf.build'],
+    minimumCacheTTL: 60,
   },
 };
 
