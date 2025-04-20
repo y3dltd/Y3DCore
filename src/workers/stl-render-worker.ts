@@ -3,6 +3,14 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { renderDualColourTag } from '../lib/openscad';
 
+// Use direct string literals to match the database schema enum values
+const RENDER_STATE = {
+    pending: 'pending',
+    running: 'running',
+    completed: 'completed',
+    failed: 'failed'
+} as const;
+
 // Configuration --------------------------
 const TARGET_SKU = 'PER-KEY3D-STY3-Y3D';
 const MAX_RETRIES = 3;
@@ -43,13 +51,13 @@ async function reserveTask() {
     // Transaction to find and reserve the oldest pending task for the target SKU
     return prisma.$transaction(async tx => {
         // Log the search criteria we're using
-        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='pending' and product.sku='${TARGET_SKU}'`);
+        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and product.sku='${TARGET_SKU}'`);
 
         const task = await tx.printOrderTask.findFirst({
             where: {
                 // Only filter by stl_render_state, not by status
                 // since the tasks can have status='completed' but still need STL rendering
-                stl_render_state: 'pending', // Use string literal for consistency
+                stl_render_state: RENDER_STATE.pending,
                 product: { sku: TARGET_SKU },
             },
             orderBy: { created_at: 'asc' },
@@ -60,16 +68,12 @@ async function reserveTask() {
             return null;
         }
 
-        // Mark only the STL status as running, don't change the main status
-        // since it could be 'completed' already
-        await tx.printOrderTask.update({
-            where: { id: task.id },
-            data: {
-                // Don't update the main status as it may already be 'completed'
-                // status: 'in_progress',
-                stl_render_state: 'running', // Use string literal instead of enum reference
-            },
-        });
+        // Mark only the STL status as running using raw SQL
+        await tx.$executeRaw`
+            UPDATE PrintOrderTask 
+            SET stl_render_state = 'running'
+            WHERE id = ${task.id}
+        `;
 
         console.log(`[${new Date().toISOString()}] Reserved task ${task.id} with status='${task.status}'`);
 
@@ -113,18 +117,16 @@ async function processTask(task: { id: number; custom_text: string | null; color
         });
         console.log(`[${new Date().toISOString()}] STL rendered at ${stlPathAbs}`);
 
-        // 5. Update database on success
-        await prisma.printOrderTask.update({
-            where: { id: taskId },
-            data: {
-                stl_path: stlRelativePath, // Save the relative path
-                stl_render_state: 'completed', // Use string literal instead of enum for consistent serialization
-                annotation: null, // Clear previous errors
-                render_retries: 0, // Reset retries
-                // Don't change the main status as it might already be 'completed'
-                // status: 'completed',
-            },
-        });
+        // 5. Update database on success using raw SQL to bypass Prisma type issues
+        await prisma.$executeRaw`
+            UPDATE PrintOrderTask 
+            SET 
+                stl_path = ${stlRelativePath},
+                stl_render_state = 'completed',
+                annotation = NULL,
+                render_retries = 0
+            WHERE id = ${taskId}
+        `;
 
         console.log(`✓ STL rendered successfully for task ${taskId} → ${stlRelativePath}`);
 
@@ -150,18 +152,15 @@ async function processTask(task: { id: number; custom_text: string | null; color
 
         const fullError = `Error: ${errorMessage}\nOutput:\n${commandOutput}`.substring(0, 1000); // Limit annotation length
 
-        await prisma.printOrderTask.update({
-            where: { id: taskId },
-            data: {
-                render_retries: nextRetries,
-                // Explicitly use the enum string values to ensure proper serialization
-                stl_render_state: isOutOfRetries ? 'failed' : 'pending', // Set to failed or pending for retry
-                // Don't change the task's status as it might already be 'completed'
-                // status: isOutOfRetries ? 'completed' : 'pending',
-                annotation: `STL render error (${nextRetries}/${MAX_RETRIES}): ${fullError}`,
-                // Don't update stl_path on error
-            },
-        });
+        // Update error state using raw SQL to bypass Prisma type issues
+        await prisma.$executeRaw`
+            UPDATE PrintOrderTask 
+            SET 
+                render_retries = ${nextRetries},
+                stl_render_state = ${isOutOfRetries ? 'failed' : 'pending'},
+                annotation = ${`STL render error (${nextRetries}/${MAX_RETRIES}): ${fullError}`}
+            WHERE id = ${taskId}
+        `;
         console.error(`✗ Failed to render STL for task ${taskId}. Retry ${nextRetries}/${MAX_RETRIES}. Marked as ${isOutOfRetries ? 'failed' : 'pending'}.`);
     }
 }
