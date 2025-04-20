@@ -60,6 +60,21 @@ If the SKU or product name indicates a car‑registration keyring (e.g. `Y3D-REG
    • If API passes them as separate Colour 1 / Colour 2 already, keep as‑is.
 4. If colours cannot be parsed, set both `color1` and `color2` to `null` and mark `needsReview` with reason "Unrecognised colour format".
 
+### Special Handling: Multiline Text in customerNotes
+
+If the input JSON's `customerNotes` field contains a line starting with `Text:` followed by multiple lines of text (each potentially representing a separate name or personalization):
+
+1.  Identify the item ID this note corresponds to (usually there's only one item in such cases, but verify).
+2.  Split the text following `Text:` into individual lines.
+3.  For **each** line/name extracted:
+    *   Create a separate object within the `itemPersonalizations.<itemId>.personalizations` array.
+    *   Set `customText` to the extracted name/text from that line.
+    *   Set `quantity` to `1`.
+    *   Attempt to determine `color1` from the item's `print_settings` (look for a "Color" option) or the product name variation (e.g., "[Light Blue]"). If found, use it; otherwise, set `color1` to `null`.
+    *   Set `color2` to `null`.
+    *   Set `needsReview` to `false` unless other issues are found.
+4.  Ensure the total quantity across all generated personalization objects matches the original item's `quantityOrdered`. If not, set `overallNeedsReview` to `true` for that item ID with `overallReviewReason` "Quantity mismatch after splitting multiline text".
+
 ### Enhanced reviewReason tracking
 
 Whenever you adjust casing, spacing, punctuation or standardise a value, include the **original value** in `reviewReason` for transparency, formatted as:
