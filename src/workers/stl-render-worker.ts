@@ -110,10 +110,20 @@ async function processTask(task: { id: number; custom_text: string | null; color
 
         // 3. Render via OpenSCAD wrapper
         console.log(`[${new Date().toISOString()}] Rendering STL via OpenSCAD wrapper for task ${taskId}...`);
+
+        // Font rendering consistency parameters
+        // These values have been carefully tuned to ensure consistent output between
+        // Windows and Linux OpenSCAD renderings. Linux tends to render fonts wider,
+        // so we compensate with these parameters.
+        const fontNarrowWiden = -5.5;    // -5.5 produces better width matching than -5
+        const characterSpacing = 0.92;   // Adjust character spacing for consistent look
+
+        console.log(`[${new Date().toISOString()}] Using font parameters: fontNarrowWiden=${fontNarrowWiden}, characterSpacing=${characterSpacing}`);
+
         const stlPathAbs = await renderDualColourTag(line1, line2, line3, {
             fileName: outputFilename,
-            fontNarrowWiden: -5,       // Make text narrower to match Windows rendering
-            characterSpacing: 0.95      // Bring characters closer together
+            fontNarrowWiden,
+            characterSpacing
         });
         console.log(`[${new Date().toISOString()}] STL rendered at ${stlPathAbs}`);
 
