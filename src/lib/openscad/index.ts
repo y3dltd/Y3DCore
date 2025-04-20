@@ -58,7 +58,20 @@ export async function renderScadToStl(
     args.push(scadPath)
 
     try {
-        await execFile('openscad', args, { maxBuffer: 1024 * 1024 * 10 })
+        // Use custom fonts directory if it exists
+        const customFontsDir = path.join(process.cwd(), 'fonts');
+        const fontPathExists = await fs.access(customFontsDir).then(() => true).catch(() => false);
+        
+        const env = { ...process.env };
+        if (fontPathExists) {
+            console.log(`Using custom fonts from ${customFontsDir}`);
+            env.FONTPATH = customFontsDir;
+        }
+        
+        await execFile('openscad', args, { 
+            maxBuffer: 1024 * 1024 * 10,
+            env
+        })
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         throw new Error(`OpenSCAD failed to render STL: ${message}`)
