@@ -2,38 +2,27 @@
   command = "npm run build"
   publish = ".next"
 
-# Change to false to enable proper MIME type handling
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--no-audit --no-fund"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# This is crucial - DO NOT skip processing for Next.js apps
 [build.processing]
   skip_processing = false
 
-[build.environment]
-  NODE_VERSION = "18" # Match your development Node version
-  NPM_FLAGS = "--no-audit --no-fund"
-  NEXT_TELEMETRY_DISABLED = "1"
-  # SESSION_PASSWORD removed from here - use environment variables instead
+# Important for static assets
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+  [plugins.inputs]
+    # Set this to false to ensure Next.js handles all routes
+    fallback = false
 
-# Essential for Next.js client-side navigation
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Helpful for Next.js API routes and dynamic routes
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/next_api/:splat"
-  status = 200
-
+# Cache Netlify build plugins
 [[plugins]]
   package = "netlify-plugin-cache"
   [plugins.inputs]
     paths = [
       "node_modules/.cache",
-      ".next/cache",
-      "node_modules/.pnpm", # If using pnpm
-      ".eslintcache"
+      ".next/cache"
     ]
-
-# For better Next.js support
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
