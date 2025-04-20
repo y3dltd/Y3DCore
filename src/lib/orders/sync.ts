@@ -257,7 +257,11 @@ export const upsertProductFromItem = async (
             const updatedProduct = await tx.product.update({
               where: { id: existingBySku.id },
               data: {
-                ...productData,
+                // Remove name from update to preserve existing product names
+                ...(() => {
+                  const { name, ...productDataWithoutName } = productData;
+                  return productDataWithoutName;
+                })(),
                 shipstation_product_id: shipstationProductId,
                 updatedAt: new Date(),
               },
@@ -313,7 +317,11 @@ export const upsertProductFromItem = async (
             updatedAt: new Date(),
           },
           update: {
-            ...(productData as Prisma.ProductUpdateInput),
+            // Remove name from update to preserve existing product names
+            ...(() => {
+              const { name, ...productDataWithoutName } = productData;
+              return productDataWithoutName;
+            })(),
             updatedAt: new Date(),
           },
         });

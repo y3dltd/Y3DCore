@@ -267,8 +267,19 @@ export const columns: ColumnDef<PrintTaskData>[] = [
     ),
     cell: ({ row }) => {
       const sku = row.original.product?.sku || 'N/A';
+      // Use direct text output without any truncation or special styling
       return (
-        <div className="truncate max-w-[6ch] text-xs" title={sku}>
+        <div style={{
+          fontSize: '12px',
+          textOverflow: 'clip',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          overflow: 'visible',
+          padding: '4px',
+          width: '100%',
+          maxWidth: '300px',
+          display: 'block'
+        }} title={sku}>
           {sku}
         </div>
       );
@@ -289,11 +300,19 @@ export const columns: ColumnDef<PrintTaskData>[] = [
     ),
     cell: ({ row }) => {
       const productName = row.original.product?.name || 'N/A';
+      // Use direct text output without any truncation or special styling
       return (
-        <div
-          className="truncate w-[80px] text-xs overflow-hidden whitespace-nowrap"
-          title={productName}
-        >
+        <div style={{
+          fontSize: '12px',
+          textOverflow: 'clip',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          overflow: 'visible',
+          padding: '4px',
+          width: '100%',
+          maxWidth: '350px',
+          display: 'block'
+        }} title={productName}>
           {productName}
         </div>
       );
@@ -990,15 +1009,50 @@ export function PrintQueueTable({ data }: PrintQueueTableProps) {
       </div>
       <div
         className="rounded-md border overflow-x-auto w-full mx-auto relative"
-        style={{ minWidth: '100%' }}
+        style={{ minWidth: '100%', overflowX: 'auto' }}
       >
         {/* Custom styles for table cells */}
         <style jsx global>{`
           .print-queue-table td {
             padding: 0.75rem 0.5rem;
+            min-width: auto;
+            text-overflow: clip !important;
+            overflow: visible !important;
+            white-space: normal !important;
           }
           .print-queue-table th {
             padding: 0.75rem 0.5rem;
+            min-width: auto;
+            text-overflow: clip !important;
+            overflow: visible !important;
+            white-space: normal !important;
+          }
+          
+          /* Specific column widths */
+          .sku-cell {
+            min-width: 300px !important;
+            width: 300px !important;
+          }
+          .product-name-cell {
+            min-width: 350px !important;
+            width: 350px !important;
+          }
+          
+          /* Fix cell content display */
+          .sku-cell > div, .product-name-cell > div {
+            max-width: 100%;
+            word-break: break-word;
+            overflow: visible;
+            padding: 8px 4px;
+            line-height: 1.5;
+            white-space: normal;
+            text-overflow: clip !important;
+          }
+          
+          /* Explicitly prevent text truncation anywhere in the table */
+          .print-queue-table * {
+            text-overflow: clip !important;
+            overflow: visible !important;
           }
           .print-queue-table
             .in-progress-row
@@ -1082,7 +1136,9 @@ export function PrintQueueTable({ data }: PrintQueueTableProps) {
                           cell.column.id === 'actions'
                             ? 'actions-cell sticky right-0 z-10 bg-background'
                             : '',
-                          cell.column.id === 'select' ? 'select-cell' : ''
+                          cell.column.id === 'select' ? 'select-cell' : '',
+                          cell.column.id === 'product.sku' ? 'sku-cell' : '',
+                          cell.column.id === 'product.name' ? 'product-name-cell' : ''
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
