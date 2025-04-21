@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { taskId
     const session = await getSession();
     const userId = session.userId;
     if (!userId) {
-      console.error(`Unauthorized session for task ${params.taskId}`);
+      console.error(`Unauthorized session for task ${params.taskId}. Cookie header:`, request.headers.get('cookie'));
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     console.log(`Authorized userId ${userId} for task ${params.taskId}`);
