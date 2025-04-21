@@ -2,51 +2,23 @@
 
 import Image from 'next/image'; // Import the Image component
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+// Remove unused imports
+// import { useRouter } from 'next/navigation';
+// import { useEffect, useState } from 'react';
 
-import { checkAuthStatus, hasSessionCookie } from '@/lib/auth-client';
+// Remove unused auth-client import
+// import { checkAuthStatus, hasSessionCookie } from '@/lib/auth-client';
 
 import { Button } from '../ui/button';
 import LogoutButton from './logout-button'; // Import the client component
 
-// Client-side component to manage auth state
+// Mocked Navbar - Assumes user is always logged in
 export default function Navbar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const router = useRouter();
+  // Assume always logged in with mock user details
+  const isLoggedIn = true;
+  const userEmail = 'mock@example.com'; // Directly use mock user email
 
-  // Check auth status on load and after route changes
-  useEffect(() => {
-    const checkAuth = async () => {
-      // First, do a simple client-side check if the session cookie exists
-      const hasCookie = hasSessionCookie();
-
-      if (hasCookie) {
-        try {
-          // Verify the session is valid by fetching the user info
-          const { isAuthenticated, userData } = await checkAuthStatus();
-
-          if (isAuthenticated && userData) {
-            setIsLoggedIn(true);
-            setUserEmail(userData.email || 'User');
-          } else {
-            setIsLoggedIn(false);
-            setUserEmail(null);
-          }
-        } catch (error) {
-          console.error('Failed to verify authentication:', error);
-          setIsLoggedIn(false);
-          setUserEmail(null);
-        }
-      } else {
-        setIsLoggedIn(false);
-        setUserEmail(null);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
+  // Removed useEffect and state management related to auth checking
 
   return (
     <nav className="bg-card border-b sticky top-0 z-50 shadow-sm">
@@ -92,12 +64,14 @@ export default function Navbar() {
 
           {/* Right side: Auth Status */}
           <div className="flex items-center">
+            {/* Always show logged-in state */}
             {isLoggedIn ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-muted-foreground">{userEmail}</span>
                 <LogoutButton />
               </div>
             ) : (
+              // This part should ideally never be reached now
               <Link href="/login">
                 <Button variant="outline" size="sm">
                   Login
