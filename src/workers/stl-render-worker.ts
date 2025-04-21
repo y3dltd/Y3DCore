@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespace
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { renderDualColourTag } from '../lib/openscad';
@@ -50,34 +50,64 @@ function slug(str: string): string {
 async function reserveTask() {
     // Transaction to find and reserve the oldest pending task for the target SKU
     return prisma.$transaction(async tx => {
-        // Log the search criteria we're using
         console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and product.sku='${TARGET_SKU}'`);
 
-        const task = await tx.printOrderTask.findFirst({
+        // Find the ID of the oldest pending task first
+        const taskToReserve = await tx.printOrderTask.findFirst({
             where: {
-                // Only filter by stl_render_state, not by status
-                // since the tasks can have status='completed' but still need STL rendering
                 stl_render_state: RENDER_STATE.pending,
                 product: { sku: TARGET_SKU },
             },
             orderBy: { created_at: 'asc' },
-            select: { id: true, custom_text: true, color_1: true, color_2: true, render_retries: true, status: true }, // Select necessary fields including status
+            select: { id: true }, // Only need the ID initially
         });
 
-        if (!task) {
+        if (!taskToReserve) {
+            return null; // No pending tasks found
+        }
+
+        // Attempt to update the specific task found, ensuring it's still pending
+        const updateResult = await tx.printOrderTask.updateMany({
+            where: {
+                id: taskToReserve.id,
+                stl_render_state: RENDER_STATE.pending, // Crucial: Ensure it's still pending
+            },
+            data: {
+                stl_render_state: RENDER_STATE.running,
+            },
+        });
+
+        // Check if the update actually modified a row
+        if (updateResult.count === 0) {
+            // The task was likely picked up by another worker between the findFirst and updateMany
+            console.log(`[${new Date().toISOString()}] Task ${taskToReserve.id} was already reserved by another process. Skipping.`);
+            return null; // Indicate that reservation failed
+        }
+
+        // If update succeeded, fetch the necessary task details
+        const reservedTask = await tx.printOrderTask.findUnique({
+            where: { id: taskToReserve.id },
+            select: { id: true, custom_text: true, color_1: true, color_2: true, render_retries: true, status: true },
+        });
+
+        // This should ideally not happen if updateResult.count was > 0, but check just in case
+        if (!reservedTask) {
+            console.error(`[${new Date().toISOString()}] CRITICAL: Failed to fetch details for task ${taskToReserve.id} immediately after successful reservation update.`);
+            // Attempt to revert the state back to pending to avoid losing the task
+            await tx.printOrderTask.update({
+                where: { id: taskToReserve.id },
+                data: { stl_render_state: RENDER_STATE.pending }
+            });
             return null;
         }
 
-        // Mark only the STL status as running using raw SQL
-        await tx.$executeRaw`
-            UPDATE PrintOrderTask 
-            SET stl_render_state = 'running'
-            WHERE id = ${task.id}
-        `;
 
-        console.log(`[${new Date().toISOString()}] Reserved task ${task.id} with status='${task.status}'`);
+        console.log(`[${new Date().toISOString()}] Reserved task ${reservedTask.id} with status='${reservedTask.status}'`);
+        return reservedTask; // Return the full task details needed by processTask
 
-        return task;
+    }, {
+        maxWait: 10000, // Optional: Adjust transaction timeouts if needed
+        timeout: 20000
     });
 }
 
@@ -95,7 +125,7 @@ async function processTask(task: { id: number; custom_text: string | null; color
 
         // 2. Prepare data for OpenSCAD
         let lines = (task.custom_text ?? '').split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
-        
+
         // Check if we have only one line and it contains a space (likely a full name)
         // Only apply this logic if line2 is empty - don't override existing multiline input
         if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
@@ -114,7 +144,7 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 console.log(`[${new Date().toISOString()}] Split multi-part name "${firstName} ${surname}" across two lines`);
             }
         }
-        
+
         const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
         const color1 = task.color_1 ?? 'Black'; // Default colors if null
         const color2 = task.color_2 ?? 'White';
@@ -198,13 +228,18 @@ async function processTask(task: { id: number; custom_text: string | null; color
 // Helper to fix invalid stl_render_state values 
 async function fixInvalidStlRenderStates() {
     try {
-        // Find and update records with invalid stl_render_state values
-        const count = await prisma.$executeRawUnsafe(`
-            UPDATE PrintOrderTask 
-            SET stl_render_state = 'pending' 
-            WHERE stl_render_state = '' OR stl_render_state IS NULL
-        `);
-        
+        // Find and update records whose state is not one of the known valid states,
+        // but ONLY if they haven't already been successfully rendered (i.e., stl_path is not set).
+        // This prevents resetting completed tasks even if their state was somehow corrupted later.
+        const validStates = [RENDER_STATE.pending, RENDER_STATE.running, RENDER_STATE.completed, RENDER_STATE.failed];
+        const count = await prisma.$executeRaw`
+            UPDATE PrintOrderTask
+            SET stl_render_state = ${RENDER_STATE.pending}
+            WHERE stl_render_state NOT IN (${Prisma.join(validStates)})
+              AND (stl_path = '' OR stl_path IS NULL)
+        `;
+        // Note: Using $executeRaw instead of $executeRawUnsafe for better type safety with Prisma.join
+
         if (count > 0) {
             console.log(`[${new Date().toISOString()}] Fixed ${count} records with invalid stl_render_state values`);
         }
@@ -219,10 +254,10 @@ async function fixInvalidStlRenderStates() {
 // Simple version to run and process a single task batch (exported for testing)
 export async function runTaskBatch() {
     console.log(`[${new Date().toISOString()}] Checking for tasks to process...`);
-    
+
     // First, fix any invalid stl_render_state values
     await fixInvalidStlRenderStates();
-    
+
     const running: Promise<void>[] = [];
 
     // Get current running tasks
@@ -245,62 +280,72 @@ export async function runTaskBatch() {
 }
 
 async function workerLoop() {
-    // Track running promises
-    const running: Promise<void>[] = [];
 
-    // Function to handle a single iteration
+    // Function to handle a single iteration of the worker loop
     async function iteration() {
         console.log(`[${new Date().toISOString()}] Checking for pending STL render tasks...`);
-        
+        let tasksStartedThisIteration = 0;
+
         // Fix any invalid stl_render_state values at the start of each iteration
         await fixInvalidStlRenderStates();
 
-        // Clean up completed promises using Promise.allSettled
-        if (running.length > 0) {
-            const settled = await Promise.allSettled(running);
-            // Remove completed promises (both fulfilled and rejected)
-            // Promise.allSettled never returns 'pending' status, so we need to check for the opposite
-            // and remove those promises that have completed one way or another
-            for (let i = running.length - 1; i >= 0; i--) {
-                if (settled[i].status === 'fulfilled' || settled[i].status === 'rejected') {
-                    running.splice(i, 1);
-                }
-            }
-        }
-
-        // Fill up to CONCURRENCY
-        while (running.length < CONCURRENCY) {
+        // Try to fill up available concurrency slots for *this iteration*
+        // We don't need to track promises across iterations anymore,
+        // the database lock handles the actual concurrency.
+        // We just limit how many tasks *this specific check* tries to start.
+        for (let i = 0; i < CONCURRENCY; i++) {
             const task = await reserveTask();
             if (!task) {
-                console.log(`[${new Date().toISOString()}] No pending tasks found`);
-                break; // No more tasks to process
+                // console.log(`[${new Date().toISOString()}] No more pending tasks found this iteration.`);
+                break; // No more tasks found to reserve in this loop
             }
-            console.log(`[${new Date().toISOString()}] Found task ${task.id}, spinning up render`);
-            const p = processTask(task);
-            running.push(p);
+            // If reserveTask succeeded, it returns the task details
+            console.log(`[${new Date().toISOString()}] Found and reserved task ${task.id}, spinning up render`);
+            tasksStartedThisIteration++;
+            // Start processing the task, but don't wait for it here (fire and forget within the loop)
+            // Error handling is inside processTask
+            processTask(task).catch(err => {
+                // Log unexpected errors from processTask promise itself, though it should handle its own errors
+                console.error(`[${new Date().toISOString()}] Uncaught error from processTask for task ${task.id}:`, err);
+            });
         }
 
-        // Log summary after each iteration
-        console.log(`[${new Date().toISOString()}] Iteration complete; ${running.length} in-flight tasks`);
+        // Log summary for this iteration's attempt
+        console.log(`[${new Date().toISOString()}] Iteration check complete; attempted to start ${tasksStartedThisIteration} tasks.`);
+    } // End of iteration function
 
-    }
+    // Function to schedule the next iteration using setTimeout
+    const scheduleNextIteration = () => {
+        // console.log(`[${new Date().toISOString()}] Scheduling next iteration in ${POLL_INTERVAL_MS}ms`);
+        setTimeout(() => {
+            iterationWrapper(); // Call the wrapper which includes error handling and rescheduling
+        }, POLL_INTERVAL_MS);
+    };
 
-    // Run immediately first
-    console.log(`[${new Date().toISOString()}] STL Render Worker started with concurrency ${CONCURRENCY}`);
-    await iteration().catch(err => {
-        console.error('Initial worker run failed:', err);
-    });
+    // Wrapper around iteration to handle errors and ensure rescheduling
+    const iterationWrapper = async () => {
+        try {
+            await iteration();
+        } catch (err) {
+            console.error(`[${new Date().toISOString()}] Error during worker iteration execution:`, err);
+            // Log error but continue scheduling next iteration
+        } finally {
+            // Always schedule the next run
+            scheduleNextIteration();
+        }
+    };
 
-    // Then set up interval
-    setInterval(() => {
-        iteration().catch(err => {
-            console.error('Worker iteration failed:', err);
-        });
-    }, POLL_INTERVAL_MS);
-}
+    // --- Worker Start ---
+    console.log(`[${new Date().toISOString()}] STL Render Worker starting with concurrency ${CONCURRENCY}`);
+    // Start the first iteration immediately
+    iterationWrapper();
+
+} // End of workerLoop function
 
 // Start the worker loop
 workerLoop().catch(e => {
-    console.error('Worker crashed', e);
-    process.exit(1);
+    // This catch is primarily for errors during the initial setup of workerLoop itself,
+    // before the first iteration starts. Iteration errors are caught inside iterationWrapper.
+    console.error(`[${new Date().toISOString()}] Worker loop failed during initial setup:`, e);
+    process.exit(1); // Exit if the loop setup itself fails critically
 });
