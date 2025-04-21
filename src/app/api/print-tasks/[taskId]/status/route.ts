@@ -1,7 +1,9 @@
 import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+// Import iron-session necessities
+import { IronSessionData, getIronSession } from 'iron-session';
 
-import { getCurrentUser } from '@/lib/auth';
+import { sessionOptions } from '@/lib/auth'; // Assuming sessionOptions is here
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -13,13 +15,21 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
-  // --- Authentication Check ---
+  // Response object needed for iron-session
+  const response = NextResponse.next();
+
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      console.error(`Unauthorized access attempt for task ${params.taskId}`);
+    // --- Get session using iron-session --- 
+    const session = await getIronSession<IronSessionData>(request, response, sessionOptions);
+    const userId = session.userId;
+
+    if (!userId) {
+      console.error(`Unauthorized: No userId in session for task ${params.taskId}`);
+      // Return a standard JSON response for unauthorized access
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+    // Log successful authentication from session
+    console.log(`Authorized access for user ID: ${userId} to task ${params.taskId}`);
     // --- End Authentication Check ---
 
     const { taskId } = params;
@@ -60,14 +70,29 @@ export async function PATCH(request: NextRequest, { params }: { params: { taskId
       });
 
       console.log(`Successfully updated task ${taskId} status to ${status}`);
-      return NextResponse.json(updatedTask);
+      // IMPORTANT: Return the updated task in the body of a *new* NextResponse,
+      // but use the headers from the `response` object that iron-session modified 
+      // to ensure the session cookie is properly handled/updated if needed.
+      return new NextResponse(JSON.stringify(updatedTask), {
+        status: 200,
+        headers: response.headers, // Use headers from the session-aware response
+      });
+
     } catch (error) {
       console.error(`Error updating task ${taskIdInt} status:`, error);
-      return handleApiError(error);
+      // Even on error, use the session-aware headers
+      const errorResponse = handleApiError(error);
+      // Create a new response for the error, preserving headers
+      const body = await errorResponse.json();
+      return new NextResponse(JSON.stringify(body), {
+        status: errorResponse.status,
+        headers: response.headers,
+      });
     }
-  } catch (authError) {
-    console.error(`Authentication error for task ${params.taskId}:`, authError);
-    return NextResponse.json({ message: 'Authentication failed' }, { status: 401 });
+  } catch (sessionError) {
+    console.error(`Session error for task ${params.taskId}:`, sessionError);
+    // Use status 500 for session errors, return standard JSON response
+    return NextResponse.json({ message: 'Session error' }, { status: 500 });
   }
 }
 
