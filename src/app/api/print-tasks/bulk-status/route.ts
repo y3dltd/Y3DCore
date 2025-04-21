@@ -1,8 +1,10 @@
 import { PrintTaskStatus, Prisma } from '@prisma/client';
-import { NextResponse } from 'next/server';
+import { IronSessionData, getIronSession } from 'iron-session';
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth';
+import { sessionOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -15,13 +17,17 @@ const bulkUpdateStatusSchema = z.object({
   status: z.enum([validStatuses[0], ...validStatuses.slice(1)]),
 });
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
-    // --- Authentication Check ---
-    const user = await getCurrentUser();
-    if (!user) {
+    // --- Get session using iron-session (use cookies() from next/headers) --- 
+    const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
+    const userId = session.userId;
+
+    if (!userId) {
+      console.error('Unauthorized: No userId in session for bulk status update.');
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`Authorized access for bulk status update by user ID: ${userId}`);
     // --- End Authentication Check ---
 
     let validatedData: z.infer<typeof bulkUpdateStatusSchema>;
@@ -61,12 +67,14 @@ export async function PATCH(request: Request) {
       `Bulk updated status to ${status} for ${result.count} tasks (requested: ${taskIds.length}).`
     );
 
+    // Return standard JSON response
     return NextResponse.json({
       message: `Successfully updated status for ${result.count} tasks.`,
       count: result.count,
     });
   } catch (error) {
     console.error('Error during bulk task status update:', error);
+    // Return standard error response (handleApiError likely returns a NextResponse)
     return handleApiError(error);
   }
 }
