@@ -6,7 +6,8 @@ import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { PrintTask, PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client';
+import type { PrintOrderTask as PrintTask } from '@prisma/client';
+import { PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client';
 // REMOVED: import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pino from 'pino';
@@ -44,7 +45,7 @@ const ItemPersonalizationResultSchema = z.object({
     overallNeedsReview: z.boolean(),
     overallReviewReason: z.string().nullable(),
 });
-const AiOrderResponseSchema = z.object({
+const _AiOrderResponseSchema = z.object({
     itemPersonalizations: z.record(z.string(), ItemPersonalizationResultSchema),
 });
 
@@ -97,7 +98,7 @@ async function extractOrderPersonalization(
         UpdateOptions,
         'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate'
     >
-): Promise<{ success: boolean; data?: z.infer<typeof AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null }> {
+): Promise<{ success: boolean; data?: z.infer<typeof _AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null }> {
     // ... (Paste the full, correct implementation of extractOrderPersonalization here) ...
     // Placeholder to avoid excessive length, ensure you copy the real one
     logger.warn(`[AI Update][Order ${order.id}] Using placeholder AI function - replace with full implementation!`);
@@ -110,7 +111,7 @@ async function applyAiUpdatesToTasks(
     tx: Prisma.TransactionClient,
     orderId: number,
     itemId: number,
-    itemQuantity: number, // Pass item quantity for context
+    _itemQuantity: number, // Pass item quantity for context (unused)
     existingTasks: PrintTask[],
     aiPersonalizations: z.infer<typeof PersonalizationDetailSchema>[] | undefined,
     options: UpdateOptions // Pass simplified options
@@ -130,7 +131,7 @@ async function applyAiUpdatesToTasks(
         for (let i = 0; i < aiCount; i++) {
             const dbTask = existingTasks[i];
             const aiTask = aiData[i];
-            const updates: Prisma.PrintTaskUpdateInput = {};
+            const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
 
             // Compare fields and stage updates
@@ -179,7 +180,7 @@ async function applyAiUpdatesToTasks(
             const dbTask = existingTasks[i];
             const aiTask = aiData[i];
             // Apply same update logic as Case 1
-            const updates: Prisma.PrintTaskUpdateInput = {};
+            const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
             if (dbTask.custom_text !== aiTask.customText) { updates.custom_text = aiTask.customText; needsUpdate = true; }
             if (dbTask.color_1 !== aiTask.color1) { updates.color_1 = aiTask.color1; needsUpdate = true; }
@@ -243,7 +244,7 @@ async function applyAiUpdatesToTasks(
             const dbTask = existingTasks[i];
             const aiTask = aiData[i];
             // Apply same update logic as Case 1
-            const updates: Prisma.PrintTaskUpdateInput = {};
+            const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
             if (dbTask.custom_text !== aiTask.customText) { updates.custom_text = aiTask.customText; needsUpdate = true; }
             if (dbTask.color_1 !== aiTask.color1) { updates.color_1 = aiTask.color1; needsUpdate = true; }
@@ -308,7 +309,7 @@ async function main() {
             openaiModel: OPENAI_MODEL,
             systemPrompt,
             userPromptTemplate,
-            verbose: LOG_LEVEL === 'debug', // Set verbose based on LOG_LEVEL
+            // verbose: LOG_LEVEL === 'debug', // Removed verbose option as it's not in UpdateOptions
             logLevel: LOG_LEVEL,
             dryRun: DRY_RUN_MODE,
         };
@@ -415,7 +416,7 @@ async function main() {
 
 
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
+        const _errorMsg = error instanceof Error ? error.message : String(error);
         if (logger) logger.error('SCRIPT FAILED', error);
         else console.error('SCRIPT FAILED', error);
         process.exitCode = 1; // Indicate failure

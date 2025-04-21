@@ -55,7 +55,7 @@ export async function fixInvalidStlRenderStatus(db: PrismaClient): Promise<numbe
 
     return result;
   } catch (error) {
-    logger.error('Error fixing invalid StlRenderStatus values:', error);
+    logger.error('Error fixing invalid StlRenderStatus values:', { error });
     return 0;
   }
 }
