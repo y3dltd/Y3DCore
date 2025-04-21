@@ -1,14 +1,52 @@
+'use client';
+
 import Image from 'next/image'; // Import the Image component
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { getCurrentUser } from '@/lib/auth';
+import { checkAuthStatus, hasSessionCookie } from '@/lib/auth-client';
 
-import LogoutButton from './logout-button'; // Import the client component
 import { Button } from '../ui/button';
+import LogoutButton from './logout-button'; // Import the client component
 
-// Make Navbar an async component to fetch user server-side
-export default async function Navbar() {
-  const user = await getCurrentUser();
+// Client-side component to manage auth state
+export default function Navbar() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Check auth status on load and after route changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      // First, do a simple client-side check if the session cookie exists
+      const hasCookie = hasSessionCookie();
+
+      if (hasCookie) {
+        try {
+          // Verify the session is valid by fetching the user info
+          const { isAuthenticated, userData } = await checkAuthStatus();
+
+          if (isAuthenticated && userData) {
+            setIsLoggedIn(true);
+            setUserEmail(userData.email || 'User');
+          } else {
+            setIsLoggedIn(false);
+            setUserEmail(null);
+          }
+        } catch (error) {
+          console.error('Failed to verify authentication:', error);
+          setIsLoggedIn(false);
+          setUserEmail(null);
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserEmail(null);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
 
   return (
     <nav className="bg-card border-b sticky top-0 z-50 shadow-sm">
@@ -54,10 +92,10 @@ export default async function Navbar() {
 
           {/* Right side: Auth Status */}
           <div className="flex items-center">
-            {user ? (
+            {isLoggedIn ? (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-muted-foreground">{user.email}</span>
-                <LogoutButton /> {/* Use the client component for logout */}
+                <span className="text-sm text-muted-foreground">{userEmail}</span>
+                <LogoutButton />
               </div>
             ) : (
               <Link href="/login">

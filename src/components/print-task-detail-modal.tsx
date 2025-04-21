@@ -12,10 +12,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -98,6 +98,7 @@ export function PrintTaskDetailModal() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -136,6 +137,7 @@ export function PrintTaskDetailModal() {
             identifier,
             newName,
           }),
+          credentials: 'include',
         });
 
         if (!response.ok) {

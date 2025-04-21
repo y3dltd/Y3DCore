@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, Loader2 } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ export default function LogoutButton() {
       try {
         const response = await fetch('/api/auth/logout', {
           method: 'POST',
+          credentials: 'include',
         });
 
         if (!response.ok) {

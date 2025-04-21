@@ -31,10 +31,10 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         {/* Metadata will be injected here */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
+        <link rel="icon" href="/fav/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/fav/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/fav/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/fav/apple-icon-180x180.png" />
         <link rel="manifest" href="/manifest.json" />
         {/* Add other sizes/types as needed from your public/fav directory */}
       </head>

@@ -27,12 +27,18 @@ function buildSessionOptions() {
       throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   return {
     cookieName: 'y3dhub_session',
     password: password ?? 'development_fallback_password_change_me_please',
     cookieOptions: {
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7,
+      secure: isProduction,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      httpOnly: true,
+      sameSite: isProduction ? 'none' as const : 'lax' as const,
+      path: '/',
+      domain: process.env.COOKIE_DOMAIN || undefined,
     },
   } as const;
 }

@@ -14,52 +14,60 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   // --- Authentication Check ---
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-  // --- End Authentication Check ---
-
-  const { taskId } = params;
-  const taskIdInt = parseInt(taskId, 10);
-
-  if (isNaN(taskIdInt)) {
-    return NextResponse.json({ error: 'Invalid Task ID format' }, { status: 400 });
-  }
-
-  let body;
   try {
-    body = await request.json();
-  } catch /* istanbul ignore next */ {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+    const user = await getCurrentUser();
+    if (!user) {
+      console.error(`Unauthorized access attempt for task ${params.taskId}`);
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+    // --- End Authentication Check ---
 
-  const { status } = body;
+    const { taskId } = params;
+    const taskIdInt = parseInt(taskId, 10);
 
-  if (!status || !isValidPrintTaskStatus(status)) {
-    return NextResponse.json(
-      {
-        error: `Invalid or missing status. Must be one of: ${Object.values(PrintTaskStatus).join(
-          ', '
-        )}`,
-      },
-      { status: 400 }
-    );
-  }
+    if (isNaN(taskIdInt)) {
+      return NextResponse.json({ error: 'Invalid Task ID format' }, { status: 400 });
+    }
 
-  try {
-    const updatedTask = await prisma.printOrderTask.update({
-      where: { id: taskIdInt },
-      data: {
-        status: status,
-        updated_at: new Date(), // Explicitly set updated_at
-      },
-    });
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error(`Invalid JSON body for task ${taskId}:`, error);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
-    return NextResponse.json(updatedTask);
-  } catch (error) {
-    console.error(`Error updating task ${taskIdInt} status:`, error);
-    return handleApiError(error);
+    const { status } = body;
+
+    if (!status || !isValidPrintTaskStatus(status)) {
+      return NextResponse.json(
+        {
+          error: `Invalid or missing status. Must be one of: ${Object.values(PrintTaskStatus).join(
+            ', '
+          )}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const updatedTask = await prisma.printOrderTask.update({
+        where: { id: taskIdInt },
+        data: {
+          status: status,
+          updated_at: new Date(), // Explicitly set updated_at
+        },
+      });
+
+      console.log(`Successfully updated task ${taskId} status to ${status}`);
+      return NextResponse.json(updatedTask);
+    } catch (error) {
+      console.error(`Error updating task ${taskIdInt} status:`, error);
+      return handleApiError(error);
+    }
+  } catch (authError) {
+    console.error(`Authentication error for task ${params.taskId}:`, authError);
+    return NextResponse.json({ message: 'Authentication failed' }, { status: 401 });
   }
 }
 

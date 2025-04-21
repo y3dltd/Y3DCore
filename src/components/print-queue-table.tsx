@@ -4,6 +4,7 @@ import { PrintOrderTask, PrintTaskStatus, Product as PrismaProduct } from '@pris
 import {
   ColumnDef,
   ColumnFiltersState,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -11,18 +12,17 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-  RowSelectionState,
 } from '@tanstack/react-table';
 import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
 import {
   ArrowUpDown,
   Check,
-  Loader2,
+  CheckCircle2,
   Copy,
+  Loader2,
+  MoreHorizontal,
   PlayCircle,
   Undo2,
-  MoreHorizontal,
-  CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -80,6 +80,7 @@ async function updateTaskStatus(taskId: number, status: PrintTaskStatus) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ status }),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -100,6 +101,7 @@ async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus) 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ taskIds, status }),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -272,17 +274,20 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const sku = row.original.product?.sku || 'N/A';
       // Use direct text output without any truncation or special styling
       return (
-        <div style={{
-          fontSize: '12px',
-          textOverflow: 'clip',
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          overflow: 'visible',
-          padding: '4px',
-          width: '100%',
-          maxWidth: '300px',
-          display: 'block'
-        }} title={sku}>
+        <div
+          style={{
+            fontSize: '12px',
+            textOverflow: 'clip',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            overflow: 'visible',
+            padding: '4px',
+            width: '100%',
+            maxWidth: '300px',
+            display: 'block',
+          }}
+          title={sku}
+        >
           {sku}
         </div>
       );
@@ -305,17 +310,20 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const productName = row.original.product?.name || 'N/A';
       // Use direct text output without any truncation or special styling
       return (
-        <div style={{
-          fontSize: '12px',
-          textOverflow: 'clip',
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          overflow: 'visible',
-          padding: '4px',
-          width: '100%',
-          maxWidth: '350px',
-          display: 'block'
-        }} title={productName}>
+        <div
+          style={{
+            fontSize: '12px',
+            textOverflow: 'clip',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            overflow: 'visible',
+            padding: '4px',
+            width: '100%',
+            maxWidth: '350px',
+            display: 'block',
+          }}
+          title={productName}
+        >
           {productName}
         </div>
       );
@@ -1031,7 +1039,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
             overflow: visible !important;
             white-space: normal !important;
           }
-          
+
           /* Specific column widths */
           .sku-cell {
             min-width: 300px !important;
@@ -1041,9 +1049,10 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
             min-width: 350px !important;
             width: 350px !important;
           }
-          
+
           /* Fix cell content display */
-          .sku-cell > div, .product-name-cell > div {
+          .sku-cell > div,
+          .product-name-cell > div {
             max-width: 100%;
             word-break: break-word;
             overflow: visible;
@@ -1052,7 +1061,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
             white-space: normal;
             text-overflow: clip !important;
           }
-          
+
           /* Explicitly prevent text truncation anywhere in the table */
           .print-queue-table * {
             text-overflow: clip !important;
@@ -1161,8 +1170,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
           </TableBody>
         </Table>
       </div>
-      <PrintTaskDetailModal /> {' '}
-      {/* Reverted back to self-closing */}
+      <PrintTaskDetailModal /> {/* Reverted back to self-closing */}
     </div>
   );
 }
