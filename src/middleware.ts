@@ -101,4 +101,5 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-export const matcher = ['/((?!_next/static|_next/image|.*\\.\\w+$).*)'];
+// Temporarily remove file extension exclusion to test manifest.json handling
+export const matcher = ['/((?!_next/static|_next/image).*)'];
