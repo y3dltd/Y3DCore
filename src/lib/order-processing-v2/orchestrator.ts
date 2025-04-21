@@ -392,6 +392,27 @@ export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma:
         // Process each order
         for (const order of ordersToProcess) {
             totalOrdersProcessed++;
+
+            // --- Implement --force-recreate logic: Delete existing tasks ---
+            if (options.forceRecreate) {
+                logger.info(`[Orchestrator][Order ${order.id}] --force-recreate enabled. Deleting existing print tasks for this order.`);
+                try {
+                    const deleteResult = await prisma.printOrderTask.deleteMany({
+                        where: {
+                            orderId: order.id,
+                        },
+                    });
+                    logger.info(`[Orchestrator][Order ${order.id}] Deleted ${deleteResult.count} existing print tasks.`);
+                } catch (deleteError: any) {
+                    const errorMsg = deleteError instanceof Error ? deleteError.message : String(deleteError);
+                    logger.error(`[Orchestrator][Order ${order.id}] Failed to delete existing print tasks: ${errorMsg}`, deleteError);
+                    // Decide if deletion failure should stop processing this order.
+                    // For now, we'll log and continue, but this might need adjustment.
+                    // If continuing, the upsert might recreate tasks, which might be acceptable depending on exact requirements.
+                }
+            }
+            // --- End --force-recreate logic ---
+
             const success = await processSingleOrder(order, options, prompts, prisma);
             if (!success) {
                 totalOrdersFailed++;
