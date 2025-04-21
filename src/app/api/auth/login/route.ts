@@ -7,17 +7,20 @@ import { getIronSession, IronSessionData } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/server-only/auth-password';
 
+// Define standard CORS headers for reuse
+const corsHeaders = (origin: string | null) => ({
+  'Access-Control-Allow-Origin': origin || '*',
+  'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CSRF-Token',
+});
+
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin');
   // Create the response object early to attach the session cookie to it
   const response = NextResponse.json({}, {
     status: 200,
-    headers: {
-      // Add CORS headers to allow session cookies
-      'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CSRF-Token'
-    }
+    headers: corsHeaders(origin),
   });
 
   try {
@@ -60,27 +63,30 @@ export async function POST(request: NextRequest) {
     // Re-create response with user data and existing headers (including session cookie)
     return NextResponse.json(userWithoutPassword, {
       headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
+        ...response.headers, // Preserve existing headers (like Set-Cookie)
+        // Re-add CORS headers just in case
+        'Access-Control-Allow-Origin': origin || '*',
         'Access-Control-Allow-Credentials': 'true',
       }
     });
   } catch (error) {
     console.error('[API Auth Login] Error:', error);
-    // Ensure we return the response object even in case of error, 
-    // potentially updating its status/body via handleApiError if it modifies the response.
-    // For now, just return a generic error on the initial response object.
-    // Adjust based on how handleApiError works.
+    // Ensure we return the response object even in case of error
     return NextResponse.json(
       { message: 'Internal server error' },
       {
         status: 500,
-        headers: {
-          ...response.headers,
-          'Access-Control-Allow-Origin': request.headers.get('origin') || '*',
-          'Access-Control-Allow-Credentials': 'true',
-        }
+        headers: response.headers, // Use headers from the initially created response
       }
     );
   }
+}
+
+// Add OPTIONS handler for CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  return NextResponse.json({}, {
+    status: 200, // Use 200 for OPTIONS response with headers
+    headers: corsHeaders(origin),
+  });
 }

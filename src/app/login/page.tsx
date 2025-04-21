@@ -79,6 +79,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 disabled={isPending}
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>

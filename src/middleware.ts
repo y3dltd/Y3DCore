@@ -5,31 +5,34 @@ import { NextResponse } from 'next/server';
 import { sessionOptions } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
   const { pathname } = request.nextUrl;
 
-  // Skip authentication for public assets and auth-related routes
+  // Immediately allow public assets and specific paths without session check
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon.ico') ||
+    pathname.includes('favicon.ico') ||
     pathname.startsWith('/login') ||
-    pathname.startsWith('/api/auth') ||
-    pathname.includes('manifest.json') ||
-    pathname.startsWith('/fav/') ||
+    pathname.startsWith('/api/auth') || // Allows login, logout, user routes
+    pathname === '/manifest.json' || // Match exact manifest path
+    pathname.startsWith('/fav/') || // Allow fav directory
     pathname.endsWith('.png') ||
     pathname.endsWith('.jpg') ||
     pathname.endsWith('.svg') ||
     pathname.endsWith('.webp') ||
     pathname.endsWith('.ico')
   ) {
-    return response;
+    console.log(`Middleware: Allowing public path ${pathname}`);
+    return NextResponse.next(); // Allow request without session check
   }
+
+  const response = NextResponse.next();
+  console.log(`Middleware: Processing protected path ${pathname}`);
 
   try {
     const session = await getIronSession<IronSessionData>(request, response, sessionOptions);
     const { userId } = session;
 
-    console.log(`Middleware processing request for: ${pathname}, UserID: ${userId || 'None'}`);
+    console.log(`Middleware: UserID: ${userId || 'None'} for path ${pathname}`);
 
     if (!userId) {
       // Only redirect to login for HTML pages, not for API routes
@@ -39,35 +42,32 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       } else {
         // For API routes, return 401 instead of redirecting
+        console.log(`Middleware: Returning 401 for unauthenticated API request to ${pathname}`);
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
       }
     }
 
+    // If user is logged in but tries to access /login, redirect to home
     if (userId && pathname.startsWith('/login')) {
       console.log('Middleware: Redirecting logged-in user from /login to /');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
+    // If authenticated and accessing a protected route, allow the request and attach session cookie to response
     return response;
   } catch (error) {
     console.error(`Middleware error for ${pathname}:`, error);
 
-    // If there's an error with session handling, allow the request to continue
-    // for API endpoints but redirect to login for UI pages
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ message: 'Session error' }, { status: 401 });
-    } else {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
+    // If there's an error with session handling, redirect to login for safety
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 }
 
 export const config = {
-  // Update matcher to exclude static assets, API routes (except auth), and specific files
+  // Matcher should cover all paths except those explicitly excluded above
+  // We rely on the initial `if` block to handle exclusions.
   matcher: [
-    // Exclude specific files and directories
-    '/((?!_next/static|_next/image|favicon\.ico|fav/favicon\.ico|manifest\.json|logo\.png|fav/).*)',
-    // Exclude common image/asset file extensions - adjust if needed
-    '/((?!.*\.(?:png|svg|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image).*)', // Match everything except static assets
   ],
 };
