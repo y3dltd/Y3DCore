@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 import { getLogger } from './shared/logging';
 
@@ -36,6 +36,30 @@ export type OrderWithItemsAndProducts = Prisma.OrderGetPayload<{
  * @param forceRecreate - Optional flag to bypass the check for existing print tasks.
  * @returns A promise resolving to an array of orders with their items and products.
  */
+/**
+ * Fixes any invalid StlRenderStatus values in the database
+ * This is a workaround for the issue where empty string values are not valid enum values
+ */
+export async function fixInvalidStlRenderStatus(db: PrismaClient): Promise<number> {
+  try {
+    // Use raw SQL to update any records with empty stl_render_state values
+    const result = await db.$executeRaw`
+      UPDATE PrintOrderTask
+      SET stl_render_state = 'pending'
+      WHERE stl_render_state = '' OR stl_render_state IS NULL
+    `;
+
+    if (result > 0) {
+      logger.info(`Fixed ${result} PrintOrderTask records with invalid stl_render_state values`);
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Error fixing invalid StlRenderStatus values:', error);
+    return 0;
+  }
+}
+
 export async function getOrdersToProcess(
   db: PrismaClient,
   orderIdentifier?: string, // Renamed parameter for clarity

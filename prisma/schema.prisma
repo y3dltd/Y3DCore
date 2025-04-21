@@ -153,7 +153,7 @@ model PrintOrderTask {
   color_2                  String?         @db.VarChar(50)
   ship_by_date             DateTime?       @db.Date
   status                   PrintTaskStatus @default(pending)
-  stl_render_state         StlRenderStatus @default(pending)
+  stl_render_state         StlRenderStatus? @default(pending)
   stl_path                 String?         @db.VarChar(512)
   render_retries           Int             @default(0)
   needs_review             Boolean         @default(false)

@@ -13,7 +13,7 @@ import pino from 'pino';
 import z from 'zod';
 
 // Internal/local imports
-import { getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
+import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
 
@@ -1179,11 +1179,25 @@ async function main() {
     logger.info({ argv: process.argv }, 'Raw process.argv before commander parse');
 
     let directOrderId: string | undefined = undefined;
-    for (let i = 0; i < process.argv.length - 1; i++) {
-      if ((process.argv[i] === '--order-id' || process.argv[i] === '-o') && process.argv[i + 1]) {
-        directOrderId = process.argv[i + 1];
-        logger.info(`Directly extracted --order-id from process.argv: ${directOrderId}`);
+
+    // First check for --order-id=value format
+    for (let i = 0; i < process.argv.length; i++) {
+      const arg = process.argv[i];
+      if (arg.startsWith('--order-id=')) {
+        directOrderId = arg.split('=')[1];
+        logger.info(`Directly extracted --order-id=value from process.argv: ${directOrderId}`);
         break;
+      }
+    }
+
+    // If not found, check for --order-id value format
+    if (!directOrderId) {
+      for (let i = 0; i < process.argv.length - 1; i++) {
+        if ((process.argv[i] === '--order-id' || process.argv[i] === '-o') && process.argv[i + 1]) {
+          directOrderId = process.argv[i + 1];
+          logger.info(`Directly extracted --order-id value from process.argv: ${directOrderId}`);
+          break;
+        }
       }
     }
 
@@ -1234,6 +1248,16 @@ async function main() {
     prisma = new PrismaClient();
     await prisma.$connect();
     logger.info('DB connected.');
+
+    // Fix any invalid StlRenderStatus values before proceeding
+    try {
+      const fixedCount = await fixInvalidStlRenderStatus(prisma);
+      if (fixedCount > 0) {
+        logger.info(`Fixed ${fixedCount} PrintOrderTask records with invalid stl_render_state values`);
+      }
+    } catch (fixError) {
+      logger.warn(`Unable to fix invalid StlRenderStatus values: ${fixError instanceof Error ? fixError.message : String(fixError)}`);
+    }
 
     await createRunLog({ scriptName: SCRIPT_NAME });
 
@@ -1464,11 +1488,11 @@ Options:
                             (prevents AI from overwriting correct names)
   --shipstation-sync-only   Only sync existing DB tasks to ShipStation without changing DB
   --debug-file <path>       Path for detailed debug log file (requires --order-id)
-  
+
 Examples:
   # Process specific order with force recreate but preserve existing text
   npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f --preserve-text
-  
+
   # Process latest 5 orders in dry run mode
   npx tsx src/scripts/populate-print-queue.ts --limit 5 --dry-run
   `);
