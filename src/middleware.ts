@@ -6,6 +6,13 @@ import { sessionOptions } from '@/lib/auth';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const { method } = request;
+
+  // Handle OPTIONS requests for specific paths early (e.g., manifest)
+  if (method === 'OPTIONS' && pathname === '/manifest.json') {
+    console.log(`Middleware: Handling OPTIONS for ${pathname}`);
+    return NextResponse.json({}, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
+  }
 
   // Immediately allow public assets and specific paths without session check
   if (

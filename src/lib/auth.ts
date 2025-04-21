@@ -22,23 +22,26 @@ function buildSessionOptions() {
     console.error(
       'CRITICAL SECURITY ERROR: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
     );
-    // Abort only at runtime (e.g. on first request), not during build/bundle time.
     if (process.env.NODE_ENV === 'production')
       throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
+  // Determine cookie domain: Use env var if set, otherwise null (browser default)
+  const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
   return {
     cookieName: 'y3dhub_session',
     password: password ?? 'development_fallback_password_change_me_please',
     cookieOptions: {
-      secure: isProduction,
+      secure: isProduction, // Secure should be true in production/preview
       maxAge: 60 * 60 * 24 * 7, // 7 days
       httpOnly: true,
-      sameSite: isProduction ? 'none' as const : 'lax' as const,
+      // Use 'none' only for production with a custom domain specified
+      // Use 'lax' for development and Vercel previews (where domain is usually undefined)
+      sameSite: (isProduction && cookieDomain) ? 'none' as const : 'lax' as const,
       path: '/',
-      domain: process.env.COOKIE_DOMAIN || undefined,
+      domain: cookieDomain,
     },
   } as const;
 }

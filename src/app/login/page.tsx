@@ -68,6 +68,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 disabled={isPending}
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
