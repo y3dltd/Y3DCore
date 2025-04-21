@@ -1,10 +1,7 @@
+import { getSession } from '@/lib/auth';
 import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-// Switch back to iron-session
-import { IronSessionData, getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
 
-import { sessionOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -17,8 +14,7 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   try {
-    // Authenticate via iron-session
-    const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
+    const session = await getSession();
     const userId = session.userId;
     if (!userId) {
       console.error(`Unauthorized session for task ${params.taskId}`);
