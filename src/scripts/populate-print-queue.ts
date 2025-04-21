@@ -14,6 +14,7 @@ import z from 'zod';
 
 // Internal/local imports
 import { getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
+import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
 
 // Initialize database connection
@@ -159,12 +160,14 @@ function extractCustomizationUrl(item: OrderItem): string | null {
   const printSettings = item.print_settings;
   if (!printSettings) return null;
 
-  const isUrlSetting = (setting: Prisma.JsonValue): setting is { name: 'CustomizedURL'; value: string } =>
+  // Helper to check for the URL setting, case-insensitive for the name
+  const isUrlSetting = (setting: Prisma.JsonValue): setting is { name: string; value: string } =>
     setting !== null &&
     typeof setting === 'object' &&
     !Array.isArray(setting) &&
     'name' in setting &&
-    setting.name === 'CustomizedURL' &&
+    typeof setting.name === 'string' && // Ensure name is a string before lowercasing
+    setting.name.toLowerCase() === 'customizedurl' && // Case-insensitive check
     'value' in setting &&
     typeof setting.value === 'string';
 
@@ -172,12 +175,15 @@ function extractCustomizationUrl(item: OrderItem): string | null {
     const urlSetting = printSettings.find(isUrlSetting);
     return urlSetting ? urlSetting.value : null;
   } else if (typeof printSettings === 'object' && printSettings !== null) {
+    // Check direct object property case-insensitively
+    const record = printSettings as Record<string, unknown>;
+    const key = Object.keys(record).find(k => k.toLowerCase() === 'customizedurl'); // Find key case-insensitively
+    if (key && typeof record[key] === 'string') {
+      return record[key] as string;
+    }
+    // Fallback check using the isUrlSetting helper (for objects structured like { name: '...', value: '...' })
     if (isUrlSetting(printSettings)) {
       return printSettings.value;
-    }
-    const record = printSettings as Record<string, unknown>;
-    if ('CustomizedURL' in record && typeof record['CustomizedURL'] === 'string') {
-      return record['CustomizedURL'];
     }
   }
   return null;
@@ -200,14 +206,66 @@ async function extractCustomizationData(
   dataSource: 'AmazonURL' | 'ItemOptions' | 'CustomerNotes' | null;
   annotation: string;
 }> {
-  // Always return null dataSource to force AI processing
-  logger.debug(`[Debug][extractCustomizationData] Bypassing direct extraction for Order ${order.id}, Item ${item.id}. Forcing AI fallback.`);
+  // --- Amazon URL Extraction ---
+  const isAmazon = order.marketplace?.toLowerCase().includes('amazon');
+  logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Marketplace='${order.marketplace}', IsAmazon=${isAmazon}`);
+
+  // Use case-insensitive check and includes for broader matching (e.g., Amazon.com, Amazon.co.uk)
+  if (isAmazon) {
+    const amazonUrl = extractCustomizationUrl(item);
+    logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Extracted amazonUrl='${amazonUrl}'`);
+    if (amazonUrl) {
+      logger.info(`[DB][Order ${order.id}][Item ${item.id}] Found Amazon CustomizedURL. Attempting to fetch...`);
+      try {
+        const amazonData = await fetchAndProcessAmazonCustomization(amazonUrl);
+        logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: fetchAndProcessAmazonCustomization returned: ${JSON.stringify(amazonData)}`);
+        if (amazonData) {
+          logger.info(`[DB][Order ${order.id}][Item ${item.id}] Successfully processed Amazon URL.`);
+          // REGKEY SKU rule: force uppercase registration text
+          let processedCustomText = amazonData.customText;
+          if (product?.sku?.toUpperCase().includes('REGKEY') && processedCustomText) {
+            processedCustomText = processedCustomText.toUpperCase();
+            logger.info(`[DB][Order ${order.id}][Item ${item.id}] REGKEY SKU detected, upper-casing custom text to '${processedCustomText}'.`);
+          }
+          return {
+            customText: processedCustomText,
+            color1: amazonData.color1,
+            color2: amazonData.color2,
+            dataSource: 'AmazonURL',
+            annotation: 'Data from Amazon CustomizedURL',
+          };
+        } else {
+          logger.warn(`[DB][Order ${order.id}][Item ${item.id}] Failed to process Amazon URL (fetch function returned null/undefined). Falling back.`);
+          // Fall through to AI fallback below
+        }
+      } catch (amazonError) {
+        logger.error(`[DB][Order ${order.id}][Item ${item.id}] Error during fetchAndProcessAmazonCustomization:`, amazonError);
+        // Return null dataSource to indicate fallback needed due to error
+        return {
+          customText: null, // Ensure null is returned on error
+          color1: null,
+          color2: null,
+          dataSource: null,
+          annotation: `Error processing Amazon URL: ${amazonError instanceof Error ? amazonError.message : String(amazonError)}`.substring(0, 1000),
+        };
+      }
+    } else {
+      logger.debug(`[Debug][extractCustomizationData] Amazon order ${order.id}, Item ${item.id}: CustomizedURL extraction returned null. Falling back.`);
+      // Fall through to AI fallback below
+    }
+  } else {
+    logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Not identified as Amazon marketplace. Falling back.`);
+    // Fall through to AI fallback below
+  }
+
+  // --- Fallback to AI ---
+  logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Conditions not met for direct Amazon URL processing. Falling back to AI.`);
   return {
     customText: null,
     color1: null,
     color2: null,
-    dataSource: null,
-    annotation: 'Needs AI processing' // Annotation indicates AI is the intended next step
+    dataSource: null, // Indicate fallback is needed
+    annotation: 'Needs AI processing', // Annotation indicates AI is the intended next step
   };
 }
 

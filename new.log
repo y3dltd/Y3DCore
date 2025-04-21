@@ -1,0 +1,195 @@
+--- DEBUG: main() function started ---
+{"level":30,"time":1745194886198,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"--- Script Start: 2025-04-21T00:21:26.198Z ---"}
+{"level":30,"time":1745194886199,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Processing 1 specified orders defined in script."}
+{"level":30,"time":1745194886199,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Loading base prompts..."}
+{"level":30,"time":1745194886202,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Prompts loaded."}
+{"level":30,"time":1745194886202,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Added reinforcement instruction to system prompt for this run."}
+{"level":30,"time":1745194886202,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Fetching specified orders..."}
+--- DEBUG: Found 1 orders matching criteria ---
+--- DEBUG: First found order ID: 587 ---
+{"level":30,"time":1745194886500,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Found 1 orders to process."}
+{"level":30,"time":1745194886500,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"--- Processing Order ID: 587 (3661713623) ---"}
+{"level":20,"time":1745194886500,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 587] Fetching latest data from ShipStation (ID: 267829369)..."}
+[API] Attempt 1: Fetching single order from ShipStation: /orders/267829369
+[API] Fetched single order 3661713623 (ID: 267829369). Status: awaiting_shipment
+{"level":30,"time":1745194887342,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 587] Customer notes differ between DB and ShipStation. Using ShipStation notes for AI."}
+{"level":10,"time":1745194887343,"pid":41161,"hostname":"DESKTOP-9HEOMKE","dbNotes":null,"ssNotes":"Charlie (Black / White)","msg":"[Order 587] Notes comparison"}
+{"level":20,"time":1745194887343,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Preparing extraction..."}
+{"level":10,"time":1745194887343,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Input Data JSON:\\n{\n  \"orderId\": 587,\n  \"orderNumber\": \"3661713623\",\n  \"marketplace\": \"etsy\",\n  \"customerNotes\": \"Charlie (Black / White)\",\n  \"items\": [\n    {\n      \"itemId\": 977,\n      \"quantityOrdered\": 1,\n      \"productSku\": \"PER-KEY3D-STY3-Y3D\",\n      \"productName\": \"2-Colour\",\n      \"printSettings\": [\n        {\n          \"name\": \"Name or Text\",\n          \"value\": \"Charlie\"\n        }\n      ]\n    }\n  ]\n}"}
+{"level":30,"time":1745194887343,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Calling OpenAI (gpt-4.1)..."}
+{"level":10,"time":1745194887343,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Payload: {\"model\":\"gpt-4.1\",\"messages\":[{\"role\":\"system\",\"content\":\"\\n# Additional Priority Instruction for this Run:\\nCRITICAL: Pay extra attention to the 'customerNotes' field. If you see lines explicitly defining colors like \\\"Colour: [COLOR_NAME]\\\" or \\\"Secondary colour: [COLOR_NAME]\\\", you MUST extract these values for color1 and color2 respectively, overriding any other color source for this item.\\n\\n\\n# System Prompt\\n**Purpose**\\n\\nYou are an AI assistant tasked with extracting personalization details for 3D printing from e-commerce order data provided in JSON format.\\n\\n**Instructions**\\n\\nFocus exclusively on:\\n- The JSON data provided under the \\\"Actual Order Data\\\" heading.\\n\\nIgnore:\\n- Any previous context or external information.\\n\\n**Output Requirements**\\n\\nYour response must:\\n- Be a valid JSON object, starting with `{` and ending with `}`.\\n- Contain only the JSON object without any additional text, explanations, or formatting.\\n- Include ALL items from the input JSON in your response, even if you can't find personalization details for them.\\n\\n**JSON Structure**\\n\\n```json\\n{\\n  \\\"itemPersonalizations\\\": {\\n    \\\"INTERNAL_ITEM_ID\\\": {\\n      \\\"personalizations\\\": [\\n        {\\n          \\\"customText\\\": \\\"...\\\", // The extracted personalization text (e.g., name, registration)\\n          \\\"color1\\\": \\\"...\\\",     // Primary color, if applicable\\n          \\\"color2\\\": null,      // Secondary color (for 2-color items), if applicable\\n          \\\"quantity\\\": 1,       // Quantity for this specific personalization (usually 1 if split)\\n          \\\"needsReview\\\": false,// Flag if manual review is needed\\n          \\\"reviewReason\\\": null,// Reason for review flag or informative note\\n          \\\"annotation\\\": null   // Optional internal annotation (e.g., about splitting)\\n        }\\n        // ... potentially more personalization objects if split from input ...\\n      ],\\n      \\\"overallNeedsReview\\\": false, // Flag if the item as a whole needs review (e.g., quantity mismatch)\\n      \\\"overallReviewReason\\\": null  // Reason for overall item review\\n    }\\n  }\\n}\\n```\\n\\n**IMPORTANT: Default Handling for Missing Personalization**\\n\\nYou MUST include an entry in `itemPersonalizations` for EVERY item ID in the input JSON's `items` array. If you cannot extract *any* specific personalization details for an item (neither from `print_settings`, `customerNotes`, nor inferred from product type):\\n- Create an entry for that `INTERNAL_ITEM_ID`.\\n- Include a *single* object in the `personalizations` array with:\\n    - `\\\"customText\\\": null`\\n    - `\\\"color1\\\": null`\\n    - `\\\"color2\\\": null`\\n    - `\\\"quantity\\\"` set to match the item's original `\\\"quantityOrdered\\\"` value.\\n    - `\\\"needsReview\\\": true`\\n    - `\\\"reviewReason\\\": \\\"No personalization details found\\\"`\\n- Set `\\\"overallNeedsReview\\\": true` for the item.\\n- Set `\\\"overallReviewReason\\\": \\\"No personalization details found\\\"` for the item.\\n\\n**Core Personalization Extraction Logic**\\n\\nFor each item in the input `items` array:\\n1.  **Examine `customerNotes` FIRST for explicit color/text:**\\n    *   Look thoroughly for lines starting with \\\"Personalisation:\\\", \\\"Text:\\\", \\\"Name:\\\", etc. Use the value following this as the primary source for `customText`.\\n    *   Look thoroughly for lines starting with \\\"Colour:\\\", \\\"Color:\\\", \\\"Primary Colour:\\\", etc. Use the value following this as the primary source for `color1`.\\n    *   Look thoroughly for lines starting with \\\"Secondary colour:\\\", \\\"Color 2:\\\", etc. Use the value following this as the primary source for `color2`.\\n2.  **Examine `print_settings` SECOND:**\\n    *   If `customText` was NOT found in notes, look for options named \\\"Personalization\\\", \\\"Text\\\", \\\"Custom Text\\\", \\\"Name\\\", etc., in `print_settings`. Use its `value` if found.\\n    *   If `color1` was NOT found in notes, look for options named \\\"Color\\\", \\\"Colour 1\\\", etc., in `print_settings`. Use its `value` if found.\\n    *   If `color2` was NOT found in notes, look for options named \\\"Secondary color\\\", \\\"Colour 2\\\", etc., in `print_settings`. Use its `value` if found.\\n3.  **Infer Color from Product Name THIRD:** If `color1` is still undetermined, check the product name for bracketed colors (e.g., \\\"[Light Blue]\\\").\\n4.  **Apply REGKEY Logic:** Apply specific REGKEY color logic if applicable (see below).\\n5.  **Default Handling:** Only if NO personalization text AND NO colors were found through any of the above steps, should you resort to the \\\"Default Handling for Missing Personalization\\\" rule.\\n\\n### Special Handling: Car Registration Keyrings (SKU contains \\\"REGKEY\\\")\\n# ... existing REGKEY handling ...\\n\\n### Special Handling: Multiple Personalizations / Complex Formatting (Revised Combined Logic)\\n\\n**Goal:** Accurately extract individual personalizations, even when multiple are combined into a single field (`customerNotes` or `print_settings` value) using various customer formats.\\n\\n**Core Principle:** Use the item's `quantityOrdered` as a primary guide. If `quantityOrdered > 1`, actively look for ways the provided text might represent that many distinct personalizations.\\n\\n**Parsing Strategy:**\\n\\n1.  **Check for Multiple Items:** Examine the personalization text. Does it contain patterns *strongly* suggesting multiple distinct items? Look for:\\n    *   **Newlines (`\\\\n`):** Strongest indicator. Treat each non-empty line as a potential item.\\n    *   **Explicit Separators:** Commas (`,`), Semicolons (`;`), Pipes (`|`) *between parts that look like distinct names/items*. Do NOT split multi-word names like \\\"Jayson Espley\\\" just because quantity is > 1. Only split by comma/semicolon if context strongly implies separate entities (e.g., \\\"Jayson, Rob, Evie\\\"). **Do NOT split on symbols like `•` or `-` unless they clearly separate distinct items AND quantity matches.**\\n    *   **Repeated Structures:** Patterns like `Name (Color)`, `Quantity x Name`, `Color > Name`, `Name - Color`, etc., appearing multiple times.\\n    *   **Numbered/Bulleted Lists:** Lines starting with numbers (1.), bullets (*, -), etc.\\n\\n2.  **Attempt Splitting/Parsing:**\\n    *   If a clear separator or structure is found suggesting multiple items, attempt to split the text into individual items.\\n    *   For each potential item identified:\\n        *   Extract `customText`. Apply formatting rules (see \\\"Field Formatting\\\" below).\\n        *   Extract `color1` and `color2` if possible *from the item's specific text segment* (e.g., `(Blue >Jack)` -> color1=\\\"Blue\\\"). If not specified per item, use the overall item context (separate `print_settings` Color option, product name variation, REGKEY rules). Apply the *same* context color(s) to all split items unless specified otherwise. Apply color mapping/validation (see \\\"Field Formatting\\\" below). Set to `null` if no color info is found.\\n        *   Determine `quantity`. Default to `1` for each split item, unless the text explicitly states a quantity for that specific item (e.g., `2x Name`).\\n        *   Create a separate personalization object in the output array `itemPersonalizations.<itemId>.personalizations`.\\n        *   Set `needsReview` to `false` initially for this sub-item (unless specific issues arise during parsing).\\n\\n3.  **Quantity Validation (CRITICAL):**\\n    *   After attempting to parse/split, compare the **total number of personalization objects created** for the item ID against the item's `quantityOrdered`.\\n    *   **If Count Matches `quantityOrdered`:** Parsing likely succeeded. Set `overallNeedsReview` to `false` (unless individual items had specific parsing issues).\\n    *   **If Count DOES NOT Match `quantityOrdered`:** Parsing failed or is ambiguous.\\n        *   Set `overallNeedsReview` to `true`.\\n        *   Set `overallReviewReason` clearly explaining the mismatch: `\\\"Quantity mismatch: Expected Qty ${quantityOrdered}, but parsed ${count} items from text.\\\"` Add details if possible.\\n        *   **Action on Mismatch:** Create a *single* placeholder personalization object for the *entire* original text, setting its quantity to the full `quantityOrdered`, marking `needsReview: true`, and including the original complex text in the `reviewReason` or `annotation`. Discard any previously split items for this item ID.\\n\\n4.  **No Splitting Attempted / Quantity is 1 / Ambiguous Multi-Word Name:** If the text didn't strongly suggest multiple items (e.g., `quantityOrdered` is 1, or text is simple), process it as a single personalization object with `quantity` set to the item's `quantityOrdered`. If `quantityOrdered > 1` but no split was performed, set `overallNeedsReview` to `true` with reason `\\\"Single personalization found but Order Qty is ${quantityOrdered}\\\"`.\\n\\n### Field Formatting and Mapping\\n\\n**`customText` Formatting:**\\n- **Default:** Convert to Title Case.\\n- **Exceptions (Preserve Original Case/Format):**\\n    - **REGKEYs:** Preserve UPPERCASE for car registrations.\\n    - **Acronyms:** Preserve UPPERCASE for standalone acronyms (e.g., \\\"NHS\\\").\\n    - **Short All-Caps/Numeric Words:** Preserve UPPERCASE for short words (3-5 characters) consisting ONLY of uppercase letters (A-Z) and/or digits (0-9). Examples: \\\"TMG\\\", \\\"BMW\\\", \\\"CGW\\\", \\\"STOPP\\\", \\\"KP9\\\". **This rule overrides default Title Casing for matching patterns.** If this rule is applied, set `needsReview: true`. **Flag for review.**\\n    - **Business Names w/ Acronyms:** Preserve acronym part, Title Case subsequent words (e.g., \\\"KJL CLEANING\\\" -> \\\"KJL Cleaning\\\"). **Flag for review.**\\n    - **Internal Caps:** Preserve patterns like \\\"JohnSmith\\\", \\\"OakleyM\\\".\\n    - **Multiple Caps:** Preserve words with multiple consecutive caps (e.g., \\\"XYZ Corp\\\"). **Flag for review.**\\n    - **Explicit Request:** If notes say \\\"keep caps\\\", preserve casing.\\n- **Specific Cases:**\\n    - Apply Title Case even if numbers are present (e.g., \\\"4335 BRYSON\\\" -> \\\"4335 Bryson\\\").\\n    - Apply Title Case to text parts around symbols/emojis (e.g., \\\"❤️xSUEx❤️\\\" -> \\\"❤️xSuex❤️\\\").\\n- **Cleanup:**\\n    - Remove color specifications (e.g., \\\"(in pink)\\\", \\\"- Blue\\\") and numbering prefixes unless part of a preserved format.\\n    - Trim leading/trailing whitespace/punctuation.\\n    - Preserve special characters and emojis within the text. Add annotation \\\"Contains emoji/special character\\\" but don't flag for review solely for this.\\n    - Preserve non-English characters (é, ü, ñ).\\n\\n**`color1`, `color2` Formatting & Mapping:**\\n- **Standard Colors List:** Black, Grey, Light Blue, Blue, Dark Blue, Brown, Orange, Matt Orange, Silk Orange, Red, Fire Engine Red, Rose Gold, Magenta, White, Yellow, Silver, Silk Silver, Purple, Pink, Gold, Skin, Peak Green, Green, Olive Green, Pine Green, Cold White, Matt Pink, Silk Pink, Glow in the Dark, Bronze, Beige, Turquoise, Bone White.\\n- **Priority (Absolute):** If an extracted color name **exactly matches** (case-sensitive) an entry in the Standard Colors List above, use that standard color directly. **This is the highest priority rule for colors. DO NOT map these standard colors further, even if other mapping rules seem applicable (e.g., do not map 'Green' if 'Green' is on the list).**\\n- **Mapping:** If an extracted color does *not* exactly match the standard list, *then* map common variations (e.g., \\\"Navy\\\" -> \\\"Dark Blue\\\", \\\"Green\\\": \\\"Peak Green\\\"). Add annotation for mapping if needed.\\n- **\\\"Random Selection\\\" / \\\"Your Choice\\\":** Set `color1: null`, `needsReview: true`, `reviewReason: \\\"Customer requested random color\\\"`.\\n- **Unknown Colors:** Set `color1: null`, `needsReview: true`, `reviewReason: \\\"Unknown color: [original text]\\\"`.\\n- **Contrasting Colors:** If notes mention \\\"contrasting colour\\\" but don't specify, set `needsReview: true`, `reviewReason: \\\"Contrasting color requested but not specified\\\"`. If specified, use for `color2`.\\n- **Conflicting Information:** If `customerNotes` contain an explicit color request (e.g., \\\"use Red\\\", \\\"Pink: Robbin\\\") that conflicts with a color found in `print_settings` or the product name, **prioritize the color requested in `customerNotes`**. Set `needsReview: true` for the affected personalization object and set `reviewReason: \\\"Color conflict: Notes override default/option (Used [ColorFromNotes], Default was [ColorFromDefault])\\\"`.\\n\\n### Specific Edge Case Handling\\n\\n- **Error Corrections:** If notes mention \\\"mistake\\\", \\\"typo\\\", \\\"sorry\\\", \\\"meant to say\\\", prioritize the corrected information. Add annotation about the correction. If ambiguous, set `needsReview: true`, `reviewReason: \\\"Customer mentioned error/correction\\\"`.\\n- **Duplicate Names:** If the *same name* appears multiple times *after splitting*:\\n    - If colors differ, keep as separate personalizations.\\n    - If colors are the same, consolidate into one personalization object and sum their quantities (defaulting to 1 each before summing). Add annotation \\\"Consolidated duplicate name\\\". Check final quantity against `quantityOrdered`.\\n- **Special Instructions:** If notes contain \\\"urgent\\\", \\\"needed by\\\", \\\"please note\\\", add this information to the `annotation` field of the relevant personalization(s). Do *not* include in `customText`.\\n- **Explicit No Personalization:** If the extracted text explicitly indicates no personalization (e.g., 'None', 'N/A', 'Leave Blank', 'No Name', 'None / N/A'), set `customText` to `null`, `color1` to `null`, `color2` to `null`, `quantity` to the item's `quantityOrdered`, and ensure `needsReview` is `false` (unless other issues exist). Add annotation \\\"Explicit 'no personalization' request\\\".\\n- **Font Requests:** If the text contains a specific font request (e.g., 'use Arial font', 'font: Chewy'), **do not** include the font name in `customText`. Add the request to the `annotation` field (e.g., \\\"Font request: Arial\\\"). Set `needsReview: true` for the affected personalization object with `reviewReason: \\\"Font request mentioned\\\"`.\\n\\n### Review Flagging Logic (`needsReview`, `reviewReason`, `overallNeedsReview`)\\n\\n- **Individual `needsReview` (per personalization object):** Set to `true` if:\\n    - `customText` could not be determined (is `null`) **AND** it wasn't an explicit \\\"No Personalization\\\" request.\\n    - `color1` is `null` due to \\\"Random Selection\\\" or \\\"Unknown color\\\".\\n    - Ambiguity during parsing of a specific segment (e.g., unclear split).\\n    - Ambiguous formatting rule applied (preserving short all-caps, acronyms, multiple caps).\\n    - **Conflicting color information** was resolved by prioritizing customer notes.\\n    - Explicit request for contrasting color was not specific.\\n    - Customer mentioned an error/correction that requires verification.\\n    - **A font request was mentioned.**\\n- **`reviewReason`:** Provide a concise reason when `needsReview` is true. Use codes/standard phrases where possible (e.g., \\\"UNKNOWN_COLOR\\\", \\\"RANDOM_COLOR\\\", \\\"AMBIGUOUS_PARSE\\\", \\\"CUSTOMER_CORRECTION\\\").\\n- **`overallNeedsReview` (per item ID):** Set to `true` if:\\n    - Any personalization object within that item has `needsReview: true`.\\n    - The final quantity validation check failed (mismatch or ambiguous split).\\n    - No personalization details were found at all for the item.\\n    - `quantityOrdered > 1` but only a single personalization was processed due to ambiguous text (Rule 4 in Multiple Personalizations section).\\n- **`overallReviewReason`:** Compile unique `reviewReason`s from individual personalizations, plus any overall reason (like \\\"QUANTITY_MISMATCH\\\" or \\\"NO_DETAILS_FOUND\\\"). Separate multiple reasons with \\\"; \\\". Set to `null` if `overallNeedsReview` is `false`.\\n\\n### Enhanced reviewReason tracking\\n# ... existing reviewReason tracking ...\\n\\n# --- Rest of Prompt ---\\n\"},{\"role\":\"user\",\"content\":\"## Instructions\\n\\nProcess only the JSON data provided below. Ignore any previous messages or external information.\\n\\n## Actual Order Data\\n\\n{\\n  \\\"orderId\\\": 587,\\n  \\\"orderNumber\\\": \\\"3661713623\\\",\\n  \\\"marketplace\\\": \\\"etsy\\\",\\n  \\\"customerNotes\\\": \\\"Charlie (Black / White)\\\",\\n  \\\"items\\\": [\\n    {\\n      \\\"itemId\\\": 977,\\n      \\\"quantityOrdered\\\": 1,\\n      \\\"productSku\\\": \\\"PER-KEY3D-STY3-Y3D\\\",\\n      \\\"productName\\\": \\\"2-Colour\\\",\\n      \\\"printSettings\\\": [\\n        {\\n          \\\"name\\\": \\\"Name or Text\\\",\\n          \\\"value\\\": \\\"Charlie\\\"\\n        }\\n      ]\\n    }\\n  ]\\n}\\n\\n## Output Format\\n\\nReturn ONLY a valid JSON object with the key \\\"itemPersonalizations\\\" as specified in the system instructions.\\n\\n## Important\\n\\n- Do not include any additional text, comments, or explanations in your response.\\n- Return only the JSON object without any markdown formatting.\\n- Ensure all required keys are present in each object, even if set to null.\\n\"}],\"temperature\":0,\"top_p\":1,\"frequency_penalty\":0,\"presence_penalty\":0,\"max_tokens\":4096,\"response_format\":{\"type\":\"json_object\"}}"}
+{"level":30,"time":1745194889368,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Call response status: 200 (2025ms)."}
+{"level":20,"time":1745194889385,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] RAW RESPONSE Content:\n{\n  \"itemPersonalizations\": {\n    \"977\": {\n      \"personalizations\": [\n        {\n          \"customText\": \"Charlie\",\n          \"color1\": \"Black\",\n          \"color2\": \"White\",\n          \"quantity\": 1,\n          \"needsReview\": false,\n          \"reviewReason\": null,\n          \"annotation\": null\n        }\n      ],\n      \"overallNeedsReview\": false,\n      \"overallReviewReason\": null\n    }\n  }\n}"}
+{"level":30,"time":1745194889385,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] RAW RESPONSE Content:\n{\n  \"itemPersonalizations\": {\n    \"977\": {\n      \"personalizations\": [\n        {\n          \"customText\": \"Charlie\",\n          \"color1\": \"Black\",\n          \"color2\": \"White\",\n          \"quantity\": 1,\n          \"needsReview\": false,\n          \"reviewReason\": null,\n          \"annotation\": null\n        }\n      ],\n      \"overallNeedsReview\": false,\n      \"overallReviewReason\": null\n    }\n  }\n}"}
+{"level":20,"time":1745194889385,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] Parsed JSON response."}
+{"level":30,"time":1745194889387,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[AI Update][Order 587] AI response validated."}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Update][Order 587][Item 977] Comparing 1 DB tasks with 1 AI suggestions. Explicit notes colors: C1=null, C2=null"}
+{"level":30,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Update][Order 587][Item 977] Task counts match (1). Updating existing tasks."}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":"Charlie","target":"Charlie","msg":"Comparing custom_text"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":null,"target":"Black","msg":"Comparing color_1"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":null,"target":"White","msg":"Comparing color_2"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":1,"target":1,"msg":"Comparing quantity"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":true,"target":false,"msg":"Comparing needs_review"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":"No color information found","target":null,"msg":"Comparing review_reason"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"db":null,"target":null,"msg":"Comparing annotation"}
+{"level":20,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","orderId":587,"itemId":977,"taskIndex":0,"needsUpdate":true,"msg":"Final needsUpdate check"}
+{"level":30,"time":1745194889407,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Update][Order 587][Item 977][Task 738] Updating task with: {\"color_1\":\"Black\",\"color_2\":\"White\",\"needs_review\":false,\"review_reason\":null}"}
+{"level":20,"time":1745194889519,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Update][Order 587][Item 977] Staging ShipStation update with options: [{\"name\":\"Name or Text\",\"value\":\"Charlie\"},{\"name\":\"Colour 1\",\"value\":\"Black\"},{\"name\":\"Colour 2\",\"value\":\"White\"}]"}
+{"level":30,"time":1745194889541,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[Order 587] Successfully processed DB changes (if any). DB changes made: true"}
+{"level":30,"time":1745194889541,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[ShipStation Batch][Order 587] Attempting to update 1 items in ShipStation (DB Changed: true, Force Flag: true)..."}
+[API] Attempt 1: Fetching single order from ShipStation: /orders/267829369
+[API] Fetched single order 3661713623 (ID: 267829369). Status: awaiting_shipment
+[ShipStation API] Batch‑updating 1 items in order 267829369 …
+[ShipStation API] Sending payload: {
+  "orderId": 267829369,
+  "orderNumber": "3661713623",
+  "orderKey": "3661713623",
+  "orderDate": "2025-04-19T00:50:59.0000000",
+  "createDate": "2025-04-19T01:49:06.9200000",
+  "modifyDate": "2025-04-20T17:21:23.3570000",
+  "paymentDate": "2025-04-19T00:51:05.0000000",
+  "shipByDate": "2025-04-22T15:59:00.0000000",
+  "orderStatus": "awaiting_shipment",
+  "customerId": 67109601,
+  "customerUsername": "364903011",
+  "customerEmail": "emilygronland@hotmail.com",
+  "billTo": {
+    "name": "Emily Gronland",
+    "company": null,
+    "street1": "37 Comerford Road",
+    "street2": "",
+    "street3": null,
+    "city": "London",
+    "state": "",
+    "postalCode": "SE4 2BA",
+    "country": "GB",
+    "phone": null,
+    "residential": null,
+    "addressVerified": null
+  },
+  "shipTo": {
+    "name": "Emily Gronland",
+    "company": null,
+    "street1": "37 Comerford Road",
+    "street2": "",
+    "street3": null,
+    "city": "London",
+    "state": "",
+    "postalCode": "SE4 2BA",
+    "country": "GB",
+    "phone": null,
+    "residential": false,
+    "addressVerified": "Address validated successfully"
+  },
+  "items": [
+    {
+      "orderItemId": 382518688,
+      "lineItemKey": "4549784638",
+      "sku": "PER-KEY3D-STY3-Y3D",
+      "name": "Keychain/Keyring - 3D Printed- Personalised- Gifts for Children - Gifts for Her - Gifts for Him - Party Bag Fillers - Name Tags - School Bag",
+      "imageUrl": "https://i.etsystatic.com/50426730/r/il/9a64a5/5878244068/il_fullxfull.5878244068_1faa.jpg",
+      "weight": {
+        "value": 30,
+        "units": "grams",
+        "WeightUnits": 2
+      },
+      "quantity": 1,
+      "unitPrice": 2.99,
+      "taxAmount": 0,
+      "shippingAmount": 0,
+      "warehouseLocation": null,
+      "options": [
+        {
+          "name": "Name or Text",
+          "value": "Charlie"
+        },
+        {
+          "name": "Colour 1",
+          "value": "Black"
+        },
+        {
+          "name": "Colour 2",
+          "value": "White"
+        }
+      ],
+      "productId": 14247520,
+      "fulfillmentSku": null,
+      "adjustment": false,
+      "upc": null,
+      "createDate": "2025-04-20T13:06:22.493",
+      "modifyDate": "2025-04-20T13:06:22.493"
+    }
+  ],
+  "orderTotal": 2.99,
+  "amountPaid": 2.99,
+  "taxAmount": 0,
+  "shippingAmount": 0,
+  "customerNotes": "Charlie (Black / White)",
+  "internalNotes": "Charlie (Black / White)\n🌟 Y3D AI – Happy Monday!\n🤖 AI personalised 1 item\nAI Task Update 2025-04-21T00:21:30.206Z -> 4549784638(AI)",
+  "gift": false,
+  "giftMessage": null,
+  "paymentMethod": "cc",
+  "requestedShippingService": "Standard Shipping",
+  "carrierCode": "royal_mail",
+  "serviceCode": "rm_48",
+  "packageCode": "large_letter",
+  "confirmation": "none",
+  "shipDate": null,
+  "holdUntilDate": null,
+  "weight": {
+    "value": 30,
+    "units": "grams",
+    "WeightUnits": 2
+  },
+  "dimensions": {
+    "units": "centimeters",
+    "length": 1.4,
+    "width": 1.03,
+    "height": 0.11
+  },
+  "insuranceOptions": {
+    "provider": null,
+    "insureShipment": false,
+    "insuredValue": 0
+  },
+  "internationalOptions": {
+    "contents": null,
+    "customsItems": null,
+    "nonDelivery": null
+  },
+  "advancedOptions": {
+    "warehouseId": 251153,
+    "nonMachinable": false,
+    "saturdayDelivery": false,
+    "containsAlcohol": false,
+    "mergedOrSplit": false,
+    "mergedIds": [],
+    "parentId": null,
+    "storeId": 112571,
+    "customField1": "Charlie (Black / White)",
+    "customField2": "",
+    "customField3": "",
+    "source": "etsy",
+    "billToParty": "my_other_account",
+    "billToAccount": null,
+    "billToPostalCode": null,
+    "billToCountryCode": null,
+    "billToMyOtherAccount": 139553
+  },
+  "tagIds": null,
+  "userId": null,
+  "externallyFulfilled": false,
+  "externallyFulfilledBy": null,
+  "externallyFulfilledById": null,
+  "externallyFulfilledByName": null,
+  "labelMessages": null
+}
+[ShipStation API] Batch update success for order 267829369.
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"[ShipStation Batch][Order 587] Successfully updated items: 4549784638(AI)"}
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"--- Update Script Complete ---"}
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Processed 1 specified orders."}
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Total tasks updated: 1"}
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"Total new tasks created: 0"}
+{"level":30,"time":1745194891426,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"No warnings requiring manual intervention were logged."}
+{"level":30,"time":1745194891432,"pid":41161,"hostname":"DESKTOP-9HEOMKE","msg":"DB disconnected. Script finished."}
+Disconnecting Prisma...
