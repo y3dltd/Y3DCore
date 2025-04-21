@@ -19,19 +19,9 @@ import { prisma } from './prisma';
 // export async function getSession(): Promise<IronSession<IronSessionData>> { ... }
 
 // Mock getCurrentUser function
+// Returns a hardcoded user (ID 1) from the database.
 export async function getCurrentUser(): Promise<Omit<User, 'password'> | null> {
   try {
-    // Return a hardcoded mock user or a user from DB without session check
-    // Option 1: Hardcoded mock user
-    // const mockUser = {
-    //   id: 1,
-    //   email: 'mock@example.com',
-    //   name: 'Mock User',
-    //   // ... other necessary fields
-    // };
-    // return mockUser;
-
-    // Option 2: Fetch a default user (e.g., admin user ID 1) from DB
     const defaultUserId = 1;
     const user = await prisma.user.findUnique({ where: { id: defaultUserId } });
     if (!user) {
@@ -52,5 +42,5 @@ export async function getCurrentUser(): Promise<Omit<User, 'password'> | null> {
   }
 }
 
-// Password hashing functions are still needed for user management (PATCH /api/users/[userId])
-// Keep them in src/lib/server-only/auth-password.ts
+// Password hashing functions are still needed for user management
+// See: src/lib/server-only/auth-password.ts

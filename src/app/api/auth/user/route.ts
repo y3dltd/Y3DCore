@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Remove getCurrentUser import
-// import { getCurrentUser } from '@/lib/auth';
+// Old auth imports removed
 
 // Route handler to get the currently authenticated user (MOCKED)
 export async function GET(request: NextRequest) {
-  // Define a mock user
   const mockUser = {
     id: 1,
     email: 'mock@example.com',
     name: 'Mock User',
-    // Add other fields from your User model if the frontend expects them
   };
 
   try {
-    // Remove the call to getCurrentUser and the check
-    // const user = await getCurrentUser();
-    // if (!user) { ... }
-
+    // No auth check needed
     console.log('Returning mock user data');
     return NextResponse.json(mockUser, {
       status: 200,

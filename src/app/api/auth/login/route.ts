@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Remove all auth-related imports
-// import { sessionOptions } from '@/lib/auth';
-// import { getIronSession, IronSessionData } from 'iron-session';
-// import { prisma } from '@/lib/prisma';
-// import { verifyPassword } from '@/lib/server-only/auth-password';
+// Old auth-related imports removed
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
 
-  // Define a mock user
   const mockUser = {
     id: 1,
     email: 'mock@example.com',
     name: 'Mock User',
-    // Add other user fields if needed by the frontend
   };
 
   try {
-    // Ignore the request body (email, password)
-    // const { email, password } = await request.json();
-
+    // Request body is ignored for mock login
     console.log(`Mock login successful for user ${mockUser.email}`);
 
-    // Just return the mock user, no session creation
     return NextResponse.json(mockUser, {
       status: 200,
       headers: {
@@ -42,7 +33,6 @@ export async function POST(request: NextRequest) {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': origin || '*',
-          // ... other CORS headers if needed
         },
       }
     );

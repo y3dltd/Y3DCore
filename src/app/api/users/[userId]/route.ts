@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Remove auth imports
-// import { getCurrentUser } from '@/lib/auth';
+// Old auth imports removed
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/server-only/auth-password';
 
-// Admin User ID (kept for logic, but auth check removed)
+// Admin User ID (kept for logic)
 const ADMIN_USER_ID = 1;
 
 // Zod schema for password update
@@ -18,11 +17,7 @@ const updatePasswordSchema = z.object({
 // --- PATCH Handler (Update Password) ---
 export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
-    // Remove Authorization Check
-    // const currentUser = await getCurrentUser();
-    // if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
-    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    // }
+    // Authorization Check removed
 
     const userId = parseInt(params.userId, 10);
     if (isNaN(userId)) {
@@ -76,11 +71,7 @@ export async function DELETE(
   { params }: { params: { userId: string } }
 ) {
   try {
-    // Remove Authorization Check
-    // const currentUser = await getCurrentUser();
-    // if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
-    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    // }
+    // Authorization Check removed
 
     const userId = parseInt(params.userId, 10);
     if (isNaN(userId)) {

@@ -2,8 +2,7 @@ import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Remove auth imports
-// import { getCurrentUser } from '@/lib/auth';
+// Old auth imports removed
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -13,11 +12,7 @@ const autoCompleteSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // Remove Authentication Check
-  // const user = await getCurrentUser();
-  // if (!user) {
-  //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  // }
+  // Authentication Check removed
 
   try {
     const body = await request.json();
