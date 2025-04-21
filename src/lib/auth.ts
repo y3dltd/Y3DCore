@@ -27,8 +27,19 @@ function buildSessionOptions() {
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  // Determine cookie domain: Use env var if set, otherwise null (browser default)
-  const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+  // Determine cookie domain
+  // 1. If COOKIE_DOMAIN env variable is provided, honour it.
+  // 2. Otherwise, when running on Vercel (preview or production) use a wildcard
+  //    .vercel.app domain so that the cookie is shared across the various
+  //    preview sub‑domains (e.g. y3dhub‑abc.vercel.app).
+  // 3. Fallback to undefined (host‑only cookie) for local development.
+
+  let cookieDomain: string | undefined = process.env.COOKIE_DOMAIN || undefined;
+
+  const vercelUrl = process.env.VERCEL_URL; // e.g. y3dhub-abc.vercel.app
+  if (!cookieDomain && vercelUrl?.endsWith('.vercel.app')) {
+    cookieDomain = '.vercel.app';
+  }
 
   return {
     cookieName: 'y3dhub_session',
