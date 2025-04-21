@@ -1,8 +1,10 @@
 import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+// Switch back to iron-session
+import { IronSessionData, getIronSession } from 'iron-session';
+import { cookies } from 'next/headers';
 
-// Revert back to using getCurrentUser
-import { getCurrentUser } from '@/lib/auth';
+import { sessionOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -15,18 +17,17 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   try {
-    // --- Authentication Check using getCurrentUser --- 
-    const user = await getCurrentUser();
-    if (!user) {
-      console.error(`Unauthorized access attempt for task ${params.taskId} (via getCurrentUser)`);
+    // Authenticate via iron-session
+    const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
+    const userId = session.userId;
+    if (!userId) {
+      console.error(`Unauthorized session for task ${params.taskId}`);
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-    console.log(`Authorized access for user ${user.email} (ID: ${user.id}) to task ${params.taskId}`);
-    // --- End Authentication Check ---
+    console.log(`Authorized userId ${userId} for task ${params.taskId}`);
 
     const { taskId } = params;
     const taskIdInt = parseInt(taskId, 10);
-
     if (isNaN(taskIdInt)) {
       return NextResponse.json({ error: 'Invalid Task ID format' }, { status: 400 });
     }
@@ -40,40 +41,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { taskId
     }
 
     const { status } = body;
-
     if (!status || !isValidPrintTaskStatus(status)) {
-      return NextResponse.json(
-        {
-          error: `Invalid or missing status. Must be one of: ${Object.values(PrintTaskStatus).join(
-            ', '
-          )}`,
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        error: `Invalid or missing status. Must be one of: ${Object.values(PrintTaskStatus).join(', ')}`,
+      }, { status: 400 });
     }
 
-    // --- Database Update Logic --- 
     try {
       const updatedTask = await prisma.printOrderTask.update({
         where: { id: taskIdInt },
-        data: {
-          status: status,
-          updated_at: new Date(),
-        },
+        data: { status, updated_at: new Date() },
       });
-
-      console.log(`Successfully updated task ${taskId} status to ${status}`);
-      // Return standard JSON response
       return NextResponse.json(updatedTask);
-
     } catch (error) {
-      console.error(`Error updating task ${taskIdInt} status:`, error);
+      console.error(`Error updating task ${taskIdInt}:`, error);
       return handleApiError(error);
     }
-  } catch (authError) {
-    // Catch potential errors from getCurrentUser itself
-    console.error(`Authentication check error for task ${params.taskId}:`, authError);
-    return NextResponse.json({ message: 'Authentication check failed' }, { status: 500 });
+  } catch (error) {
+    console.error(`Session error for task ${params.taskId}:`, error);
+    return NextResponse.json({ message: 'Session error' }, { status: 500 });
   }
 }
 
