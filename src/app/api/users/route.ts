@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth';
+// Old auth imports removed
+// import { getCurrentUser } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/server-only/auth-password';
 
-// Admin User ID
-const ADMIN_USER_ID = 1;
+// Admin User ID (no longer checked)
+// const ADMIN_USER_ID = 1;
 
 // Zod schema for input validation
 const createUserSchema = z.object({
@@ -17,12 +18,11 @@ const createUserSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // --- Authorization Check ---
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    // --- End Authorization Check ---
+    // Authorization Check removed
+    // const currentUser = await getCurrentUser();
+    // if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
+    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // }
 
     let validatedData: z.infer<typeof createUserSchema>;
     try {
@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = validatedData;
 
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -48,20 +47,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: `User with email ${email} already exists.` },
         { status: 409 }
-      ); // 409 Conflict
+      );
     }
 
-    // Hash the password
+    // NOTE: Hashing kept for DB compatibility, but auth is disabled.
     const hashedPassword = await hashPassword(password);
 
-    // Create the user
     const newUser = await prisma.user.create({
       data: {
         email: email,
         password: hashedPassword,
       },
       select: {
-        // Exclude password from the returned object
         id: true,
         email: true,
         createdAt: true,
@@ -69,9 +66,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 }); // 201 Created
+    return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
-    console.error('[API Users POST] Error:', error);
+    console.error('[API Users POST Mock] Error:', error);
     return handleApiError(error);
   }
 }

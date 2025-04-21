@@ -39,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
     }
 
     const { password } = validatedData;
+    // NOTE: Hashing kept for DB compatibility, but auth is disabled.
     const hashedPassword = await hashPassword(password);
 
     const updatedUser = await prisma.user.update({
