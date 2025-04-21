@@ -110,6 +110,55 @@ export async function renderDualColourTag(
     })
 }
 
+/**
+ * Renders a .scad file using configuration from a JSON file and task data.
+ */
+export async function renderDualColourFromConfig(
+    configPath: string,
+    parameterSetKey: string,
+    customText: string,
+    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & {
+        fileName?: string,
+    } = {}
+): Promise<string> {
+    const projectRoot = process.cwd();
+    const fullConfigPath = path.join(projectRoot, configPath);
+    const scadPath = path.join(projectRoot, 'openscad', 'DualColour.scad'); // Use DualColour.scad
+
+    // Read and parse the JSON config file
+    const configFileContent = await fs.readFile(fullConfigPath, 'utf-8');
+    const config = JSON.parse(configFileContent);
+
+    // Get the specific parameter set
+    const parameterSet = config.parameterSets[parameterSetKey];
+    if (!parameterSet) {
+        throw new Error(`Parameter set "${parameterSetKey}" not found in ${configPath}`);
+    }
+
+    // Combine config parameters with dynamic task data
+    const variables: Record<string, string | number> = {
+        ...parameterSet,
+        line1: customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] ?? '',
+        line2: customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[1] ?? '',
+        line3: customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[2] ?? '',
+        // Note: Colors are ignored for these new styles as per clarification
+    };
+
+    // Ensure numeric values are treated as numbers
+    for (const key in variables) {
+        if (typeof variables[key] === 'string' && !isNaN(Number(variables[key]))) {
+            variables[key] = Number(variables[key]);
+        }
+    }
+
+
+    return renderScadToStl(scadPath, { // Use scadPath here
+        ...options,
+        variables,
+        fileName: options.fileName,
+    });
+}
+
 // helper slug
 export function slug(input: string) {
     // Keep original capitalization but remove unsafe filesystem characters.
@@ -118,4 +167,4 @@ export function slug(input: string) {
         .replace(/[^A-Za-z0-9_]/g, '')   // only alphanum & _
         .replace(/_+/g, '_')             // collapse repeats
         .slice(0, 60) || 'tag'
-} 
+}

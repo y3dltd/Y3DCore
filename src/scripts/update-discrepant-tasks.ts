@@ -72,7 +72,7 @@ const TARGET_ORDER_IDS: string[] = [
     "65",
     "18",
     "16",
-    "10"    
+    "10"
 */
 // --- !!! CONFIGURE OPTIONS HERE !!! ---
 const DRY_RUN_MODE = false; // Set to false to apply changes, true to simulate
@@ -245,7 +245,7 @@ async function applyAiUpdatesToTasks(
     tx: Prisma.TransactionClient,
     orderId: number,
     itemId: number,
-    itemQuantity: number,
+    _itemQuantity: number, // Unused but kept for API compatibility
     existingTasks: PrintOrderTask[],
     aiPersonalizations: z.infer<typeof PersonalizationDetailSchema>[] | undefined,
     options: UpdateOptions,
@@ -531,7 +531,7 @@ async function applyAiUpdatesToTasks(
 // --- Main Execution ---
 async function main() {
     console.log("--- DEBUG: main() function started ---");
-    const SCRIPT_NAME = 'update-discrepant-tasks';
+    const _SCRIPT_NAME = 'update-discrepant-tasks';
     let cmdOptions: UpdateOptions;
 
     try {

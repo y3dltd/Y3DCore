@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespace
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { renderDualColourTag } from '../lib/openscad';
+import { renderDualColourFromConfig, renderDualColourTag } from '../lib/openscad'; // Import new function
 
 // Use direct string literals to match the database schema enum values
 const RENDER_STATE = {
@@ -12,7 +12,6 @@ const RENDER_STATE = {
 } as const;
 
 // Configuration --------------------------
-const TARGET_SKU = 'PER-KEY3D-STY3-Y3D';
 const MAX_RETRIES = 3;
 const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '2')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
@@ -48,15 +47,17 @@ function slug(str: string): string {
 
 // Database Interaction -------------------
 async function reserveTask() {
-    // Transaction to find and reserve the oldest pending task for the target SKU
+    // Transaction to find and reserve the oldest pending task for any supported SKU
     return prisma.$transaction(async tx => {
-        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and product.sku='${TARGET_SKU}'`);
+        // Updated to search for multiple SKUs
+        const supportedSKUs = ['PER-KEY3D-STY3-Y3D', 'Y3D-NKC-002', 'N9-93VU-76VK'];
+        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and product.sku in [${supportedSKUs.join(', ')}]`);
 
-        // Find the ID of the oldest pending task first
+        // Find the ID of the oldest pending task first for any supported SKU
         const taskToReserve = await tx.printOrderTask.findFirst({
             where: {
                 stl_render_state: RENDER_STATE.pending,
-                product: { sku: TARGET_SKU },
+                product: { sku: { in: supportedSKUs } }, // Filter by supported SKUs
             },
             orderBy: { created_at: 'asc' },
             select: { id: true }, // Only need the ID initially
@@ -84,10 +85,10 @@ async function reserveTask() {
             return null; // Indicate that reservation failed
         }
 
-        // If update succeeded, fetch the necessary task details
+        // If update succeeded, fetch the necessary task details including product sku
         const reservedTask = await tx.printOrderTask.findUnique({
             where: { id: taskToReserve.id },
-            select: { id: true, custom_text: true, color_1: true, color_2: true, render_retries: true, status: true },
+            select: { id: true, custom_text: true, color_1: true, color_2: true, render_retries: true, status: true, product: { select: { sku: true } } }, // Select product sku
         });
 
         // This should ideally not happen if updateResult.count was > 0, but check just in case
@@ -102,8 +103,8 @@ async function reserveTask() {
         }
 
 
-        console.log(`[${new Date().toISOString()}] Reserved task ${reservedTask.id} with status='${reservedTask.status}'`);
-        return reservedTask; // Return the full task details needed by processTask
+        console.log(`[${new Date().toISOString()}] Reserved task ${reservedTask.id} with status='${reservedTask.status}' and SKU '${reservedTask.product.sku}'`);
+        return reservedTask as { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }; // Return the full task details needed by processTask
 
     }, {
         maxWait: 10000, // Optional: Adjust transaction timeouts if needed
@@ -112,75 +113,88 @@ async function reserveTask() {
 }
 
 // Worker Logic --------------------------
-async function processTask(task: { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number }) {
+// Updated task type to include product sku
+async function processTask(task: { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }) {
     const taskId = task.id;
+    const taskSku = task.product.sku;
+    const customText = task.custom_text ?? '';
     let stlRelativePath = null; // Initialize relative path
+    let stlPathAbs = null;
 
     try {
-        console.log(`[${new Date().toISOString()}] Processing task ${taskId}...`);
+        console.log(`[${new Date().toISOString()}] Processing task ${taskId} for SKU ${taskSku}...`);
 
         // 1. Ensure output directory exists
         await fs.mkdir(STL_OUTPUT_DIR_ABS, { recursive: true });
         console.log(`[${new Date().toISOString()}] Ensured output directory exists: ${STL_OUTPUT_DIR_ABS}`);
 
-        // 2. Prepare data for OpenSCAD
-        let lines = (task.custom_text ?? '').split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
-
-        // Check if we have only one line and it contains a space (likely a full name)
-        // Only apply this logic if line2 is empty - don't override existing multiline input
-        if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
-            const nameParts = lines[0].split(' ');
-            // If we have exactly two parts, use them as first name and surname
-            if (nameParts.length === 2) {
-                lines = [nameParts[0], nameParts[1]];
-                console.log(`[${new Date().toISOString()}] Split full name "${lines[0]} ${lines[1]}" across two lines`);
-            }
-            // If we have more than two parts, try to intelligently split into first name(s) and surname
-            else if (nameParts.length > 2) {
-                // Use all but the last part as the first name(s) and the last part as the surname
-                const firstName = nameParts.slice(0, -1).join(' ');
-                const surname = nameParts[nameParts.length - 1];
-                lines = [firstName, surname];
-                console.log(`[${new Date().toISOString()}] Split multi-part name "${firstName} ${surname}" across two lines`);
-            }
-        }
-
-        const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
-        const color1 = task.color_1 ?? 'Black'; // Default colors if null
-        const color2 = task.color_2 ?? 'White';
-
         // Create a unique, safe filename
-        const safeName = slug(line1 || `task_${taskId}` || 'untitled');
+        const safeName = slug(customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] || `task_${taskId}` || 'untitled');
         const outputFilename = `task_${taskId}_${safeName}.stl`;
         const outputFilePathAbs = path.join(STL_OUTPUT_DIR_ABS, outputFilename);
         stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename); // Store relative path
 
-        console.log(`[${new Date().toISOString()}] Prepared data for task ${taskId}: Lines=["${line1}", "${line2}", "${line3}"], colors=["${color1}", "${color2}"]`);
+        console.log(`[${new Date().toISOString()}] Prepared data for task ${taskId}: Custom Text="${customText}"`);
         console.log(`[${new Date().toISOString()}] Output STL path: ${outputFilePathAbs}`);
 
-        // 3. Render via OpenSCAD wrapper
-        console.log(`[${new Date().toISOString()}] Rendering STL via OpenSCAD wrapper for task ${taskId}...`);
+        // 3. Render via OpenSCAD wrapper based on SKU
+        console.log(`[${new Date().toISOString()}] Rendering STL via OpenSCAD wrapper for task ${taskId} (SKU: ${taskSku})...`);
 
-        // Font rendering consistency parameters
-        // These values have been carefully tuned to ensure consistent output between
-        // Windows and Linux OpenSCAD renderings. Linux tends to render fonts wider,
-        // so we compensate with these parameters.
-        const fontNarrowWiden = -5.5;    // -5.5 produces better width matching than -5
-        const characterSpacing = 0.92;   // Adjust character spacing for consistent look
+        if (taskSku === 'PER-KEY3D-STY3-Y3D') {
+            // Existing logic for the old SKU
+            let lines = customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
+            if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
+                const nameParts = lines[0].split(' ');
+                if (nameParts.length === 2) {
+                    lines = [nameParts[0], nameParts[1]];
+                    console.log(`[${new Date().toISOString()}] Split full name "${lines[0]} ${lines[1]}" across two lines`);
+                } else if (nameParts.length > 2) {
+                    const firstName = nameParts.slice(0, -1).join(' ');
+                    const surname = nameParts[nameParts.length - 1];
+                    lines = [firstName, surname];
+                    console.log(`[${new Date().toISOString()}] Split multi-part name "${firstName} ${surname}" across two lines`);
+                }
+            }
+            const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
+            const color1 = task.color_1 ?? 'Black'; // Default colors if null
+            const color2 = task.color_2 ?? 'White';
 
-        console.log(`[${new Date().toISOString()}] Using font parameters: fontNarrowWiden=${fontNarrowWiden}, characterSpacing=${characterSpacing}`);
+            // Font rendering consistency parameters (from original logic)
+            const fontNarrowWiden = -5.5;
+            const characterSpacing = 0.92;
 
-        const stlPathAbs = await renderDualColourTag(line1, line2, line3, {
-            fileName: outputFilename,
-            fontNarrowWiden,
-            characterSpacing
-        });
+            stlPathAbs = await renderDualColourTag(line1, line2, line3, {
+                fileName: outputFilename,
+                fontNarrowWiden,
+                characterSpacing
+            });
+
+        } else if (taskSku === 'Y3D-NKC-002') {
+            // New logic for Y3D-NKC-002 using Style3 config
+            stlPathAbs = await renderDualColourFromConfig(
+                'openscad/DualColourNew2.json',
+                'Style3',
+                customText,
+                { fileName: outputFilename }
+            );
+        } else if (taskSku === 'N9-93VU-76VK') {
+            // New logic for N9-93VU-76VK using New3 config
+            stlPathAbs = await renderDualColourFromConfig(
+                'openscad/DualColourNew2.json',
+                'New3',
+                customText,
+                { fileName: outputFilename }
+            );
+        } else {
+            throw new Error(`Unsupported SKU for STL rendering: ${taskSku}`);
+        }
+
         console.log(`[${new Date().toISOString()}] STL rendered at ${stlPathAbs}`);
 
         // 5. Update database on success using raw SQL to bypass Prisma type issues
         await prisma.$executeRaw`
-            UPDATE PrintOrderTask 
-            SET 
+            UPDATE PrintOrderTask
+            SET
                 stl_path = ${stlRelativePath},
                 stl_render_state = 'completed',
                 annotation = NULL,
@@ -214,18 +228,18 @@ async function processTask(task: { id: number; custom_text: string | null; color
 
         // Update error state using raw SQL to bypass Prisma type issues
         await prisma.$executeRaw`
-            UPDATE PrintOrderTask 
-            SET 
+            UPDATE PrintOrderTask
+            SET
                 render_retries = ${nextRetries},
                 stl_render_state = ${isOutOfRetries ? 'failed' : 'pending'},
                 annotation = ${`STL render error (${nextRetries}/${MAX_RETRIES}): ${fullError}`}
             WHERE id = ${taskId}
         `;
-        console.error(`✗ Failed to render STL for task ${taskId}. Retry ${nextRetries}/${MAX_RETRIES}. Marked as ${isOutOfRetries ? 'failed' : 'pending'}.`);
+        console.log(`✗ Failed to render STL for task ${taskId}. Retry ${nextRetries}/${MAX_RETRIES}. Marked as ${isOutOfRetries ? 'failed' : 'pending'}.`);
     }
 }
 
-// Helper to fix invalid stl_render_state values 
+// Helper to fix invalid stl_render_state values
 async function fixInvalidStlRenderStates() {
     try {
         // Find and update records whose state is not one of the known valid states,
