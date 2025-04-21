@@ -12,6 +12,7 @@
   },
   "github": {
     "silent": true,
-    "autoJobCancelation": true
+    "autoJobCancelation": true,
+    "enabled": true
   }
 }

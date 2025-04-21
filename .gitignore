@@ -50,12 +50,9 @@ yarn-error.log*
 *.log # Ignore all log files
 
 # env files (can opt-in for committing if needed)
-.env*
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 .npmrc
 
 # vercel
