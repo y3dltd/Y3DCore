@@ -1,6 +1,5 @@
-import { getSessionOptions } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import { PrintTaskStatus } from '@prisma/client';
-import { IronSessionData, getIronSession } from 'iron-session';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { handleApiError } from '@/lib/errors';
@@ -15,9 +14,7 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   try {
-    // iron-session typings expect a CookieStore; casting for runtime compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const session = await getIronSession<IronSessionData>(request as any, getSessionOptions());
+    const session = await getSession();
     const userId = session.userId;
     if (!userId) {
       console.error(`Unauthorized session for task ${params.taskId}. Cookie header:`, request.headers.get('cookie'));
@@ -28,6 +25,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { taskId
     const { taskId } = params;
     const taskIdInt = parseInt(taskId, 10);
     if (isNaN(taskIdInt)) {
+
       return NextResponse.json({ error: 'Invalid Task ID format' }, { status: 400 });
     }
 
