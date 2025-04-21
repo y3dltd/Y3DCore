@@ -11,6 +11,7 @@ import { PrintTaskStatus, Prisma } from '@prisma/client'; // Import enum and Pri
 import { ClientPrintTaskData } from '@/types/print-tasks'; // Import the new client-safe type
 // import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals';
 // import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
+import { fixInvalidStlRenderStatus } from '@/lib/order-processing'; // Import the fix function
 import { detectMarketplaceOrderNumber } from '@/lib/order-utils'; // Import order number detection
 import { prisma } from '@/lib/prisma';
 
@@ -93,7 +94,8 @@ async function getPrintTasks({
   validatedColor2?: string;
   validatedProductName?: string;
   validatedShippingMethod?: string;
-}): Promise<{ tasks: ClientPrintTaskData[]; total: number }> { // Update return type annotation
+}): Promise<{ tasks: ClientPrintTaskData[]; total: number }> {
+  // Update return type annotation
   // --- No more validation or getQueryParam needed here ---
 
   const skip = Math.max(0, (validatedPage - 1) * validatedLimit);
@@ -254,7 +256,8 @@ async function getPrintTasks({
   // --- Filter tasks missing products and Convert Decimal/Date fields ---
   const validTasks = tasksWithLinks.filter(task => task.product); // Filter out tasks without a product
 
-  const serializableTasks: ClientPrintTaskData[] = validTasks.map(task => { // Use ClientPrintTaskData here
+  const serializableTasks: ClientPrintTaskData[] = validTasks.map(task => {
+    // Use ClientPrintTaskData here
     // Now we know task.product is not null within this map
     const product = task.product!; // Use non-null assertion as we've filtered
 
@@ -314,6 +317,20 @@ export default async function PrintQueuePage({
   console.log('[PrintQueuePage] Received searchParams prop:', searchParams); // Log the initial prop
 
   try {
+    // Fix any invalid StlRenderStatus values before proceeding
+    try {
+      const fixedCount = await fixInvalidStlRenderStatus(prisma);
+      if (fixedCount > 0) {
+        console.log(
+          `[PrintQueuePage] Fixed ${fixedCount} PrintOrderTask records with invalid stl_render_state values`
+        );
+      }
+    } catch (fixError) {
+      console.warn(
+        `[PrintQueuePage] Unable to fix invalid StlRenderStatus values: ${fixError instanceof Error ? fixError.message : String(fixError)}`
+      );
+    }
+
     // --- Explicitly await the searchParams object ---
     const resolvedSearchParams = (await searchParams) || {};
     console.log('[PrintQueuePage] Resolved searchParams:', resolvedSearchParams); // Log the resolved object
@@ -463,16 +480,10 @@ export default async function PrintQueuePage({
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Print Queue</h2>
         </div>
-        <div
-          className="flex h-[calc(100vh-200px)] items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50"
-        >
+        <div className="flex h-[calc(100vh-200px)] items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50">
           <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-            <p className="mt-4 text-lg font-semibold text-destructive">
-              Error Loading Data
-            </p>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              {errorMessage}
-            </p>
+            <p className="mt-4 text-lg font-semibold text-destructive">Error Loading Data</p>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">{errorMessage}</p>
           </div>
         </div>
       </div>
