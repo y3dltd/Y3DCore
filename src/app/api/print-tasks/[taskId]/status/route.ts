@@ -1,4 +1,3 @@
-import { getSession } from '@/lib/auth';
 import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -14,18 +13,9 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
   try {
-    const session = await getSession();
-    const userId = session.userId;
-    if (!userId) {
-      console.error(`Unauthorized session for task ${params.taskId}. Cookie header:`, request.headers.get('cookie'));
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    console.log(`Authorized userId ${userId} for task ${params.taskId}`);
-
     const { taskId } = params;
     const taskIdInt = parseInt(taskId, 10);
     if (isNaN(taskIdInt)) {
-
       return NextResponse.json({ error: 'Invalid Task ID format' }, { status: 400 });
     }
 
@@ -55,8 +45,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { taskId
       return handleApiError(error);
     }
   } catch (error) {
-    console.error(`Session error for task ${params.taskId}:`, error);
-    return NextResponse.json({ message: 'Session error' }, { status: 500 });
+    console.error(`Error in PATCH /api/print-tasks/${params.taskId}/status:`, error);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
 

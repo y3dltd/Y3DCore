@@ -1,10 +1,11 @@
 import { PrintTaskStatus, Prisma } from '@prisma/client';
-import { IronSessionData, getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+// Remove auth imports
+// import { IronSessionData, getIronSession } from 'iron-session';
+// import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { sessionOptions } from '@/lib/auth';
+// import { sessionOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -19,16 +20,14 @@ const bulkUpdateStatusSchema = z.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    // --- Get session using iron-session (use cookies() from next/headers) --- 
-    const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
-    const userId = session.userId;
-
-    if (!userId) {
-      console.error('Unauthorized: No userId in session for bulk status update.');
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    console.log(`Authorized access for bulk status update by user ID: ${userId}`);
-    // --- End Authentication Check ---
+    // Remove session check
+    // const session = await getIronSession<IronSessionData>(cookies(), sessionOptions);
+    // const userId = session.userId;
+    // if (!userId) {
+    //   console.error('Unauthorized: No userId in session for bulk status update.');
+    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // }
+    // console.log(`Authorized access for bulk status update by user ID: ${userId}`);
 
     let validatedData: z.infer<typeof bulkUpdateStatusSchema>;
     try {
@@ -64,7 +63,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     console.log(
-      `Bulk updated status to ${status} for ${result.count} tasks (requested: ${taskIds.length}).`
+      `Mock Bulk updated status to ${status} for ${result.count} tasks (requested: ${taskIds.length}).`
     );
 
     // Return standard JSON response

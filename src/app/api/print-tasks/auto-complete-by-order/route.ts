@@ -2,7 +2,8 @@ import { PrintTaskStatus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth';
+// Remove auth imports
+// import { getCurrentUser } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 
@@ -12,19 +13,16 @@ const autoCompleteSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // --- Authentication Check ---
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-  // --- End Authentication Check ---
+  // Remove Authentication Check
+  // const user = await getCurrentUser();
+  // if (!user) {
+  //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  // }
 
   try {
-    // Parse and validate the request body
     const body = await request.json();
     const { orderId } = autoCompleteSchema.parse(body);
 
-    // Get the order to check its status
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: { id: true, order_status: true },
@@ -34,7 +32,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Order with ID ${orderId} not found.` }, { status: 404 });
     }
 
-    // Check if the order status is shipped or cancelled
     if (order.order_status !== 'shipped' && order.order_status !== 'cancelled') {
       return NextResponse.json(
         {
@@ -44,7 +41,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find all pending or in-progress print tasks for this order
     const pendingTasks = await prisma.printOrderTask.findMany({
       where: {
         orderId: orderId,
@@ -59,7 +55,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Update all tasks to completed
     const taskIds = pendingTasks.map(task => task.id);
     const updateResult = await prisma.printOrderTask.updateMany({
       where: { id: { in: taskIds } },

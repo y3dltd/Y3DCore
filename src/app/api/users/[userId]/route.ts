@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getCurrentUser } from '@/lib/auth';
+// Remove auth imports
+// import { getCurrentUser } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/server-only/auth-password';
 
-// Admin User ID
+// Admin User ID (kept for logic, but auth check removed)
 const ADMIN_USER_ID = 1;
 
 // Zod schema for password update
@@ -17,19 +18,17 @@ const updatePasswordSchema = z.object({
 // --- PATCH Handler (Update Password) ---
 export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
   try {
-    // --- Authorization Check ---
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    // --- End Authorization Check ---
+    // Remove Authorization Check
+    // const currentUser = await getCurrentUser();
+    // if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
+    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // }
 
     const userId = parseInt(params.userId, 10);
     if (isNaN(userId)) {
       return NextResponse.json({ error: 'Invalid User ID format' }, { status: 400 });
     }
 
-    // Validate request body for password
     let validatedData: z.infer<typeof updatePasswordSchema>;
     try {
       const body = await request.json();
@@ -45,18 +44,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
     }
 
     const { password } = validatedData;
-
-    // Hash the new password
     const hashedPassword = await hashPassword(password);
 
-    // Update the user's password
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        password: hashedPassword,
-      },
+      data: { password: hashedPassword },
       select: {
-        // Exclude password from the returned object
         id: true,
         email: true,
         createdAt: true,
@@ -66,59 +59,55 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    // Handle potential Prisma error if user not found (P2025)
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2025') {
       return NextResponse.json(
         { error: `User with ID ${params.userId} not found.` },
         { status: 404 }
       );
     }
-    console.error(`[API Users PATCH /${params.userId}] Error:`, error);
+    console.error(`[API Users PATCH /${params.userId} Mock] Error:`, error);
     return handleApiError(error);
   }
 }
 
 // --- DELETE Handler ---
 export async function DELETE(
-  request: NextRequest, // Keep request for potential future use
+  request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
-    // --- Authorization Check ---
-    const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-    // --- End Authorization Check ---
+    // Remove Authorization Check
+    // const currentUser = await getCurrentUser();
+    // if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
+    //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // }
 
     const userId = parseInt(params.userId, 10);
     if (isNaN(userId)) {
       return NextResponse.json({ error: 'Invalid User ID format' }, { status: 400 });
     }
 
-    // Prevent deleting the primary admin user
+    // Keep logic preventing deletion of admin ID 1
     if (userId === ADMIN_USER_ID) {
       return NextResponse.json(
         { error: 'Cannot delete the primary admin user (ID 1).' },
         { status: 403 }
-      ); // Forbidden
+      );
     }
 
-    // Delete the user
     await prisma.user.delete({
       where: { id: userId },
     });
 
     return NextResponse.json({ message: `User ${userId} deleted successfully.` }, { status: 200 });
   } catch (error) {
-    // Handle potential Prisma error if user not found (P2025)
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2025') {
       return NextResponse.json(
         { error: `User with ID ${params.userId} not found.` },
         { status: 404 }
       );
     }
-    console.error(`[API Users DELETE /${params.userId}] Error:`, error);
+    console.error(`[API Users DELETE /${params.userId} Mock] Error:`, error);
     return handleApiError(error);
   }
 }

@@ -1,109 +1,56 @@
 import { User } from '@prisma/client';
-import type { SessionOptions } from 'iron-session';
-import { IronSession, IronSessionData, getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+// Remove iron-session imports
+// import type { SessionOptions } from 'iron-session';
+// import { IronSession, IronSessionData, getIronSession } from 'iron-session';
+// import { cookies } from 'next/headers';
 
 import { prisma } from './prisma';
 
-// Augment IronSessionData to include user information
-declare module 'iron-session' {
-  interface IronSessionData {
-    userId?: number;
-  }
-}
+// Remove session data augmentation
+// declare module 'iron-session' { ... }
 
-// Lazily create and validate session options only when first needed.
-let memoizedSessionOptions: ReturnType<typeof buildSessionOptions> | null = null;
+// Remove session options logic
+// let memoizedSessionOptions: ReturnType<typeof buildSessionOptions> | null = null;
+// function buildSessionOptions() { ... }
+// export function getSessionOptions() { ... }
+// export const sessionOptions: SessionOptions = new Proxy(...);
 
-function buildSessionOptions() {
-  const password = process.env.SESSION_PASSWORD;
+// Remove getSession function
+// export async function getSession(): Promise<IronSession<IronSessionData>> { ... }
 
-  if (!password || password.length < 32) {
-    console.error(
-      'CRITICAL SECURITY ERROR: SESSION_PASSWORD environment variable is not set or is too short (must be at least 32 characters)!'
-    );
-    if (process.env.NODE_ENV === 'production')
-      throw new Error('Invalid SESSION_PASSWORD. Server startup aborted for security reasons.');
-  }
-
-  const isProduction = process.env.NODE_ENV === 'production';
-  // Determine cookie domain
-  // 1. If COOKIE_DOMAIN env variable is provided, honour it.
-  // 2. Otherwise, when running on Vercel (preview or production) use a wildcard
-  //    .vercel.app domain so that the cookie is shared across the various
-  //    preview sub‑domains (e.g. y3dhub‑abc.vercel.app).
-  // 3. Fallback to undefined (host‑only cookie) for local development.
-
-  let cookieDomain: string | undefined = process.env.COOKIE_DOMAIN || undefined;
-
-  const vercelUrl = process.env.VERCEL_URL; // e.g. y3dhub-abc.vercel.app
-  if (!cookieDomain && vercelUrl?.endsWith('.vercel.app')) {
-    cookieDomain = '.vercel.app';
-  }
-
-  return {
-    cookieName: 'y3dhub_session',
-    password: password ?? 'development_fallback_password_change_me_please',
-    cookieOptions: {
-      secure: isProduction, // Secure should be true in production/preview
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      httpOnly: true,
-      // Use 'none' only for production with a custom domain specified
-      // Use 'lax' for development and Vercel previews (where domain is usually undefined)
-      sameSite: (isProduction && cookieDomain) ? 'none' as const : 'lax' as const,
-      path: '/',
-      domain: cookieDomain,
-    },
-  } as const;
-}
-
-export function getSessionOptions() {
-  if (!memoizedSessionOptions) memoizedSessionOptions = buildSessionOptions();
-  return memoizedSessionOptions;
-}
-
-// Legacy lazy proxy: evaluates only on first property access, preventing build‑time execution
-export const sessionOptions: SessionOptions = new Proxy({} as SessionOptions, {
-  get(_target, prop) {
-    return (getSessionOptions() as unknown as Record<PropertyKey, unknown>)[
-      prop as PropertyKey
-    ];
-  },
-  set(_target, prop, value) {
-    // Allow consumers to mutate options if they really want to
-    (getSessionOptions() as unknown as Record<PropertyKey, unknown>)[
-      prop as PropertyKey
-    ] = value;
-    return true;
-  },
-});
-
-// Function to get the current session
-export async function getSession(): Promise<IronSession<IronSessionData>> {
-  const session = await getIronSession<IronSessionData>(cookies(), getSessionOptions());
-  return session;
-}
-
-// Function to get the currently logged-in user
+// Mock getCurrentUser function
 export async function getCurrentUser(): Promise<Omit<User, 'password'> | null> {
   try {
-    const session = await getSession();
-    const userId = session.userId;
-    if (!userId) return null;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return null;
-    // Exclude password before returning
+    // Return a hardcoded mock user or a user from DB without session check
+    // Option 1: Hardcoded mock user
+    // const mockUser = {
+    //   id: 1,
+    //   email: 'mock@example.com',
+    //   name: 'Mock User',
+    //   // ... other necessary fields
+    // };
+    // return mockUser;
+
+    // Option 2: Fetch a default user (e.g., admin user ID 1) from DB
+    const defaultUserId = 1;
+    const user = await prisma.user.findUnique({ where: { id: defaultUserId } });
+    if (!user) {
+      console.error(`[Mock getCurrentUser] Default user with ID ${defaultUserId} not found.`);
+      return null;
+    }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
+    console.log('[Mock getCurrentUser] Returning default user:', userWithoutPassword.email);
     return userWithoutPassword;
+
   } catch (err: unknown) {
     console.error(
-      '[getCurrentUser] Error retrieving user session:',
+      '[Mock getCurrentUser] Error retrieving default user:',
       err instanceof Error ? err.message : err
     );
     return null;
   }
 }
 
-// Password hashing and verification functions have been moved to src/lib/server-only/auth-password.ts
-// To hash or verify passwords, import from that file in your Node.js API routes or server actions only.
+// Password hashing functions are still needed for user management (PATCH /api/users/[userId])
+// Keep them in src/lib/server-only/auth-password.ts

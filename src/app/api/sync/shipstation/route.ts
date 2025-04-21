@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getCurrentUser } from '@/lib/auth'; // Import user check
-import { handleApiError } from '@/lib/errors'; // Import error handler
-import { syncShipstationData } from '@/lib/shipstation'; // Import the main sync function
-import { syncShipStationTags } from '@/lib/shipstation/db-sync'; // Import tag sync directly
+// Remove auth imports
+// import { getCurrentUser } from '@/lib/auth';
+import { handleApiError } from '@/lib/errors';
+import { syncShipstationData } from '@/lib/shipstation';
+import { syncShipStationTags } from '@/lib/shipstation/db-sync';
 // Prisma import likely not needed here anymore
 
 // Removed API Key logic
@@ -14,16 +15,15 @@ import { syncShipStationTags } from '@/lib/shipstation/db-sync'; // Import tag s
  * Requires a valid API key provided in the 'X-Sync-API-Key' header.
  */
 export async function POST(request: NextRequest) {
-  console.log('Received request to trigger ShipStation sync...');
+  console.log('Received request to trigger ShipStation sync (Auth Disabled)...');
 
-  // --- Authentication Check (Session Based) ---
-  const user = await getCurrentUser();
-  if (!user) {
-    console.warn('Unauthorized attempt to trigger ShipStation sync (no valid session).');
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-  console.log(`Authenticated user ${user.email} triggered sync.`);
-  // --- End Authentication Check ---
+  // Remove Authentication Check
+  // const user = await getCurrentUser();
+  // if (!user) {
+  //   console.warn('Unauthorized attempt to trigger ShipStation sync (no valid session).');
+  //   return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  // }
+  // console.log(`Authenticated user ${user.email} triggered sync.`);
 
   // --- Old API Key Check Removed ---
   // const providedApiKey = request.headers.get('X-Sync-API-Key');
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // --- Sync Tags First ---
     try {
       console.log('Syncing ShipStation Tags...');
-      await syncShipStationTags(); // Use the direct import
+      await syncShipStationTags();
       console.log('Tag sync completed.');
     } catch (tagSyncError) {
       console.error(
