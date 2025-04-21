@@ -4,95 +4,101 @@ import { NextResponse } from 'next/server';
 
 import { sessionOptions } from '@/lib/auth';
 
+// Define paths that bypass the session check entirely
+const BYPASS_SESSION_CHECK_PATHS = [
+  '/login',
+  '/manifest.json',
+  '/favicon.ico',
+  '/api/auth/login', // Auth endpoints
+  '/api/auth/logout',
+  '/api/auth/user',
+];
+
+const BYPASS_SESSION_CHECK_PREFIXES = [
+  '/_next',    // Next.js internals
+  '/fav',      // Favicon directory
+];
+
+const BYPASS_SESSION_CHECK_SUFFIXES = [
+  '.png', '.jpg', '.svg', '.webp', '.ico' // Common assets
+];
+
+// Define headers for CORS OPTIONS responses
+const corsOptionsHeaders = {
+  'Access-Control-Allow-Origin': '*', // Or specify origins
+  'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CSRF-Token',
+};
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const { method } = request;
 
-  // Handle OPTIONS requests for specific paths early (e.g., manifest)
+  // --- 1. Handle CORS OPTIONS Preflight Requests Early ---
+  // Especially for auth paths that need credentials
+  if (method === 'OPTIONS' && pathname.startsWith('/api/auth/')) {
+    console.log(`Middleware: Handling OPTIONS for auth path ${pathname}`);
+    return NextResponse.json({}, { status: 200, headers: corsOptionsHeaders });
+  }
   if (method === 'OPTIONS' && pathname === '/manifest.json') {
     console.log(`Middleware: Handling OPTIONS for ${pathname}`);
     return NextResponse.json({}, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
   }
 
-  // Immediately allow specific public assets and paths without session check
-  const publicPaths = [
-    '/login',
-    '/manifest.json',
-  ];
-  const publicPrefixes = [
-    '/_next',       // Next.js internals
-    '/fav',         // Favicon directory
-    // No /api/auth here, should be handled by session check
-  ];
-  const publicSuffixes = [
-    '.png', '.jpg', '.svg', '.webp', '.ico' // Common image/icon types
-  ];
 
-  if (
-    publicPaths.includes(pathname) ||
-    publicPrefixes.some(prefix => pathname.startsWith(prefix)) ||
-    publicSuffixes.some(suffix => pathname.endsWith(suffix)) ||
-    pathname === '/favicon.ico' // Explicit root favicon check
-  ) {
-    // Specifically exclude /api/auth from this public check
-    if (!pathname.startsWith('/api/auth')) {
-      console.log(`Middleware: Allowing public path ${pathname}`);
-      return NextResponse.next(); // Allow request without session check
-    }
+  // --- 2. Check if path bypasses session validation ---
+  const shouldBypass =
+    BYPASS_SESSION_CHECK_PATHS.includes(pathname) ||
+    BYPASS_SESSION_CHECK_PREFIXES.some(prefix => pathname.startsWith(prefix)) ||
+    BYPASS_SESSION_CHECK_SUFFIXES.some(suffix => pathname.endsWith(suffix));
+
+  if (shouldBypass) {
+    console.log(`Middleware: Allowing path ${pathname} (bypassing session check)`);
+    return NextResponse.next(); // Allow request without session check
   }
 
-  // --- Session check required beyond this point ---
-  const response = NextResponse.next();
-  console.log(`Middleware: Processing potentially protected path ${pathname}`);
+  // --- 3. Session check required beyond this point ---
+  const response = NextResponse.next(); // Prepare response for potential session attachment
+  console.log(`Middleware: Processing protected path ${pathname}`);
 
   try {
-    // Allow specific auth API routes to proceed without an active session
-    const authApiPaths = ['/api/auth/login', '/api/auth/logout', '/api/auth/user'];
-    if (authApiPaths.includes(pathname)) {
-      console.log(`Middleware: Allowing auth API path ${pathname} without session check.`);
-      return response; // Proceed to the API route handler
-    }
-
-    // For all other routes, check for a valid session
     const session = await getIronSession<IronSessionData>(request, response, sessionOptions);
     const { userId } = session;
 
     console.log(`Middleware: UserID: ${userId || 'None'} for path ${pathname}`);
 
+    // --- 4. Handle unauthenticated users ---
     if (!userId) {
-      // Only redirect to login for HTML pages, not for other API routes
-      if (!pathname.startsWith('/api/')) {
-        console.log(`Middleware: Redirecting unauthenticated user from ${pathname} to /login`);
-        const loginUrl = new URL('/login', request.url);
-        return NextResponse.redirect(loginUrl);
-      } else {
-        // For non-auth API routes, return 401 if unauthenticated
+      // API routes (that aren't the bypassed auth routes) get 401
+      if (pathname.startsWith('/api/')) {
         console.log(`Middleware: Returning 401 for unauthenticated API request to ${pathname}`);
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
       }
+      // Other pages get redirected to login
+      console.log(`Middleware: Redirecting unauthenticated user from ${pathname} to /login`);
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
     }
 
-    // If user is logged in but tries to access /login, redirect to home
-    if (userId && pathname.startsWith('/login')) {
+    // --- 5. Handle authenticated users trying to access /login ---
+    if (pathname === '/login') { // Check exact path
       console.log('Middleware: Redirecting logged-in user from /login to /');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // If authenticated and accessing a protected route, allow the request and attach session cookie to response
+    // --- 6. Allow authenticated users to access protected paths ---
+    // Session cookie is automatically attached to 'response' by getIronSession
+    console.log(`Middleware: Allowing authenticated user to access ${pathname}`);
     return response;
-  } catch (error) {
-    console.error(`Middleware error for ${pathname}:`, error);
 
-    // If there's an error with session handling, redirect to login for safety
+  } catch (error) {
+    console.error(`Middleware session error for ${pathname}:`, error);
+    // If session check fails critically, redirect to login for safety
     const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'session_error'); // Optional: add error query param
     return NextResponse.redirect(loginUrl);
   }
 }
 
-export const config = {
-  // Matcher should cover all paths except those explicitly excluded above
-  // We rely on the initial `if` block to handle exclusions.
-  matcher: [
-    '/((?!_next/static|_next/image).*)', // Match everything except static assets
-  ],
-};
+export const matcher = ['/((?!_next/static|_next/image|.*\\.\\w+$).*)'];
