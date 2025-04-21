@@ -46,19 +46,27 @@ export async function middleware(request: NextRequest) {
   console.log(`Middleware: Processing potentially protected path ${pathname}`);
 
   try {
+    // Allow specific auth API routes to proceed without an active session
+    const authApiPaths = ['/api/auth/login', '/api/auth/logout', '/api/auth/user'];
+    if (authApiPaths.includes(pathname)) {
+      console.log(`Middleware: Allowing auth API path ${pathname} without session check.`);
+      return response; // Proceed to the API route handler
+    }
+
+    // For all other routes, check for a valid session
     const session = await getIronSession<IronSessionData>(request, response, sessionOptions);
     const { userId } = session;
 
     console.log(`Middleware: UserID: ${userId || 'None'} for path ${pathname}`);
 
     if (!userId) {
-      // Only redirect to login for HTML pages, not for API routes
+      // Only redirect to login for HTML pages, not for other API routes
       if (!pathname.startsWith('/api/')) {
         console.log(`Middleware: Redirecting unauthenticated user from ${pathname} to /login`);
         const loginUrl = new URL('/login', request.url);
         return NextResponse.redirect(loginUrl);
       } else {
-        // For API routes, return 401 instead of redirecting
+        // For non-auth API routes, return 401 if unauthenticated
         console.log(`Middleware: Returning 401 for unauthenticated API request to ${pathname}`);
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
       }
