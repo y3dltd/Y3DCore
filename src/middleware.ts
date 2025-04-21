@@ -14,26 +14,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({}, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
   }
 
-  // Immediately allow public assets and specific paths without session check
+  // Immediately allow specific public assets and paths without session check
+  const publicPaths = [
+    '/login',
+    '/manifest.json',
+  ];
+  const publicPrefixes = [
+    '/_next',       // Next.js internals
+    '/fav',         // Favicon directory
+    // No /api/auth here, should be handled by session check
+  ];
+  const publicSuffixes = [
+    '.png', '.jpg', '.svg', '.webp', '.ico' // Common image/icon types
+  ];
+
   if (
-    pathname.startsWith('/_next') ||
-    pathname.includes('favicon.ico') ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/api/auth') || // Allows login, logout, user routes
-    pathname === '/manifest.json' || // Match exact manifest path
-    pathname.startsWith('/fav/') || // Allow fav directory
-    pathname.endsWith('.png') ||
-    pathname.endsWith('.jpg') ||
-    pathname.endsWith('.svg') ||
-    pathname.endsWith('.webp') ||
-    pathname.endsWith('.ico')
+    publicPaths.includes(pathname) ||
+    publicPrefixes.some(prefix => pathname.startsWith(prefix)) ||
+    publicSuffixes.some(suffix => pathname.endsWith(suffix)) ||
+    pathname === '/favicon.ico' // Explicit root favicon check
   ) {
-    console.log(`Middleware: Allowing public path ${pathname}`);
-    return NextResponse.next(); // Allow request without session check
+    // Specifically exclude /api/auth from this public check
+    if (!pathname.startsWith('/api/auth')) {
+      console.log(`Middleware: Allowing public path ${pathname}`);
+      return NextResponse.next(); // Allow request without session check
+    }
   }
 
+  // --- Session check required beyond this point ---
   const response = NextResponse.next();
-  console.log(`Middleware: Processing protected path ${pathname}`);
+  console.log(`Middleware: Processing potentially protected path ${pathname}`);
 
   try {
     const session = await getIronSession<IronSessionData>(request, response, sessionOptions);

@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
 
     // Update the response body with user info AFTER session is saved
     // Re-create response with user data and existing headers (including session cookie)
-    return NextResponse.json(userWithoutPassword, {
-      headers: {
-        ...response.headers, // Preserve existing headers (like Set-Cookie)
-        // Re-add CORS headers just in case
-        'Access-Control-Allow-Origin': origin || '*',
-        'Access-Control-Allow-Credentials': 'true',
-      }
+    // Use the *original* response object that iron-session modified to ensure Set-Cookie is present
+    response.headers.set('Content-Type', 'application/json'); // Ensure correct content type
+    const finalResponse = new NextResponse(JSON.stringify(userWithoutPassword), {
+      status: 200,
+      headers: response.headers, // Crucially, use the headers from the session-aware response object
     });
+    return finalResponse;
+
   } catch (error) {
     console.error('[API Auth Login] Error:', error);
     // Ensure we return the response object even in case of error
