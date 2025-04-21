@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('mock@example.com'); // Pre-fill mock email
-  // const [password, setPassword] = useState(''); // Password no longer needed
+  const [email, setEmail] = useState('mock@example.com'); // Keep mock email for convenience
+  const [password, setPassword] = useState(''); // Restore password state
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -22,31 +22,28 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        // No need to send email/password for mock login
+        // Backend ignores password, but we simulate sending it
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          // Empty body or a dummy object if required by server
-          body: JSON.stringify({ email }), // Still sending email for potential logging
-          // credentials: 'include', // No longer needed as no session cookie is set/read
+          body: JSON.stringify({ email, password }), // Include password state visually
         });
 
         if (!response.ok) {
           const errorData = await response
             .json()
             .catch(() => ({ message: 'An unknown error occurred' }));
-          throw new Error(errorData.message || 'Mock Login failed');
+          // Simulate a generic error, as backend always succeeds
+          throw new Error(errorData.message || 'Login failed (simulated)');
         }
 
-        // Mock Login successful
-        toast.success('Mock Login successful!');
+        // Login successful (mock backend)
+        toast.success('Login successful!'); // User sees normal success
         router.push('/');
-        // No need to refresh for auth state as it's mocked
-        // router.refresh();
       } catch (error) {
-        console.error('Mock Login error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Mock Login failed';
-        toast.error(`Mock Login failed: ${errorMessage}`);
+        console.error('Login UI error (backend is mocked):', error);
+        const errorMessage = error instanceof Error ? error.message : 'Login failed';
+        toast.error(`Login failed: ${errorMessage}`);
       }
     });
   };
@@ -55,13 +52,13 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-sm mx-auto">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Mock Login</CardTitle>
-          <CardDescription>Click login to proceed (no password required)</CardDescription>
+          <CardTitle className="text-2xl font-bold">Login</CardTitle>
+          <CardDescription>Enter your email and password to login</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email (Mock)</Label>
+              <Label htmlFor="email">Email</Label> {/* Remove (Mock) */}
               <Input
                 id="email"
                 type="email"
@@ -73,19 +70,19 @@ export default function LoginPage() {
                 autoComplete="username"
               />
             </div>
-            {/* Password field removed */}
-            {/* <div className="space-y-2">
+            {/* Restore Password field */}
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
+                value={password} // Use password state
+                onChange={e => setPassword(e.target.value)} // Update password state
                 disabled={isPending}
                 autoComplete="current-password"
               />
-            </div> */}
+            </div>
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Login
