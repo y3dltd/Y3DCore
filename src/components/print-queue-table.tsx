@@ -4,8 +4,10 @@ import { PrintOrderTask, PrintTaskStatus, Product as PrismaProduct } from '@pris
 import {
   ColumnDef,
   ColumnFiltersState,
+  Row,
   RowSelectionState,
   SortingState,
+  Table as TTable,
   VisibilityState,
   flexRender,
   getCoreRowModel,
@@ -253,6 +255,160 @@ interface TableMeta {
 }
 interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
+}
+
+// --- Extracted Action Cell Component ---
+function ActionCellComponent({
+  row,
+  table,
+}: {
+  row: Row<ClientPrintTaskData>;
+  table: TTable<ClientPrintTaskData>;
+}) {
+  const meta = table.options.meta as ExtendedTableMeta;
+  const { openModal } = meta;
+  const task = row.original;
+  const router = useRouter(); // Hooks are safe here
+  const [isPending, startTransition] = useTransition(); // Hooks are safe here
+  const currentStatus = task.status;
+
+  const handleStatusUpdate = (newStatus: PrintTaskStatus) => {
+    startTransition(async () => {
+      try {
+        await updateTaskStatus(task.id, newStatus);
+        toast.success(`Task marked as ${newStatus}`);
+        router.refresh();
+      } catch (error: unknown) {
+        console.error('Status update failed:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        toast.error(`Failed to update task: ${errorMessage}`);
+      }
+    });
+  };
+
+  const handleCopyId = () => {
+    navigator.clipboard
+      .writeText(task.id.toString())
+      .then(() => toast.success(`Task ID ${task.id} copied!`))
+      .catch(() => toast.error('Failed to copy ID'));
+  };
+
+  // Quick action button based on current status
+  const renderQuickActionButton = () => {
+    if (currentStatus === PrintTaskStatus.pending) {
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full"
+          onClick={() => handleStatusUpdate(PrintTaskStatus.in_progress)}
+          disabled={isPending}
+          title="Mark as In Progress"
+        >
+          <PlayCircle className="h-5 w-5" />
+        </Button>
+      );
+    } else if (currentStatus === PrintTaskStatus.in_progress) {
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-green-600 hover:text-green-800 hover:bg-green-100 rounded-full"
+          onClick={() => handleStatusUpdate(PrintTaskStatus.completed)}
+          disabled={isPending}
+          title="Mark as Completed"
+        >
+          <CheckCircle2 className="h-5 w-5" />
+        </Button>
+      );
+    } else if (currentStatus === PrintTaskStatus.completed) {
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-full"
+          onClick={() => handleStatusUpdate(PrintTaskStatus.pending)}
+          disabled={isPending}
+          title="Mark as Pending"
+        >
+          <Undo2 className="h-5 w-5" />
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="flex justify-end space-x-2 actions-cell">
+      {renderQuickActionButton()}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          {task.orderLink && (
+            <DropdownMenuItem asChild>
+              <Link href={task.orderLink}>View Order</Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={handleCopyId}>Copy Task ID</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openModal(task)}>View Details</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Status Actions
+          </DropdownMenuLabel>
+
+          {/* Status change options */}
+          {currentStatus !== PrintTaskStatus.pending && (
+            <DropdownMenuItem
+              onClick={() => handleStatusUpdate(PrintTaskStatus.pending)}
+              disabled={isPending}
+              className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Undo2 className="mr-2 h-4 w-4" />
+              )}
+              Mark Pending
+            </DropdownMenuItem>
+          )}
+          {currentStatus !== PrintTaskStatus.in_progress && (
+            <DropdownMenuItem
+              onClick={() => handleStatusUpdate(PrintTaskStatus.in_progress)}
+              disabled={isPending}
+              className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <PlayCircle className="mr-2 h-4 w-4" />
+              )}
+              Mark In Progress
+            </DropdownMenuItem>
+          )}
+          {currentStatus !== PrintTaskStatus.completed && (
+            <DropdownMenuItem
+              onClick={() => handleStatusUpdate(PrintTaskStatus.completed)}
+              disabled={isPending}
+              className="text-green-600 hover:text-green-800 hover:bg-green-100"
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              )}
+              Mark Completed
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 // Define Table Columns
@@ -743,139 +899,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
   {
     id: 'actions',
     enableHiding: false,
-    cell: function ActionCell({ row, table }) {
-      const meta = table.options.meta as ExtendedTableMeta;
-      const { openModal } = meta;
-      const task = row.original;
-      const router = useRouter();
-      const [isPending, startTransition] = useTransition();
-      const currentStatus = task.status;
-
-      const handleStatusUpdate = (newStatus: PrintTaskStatus) => {
-        startTransition(async () => {
-          try {
-            await updateTaskStatus(task.id, newStatus);
-            toast.success(`Task marked as ${newStatus}`);
-            router.refresh();
-          } catch (error: unknown) {
-            console.error('Status update failed:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            toast.error(`Failed to update task: ${errorMessage}`);
-          }
-        });
-      };
-
-      const handleCopyId = () => {
-        navigator.clipboard
-          .writeText(task.id.toString())
-          .then(() => toast.success(`Task ID ${task.id} copied!`))
-          .catch(() => toast.error('Failed to copy ID'));
-      };
-
-      // Quick action button based on current status
-      const renderQuickActionButton = () => {
-        if (currentStatus === PrintTaskStatus.pending) {
-          return (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full"
-              onClick={() => handleStatusUpdate(PrintTaskStatus.in_progress)}
-              disabled={isPending}
-              title="Mark as In Progress"
-            >
-              <PlayCircle className="h-5 w-5" />
-            </Button>
-          );
-        } else if (currentStatus === PrintTaskStatus.in_progress) {
-          return (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-green-600 hover:text-green-800 hover:bg-green-100 rounded-full"
-              onClick={() => handleStatusUpdate(PrintTaskStatus.completed)}
-              disabled={isPending}
-              title="Mark as Completed"
-            >
-              <CheckCircle2 className="h-5 w-5" />
-            </Button>
-          );
-        } else if (currentStatus === PrintTaskStatus.completed) {
-          return (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-full"
-              onClick={() => handleStatusUpdate(PrintTaskStatus.pending)}
-              disabled={isPending}
-              title="Mark as Pending"
-            >
-              <Undo2 className="h-5 w-5" />
-            </Button>
-          );
-        }
-        return null;
-      };
-
-      return (
-        <div className="flex justify-end space-x-2 actions-cell">
-          {renderQuickActionButton()}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              {task.orderLink && (
-                <DropdownMenuItem asChild>
-                  <Link href={task.orderLink}>View Order</Link>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={handleCopyId}>Copy Task ID</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openModal(task)}>View Details</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Status Actions
-              </DropdownMenuLabel>
-
-              {/* Status change options */}
-              {currentStatus !== PrintTaskStatus.pending && (
-                <DropdownMenuItem
-                  onClick={() => handleStatusUpdate(PrintTaskStatus.pending)}
-                  disabled={isPending}
-                  className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-                >
-                  <Undo2 className="mr-2 h-4 w-4" /> Mark Pending
-                </DropdownMenuItem>
-              )}
-
-              {currentStatus !== PrintTaskStatus.in_progress && (
-                <DropdownMenuItem
-                  onClick={() => handleStatusUpdate(PrintTaskStatus.in_progress)}
-                  disabled={isPending}
-                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
-                >
-                  <PlayCircle className="mr-2 h-4 w-4" /> Mark In Progress
-                </DropdownMenuItem>
-              )}
-
-              {currentStatus !== PrintTaskStatus.completed && (
-                <DropdownMenuItem
-                  onClick={() => handleStatusUpdate(PrintTaskStatus.completed)}
-                  disabled={isPending}
-                  className="text-green-600 hover:text-green-800 hover:bg-green-100"
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Completed
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
+    cell: ({ row, table }) => <ActionCellComponent row={row} table={table} />,
   },
 ];
 
