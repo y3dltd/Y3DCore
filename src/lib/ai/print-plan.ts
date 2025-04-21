@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+// import OpenAI from 'openai'; // Disabled OpenAI API calls
 
 import { PrintTaskData } from '@/types/print-tasks';
 
@@ -46,29 +46,61 @@ Instructions:
 NO extra text, only JSON.`;
 
 export async function getPrintPlan(tasks: PrintTaskData[]): Promise<PrintPlan | null> {
-  if (!process.env.OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY in environment');
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // OpenAI API call disabled - using mock data instead
+  console.log('Using mock data for print plan instead of OpenAI API');
 
-  const userPrompt = COMPLEX_PLAN_PROMPT.replace('TASKS_JSON', JSON.stringify(tasks, null, 2));
+  // Group tasks by color for more realistic mock data
+  const tasksByColor: Record<string, PrintTaskData[]> = {};
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 1024,
+  tasks.forEach(task => {
+    const colorKey = `${task.color_1 || 'none'}-${task.color_2 || 'none'}`;
+    if (!tasksByColor[colorKey]) {
+      tasksByColor[colorKey] = [];
+    }
+    tasksByColor[colorKey].push(task);
   });
 
-  const content = response.choices[0]?.message?.content?.trim();
-  if (!content) return null;
+  // Create mock plates based on color groups
+  const mockBreakdown: PrintPlan['breakdown'] = [];
+  const colorSequence: string[] = [];
+  let plateNumber = 1;
+  let totalTime = 0;
 
-  try {
-    // Remove possible code fences
-    const json = content.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
+  Object.entries(tasksByColor).forEach(([colorKey, colorTasks]) => {
+    const [color1, color2] = colorKey.split('-');
+    if (!colorSequence.includes(color1) && color1 !== 'none') {
+      colorSequence.push(color1);
+    }
+
+    // Split into plates of max 10 items
+    const tasksPerPlate = 10;
+    let remainingTasks = [...colorTasks];
+
+    while (remainingTasks.length > 0) {
+      const plateTasks = remainingTasks.splice(0, tasksPerPlate);
+      const plateTime = plateTasks.reduce((sum, task) => sum + (task.quantity * 30), 0);
+      totalTime += plateTime;
+
+      mockBreakdown.push({
+        plate: plateNumber++,
+        color1: color1 === 'none' ? 'Black' : color1,
+        ...(color2 !== 'none' && { color2 }),
+        tasks: plateTasks.map(task => ({
+          id: String(task.id),
+          quantity: task.quantity,
+          product: task.shorthandProductName || 'Unknown Product'
+        })),
+        estimated_time: plateTime,
+        notes: `Auto-generated plate for ${plateTasks.length} tasks`
+      });
+    }
+  });
+
+  return {
+    plan: `Print plan for ${tasks.length} tasks across ${mockBreakdown.length} plates`,
+    breakdown: mockBreakdown,
+    total_time: totalTime,
+    total_plates: mockBreakdown.length,
+    color_change_sequence: colorSequence.length > 0 ? colorSequence : ['Black']
+  };
 }

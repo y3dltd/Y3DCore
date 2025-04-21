@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+// import OpenAI from 'openai'; // Disabled OpenAI API calls
 
 export interface PrintQueueTaskInput {
   id: string;
@@ -20,29 +20,28 @@ const SYSTEM_PROMPT = `You are a 3D-print scheduling assistant.\nI have the foll
 export async function getPrintQueueSummary(
   tasks: PrintQueueTaskInput[]
 ): Promise<PrintQueueSummaryData | null> {
-  if (!process.env.OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY in environment');
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // OpenAI API call disabled - using mock data instead
+  console.log('Using mock data for print queue summary instead of OpenAI API');
 
-  const userPrompt = SYSTEM_PROMPT.replace('[...tasks...]', JSON.stringify(tasks, null, 2));
+  // Calculate some basic metrics from the tasks to make the mock data somewhat relevant
+  const totalTasks = tasks.reduce((sum, task) => sum + task.qty, 0);
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 256,
+  // Get unique colors
+  const uniqueColors = new Set<string>();
+  tasks.forEach(task => {
+    if (task.color1) uniqueColors.add(task.color1);
+    if (task.color2) uniqueColors.add(task.color2);
   });
 
-  const content = response.choices[0]?.message?.content?.trim();
-  if (!content) return null;
+  // Simple logic for plates (10 items per plate)
+  const platesNeeded = Math.ceil(totalTasks / 10);
 
-  try {
-    // Remove possible code fences
-    const json = content.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
+  // Mock data that somewhat reflects the actual tasks
+  return {
+    total_print_tasks: totalTasks,
+    distinct_colors: uniqueColors.size,
+    plates_needed: platesNeeded,
+    total_print_time: totalTasks * 30, // 30 minutes per task
+    estimated_color_changes: Math.min(uniqueColors.size * 2, platesNeeded + 2) // Simple estimate
+  };
 }

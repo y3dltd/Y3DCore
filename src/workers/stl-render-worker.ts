@@ -1,7 +1,8 @@
 import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespace
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { renderDualColourFromConfig, renderDualColourTag } from '../lib/openscad'; // Import new function
+// Import new functions
+import { renderCableClip, renderDualColourFromConfig, renderDualColourTag, renderRegKey } from '../lib/openscad';
 
 // Use direct string literals to match the database schema enum values
 const RENDER_STATE = {
@@ -49,15 +50,19 @@ function slug(str: string): string {
 async function reserveTask() {
     // Transaction to find and reserve the oldest pending task for any supported SKU
     return prisma.$transaction(async tx => {
-        // Updated to search for multiple SKUs
-        const supportedSKUs = ['PER-KEY3D-STY3-Y3D', 'Y3D-NKC-002', 'N9-93VU-76VK'];
-        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and product.sku in [${supportedSKUs.join(', ')}]`);
+        // Updated to search for multiple SKUs and patterns
+        const supportedStaticSKUs = ['PER-KEY3D-STY3-Y3D', 'Y3D-NKC-002', 'N9-93VU-76VK', 'Y3D-REGKEY-STL1'];
+        const supportedPrefix = 'PER-2PER-';
+        console.log(`[${new Date().toISOString()}] Searching for tasks with stl_render_state='${RENDER_STATE.pending}' and supported SKUs/Prefixes`);
 
-        // Find the ID of the oldest pending task first for any supported SKU
+        // Find the ID of the oldest pending task first for any supported SKU or prefix
         const taskToReserve = await tx.printOrderTask.findFirst({
             where: {
                 stl_render_state: RENDER_STATE.pending,
-                product: { sku: { in: supportedSKUs } }, // Filter by supported SKUs
+                OR: [
+                    { product: { sku: { in: supportedStaticSKUs } } },
+                    { product: { sku: { startsWith: supportedPrefix } } }
+                ]
             },
             orderBy: { created_at: 'asc' },
             select: { id: true }, // Only need the ID initially
@@ -102,7 +107,6 @@ async function reserveTask() {
             return null;
         }
 
-
         console.log(`[${new Date().toISOString()}] Reserved task ${reservedTask.id} with status='${reservedTask.status}' and SKU '${reservedTask.product.sku}'`);
         return reservedTask as { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }; // Return the full task details needed by processTask
 
@@ -118,8 +122,9 @@ async function processTask(task: { id: number; custom_text: string | null; color
     const taskId = task.id;
     const taskSku = task.product.sku;
     const customText = task.custom_text ?? '';
-    let stlRelativePath = null; // Initialize relative path
-    let stlPathAbs = null;
+    let stlRelativePath: string | null = null; // Initialize relative path for the primary file
+    let stlPathAbs: string | null = null; // Absolute path for the primary file
+    let stlPathAbsSecondary: string | null = null; // Absolute path for the secondary file (cable clips)
 
     try {
         console.log(`[${new Date().toISOString()}] Processing task ${taskId} for SKU ${taskSku}...`);
@@ -128,20 +133,19 @@ async function processTask(task: { id: number; custom_text: string | null; color
         await fs.mkdir(STL_OUTPUT_DIR_ABS, { recursive: true });
         console.log(`[${new Date().toISOString()}] Ensured output directory exists: ${STL_OUTPUT_DIR_ABS}`);
 
-        // Create a unique, safe filename
+        // Create a unique, safe filename base
         const safeName = slug(customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] || `task_${taskId}` || 'untitled');
-        const outputFilename = `task_${taskId}_${safeName}.stl`;
-        const outputFilePathAbs = path.join(STL_OUTPUT_DIR_ABS, outputFilename);
-        stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename); // Store relative path
+        const baseOutputFilename = `task_${taskId}_${safeName}`; // Base name without extension
 
         console.log(`[${new Date().toISOString()}] Prepared data for task ${taskId}: Custom Text="${customText}"`);
-        console.log(`[${new Date().toISOString()}] Output STL path: ${outputFilePathAbs}`);
 
         // 3. Render via OpenSCAD wrapper based on SKU
         console.log(`[${new Date().toISOString()}] Rendering STL via OpenSCAD wrapper for task ${taskId} (SKU: ${taskSku})...`);
 
         if (taskSku === 'PER-KEY3D-STY3-Y3D') {
             // Existing logic for the old SKU
+            const outputFilename = `${baseOutputFilename}.stl`;
+            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
             let lines = customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
             if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
                 const nameParts = lines[0].split(' ');
@@ -156,13 +160,8 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 }
             }
             const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
-            const color1 = task.color_1 ?? 'Black'; // Default colors if null
-            const color2 = task.color_2 ?? 'White';
-
-            // Font rendering consistency parameters (from original logic)
             const fontNarrowWiden = -5.5;
             const characterSpacing = 0.92;
-
             stlPathAbs = await renderDualColourTag(line1, line2, line3, {
                 fileName: outputFilename,
                 fontNarrowWiden,
@@ -170,7 +169,9 @@ async function processTask(task: { id: number; custom_text: string | null; color
             });
 
         } else if (taskSku === 'Y3D-NKC-002') {
-            // New logic for Y3D-NKC-002 using Style3 config
+            // Existing logic for Y3D-NKC-002 using Style3 config
+            const outputFilename = `${baseOutputFilename}.stl`;
+            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
             stlPathAbs = await renderDualColourFromConfig(
                 'openscad/DualColourNew2.json',
                 'Style3',
@@ -178,20 +179,50 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 { fileName: outputFilename }
             );
         } else if (taskSku === 'N9-93VU-76VK') {
-            // New logic for N9-93VU-76VK using New3 config
+            // Existing logic for N9-93VU-76VK using New3 config
+            const outputFilename = `${baseOutputFilename}.stl`;
+            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
             stlPathAbs = await renderDualColourFromConfig(
                 'openscad/DualColourNew2.json',
                 'New3',
                 customText,
                 { fileName: outputFilename }
             );
+        } else if (taskSku === 'Y3D-REGKEY-STL1') {
+            // New logic for RegKey
+            const outputFilename = `${baseOutputFilename}.stl`;
+            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
+            stlPathAbs = await renderRegKey(customText, {
+                fileName: outputFilename
+            });
+        } else if (taskSku.startsWith('PER-2PER-')) {
+            // New logic for Cable Clips (generate two files)
+            const line1 = customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] ?? ''; // Use only first line
+            const outputFilename35 = `${baseOutputFilename}_35mm.stl`;
+            const outputFilename40 = `${baseOutputFilename}_40mm.stl`;
+
+            // Render 3.5mm version
+            console.log(`[${new Date().toISOString()}] Rendering Cable Clip 3.5mm for task ${taskId}...`);
+            stlPathAbs = await renderCableClip(line1, 3.5, { fileName: outputFilename35 });
+            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename35); // Store 3.5mm path in DB
+
+            // Render 4.0mm version
+            console.log(`[${new Date().toISOString()}] Rendering Cable Clip 4.0mm for task ${taskId}...`);
+            stlPathAbsSecondary = await renderCableClip(line1, 4.0, { fileName: outputFilename40 });
+            const stlRelativePathSecondary = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename40);
+            console.log(`[${new Date().toISOString()}] Secondary Cable Clip (4.0mm) rendered for task ${taskId} -> ${stlRelativePathSecondary}`);
+
         } else {
             throw new Error(`Unsupported SKU for STL rendering: ${taskSku}`);
         }
 
-        console.log(`[${new Date().toISOString()}] STL rendered at ${stlPathAbs}`);
+        console.log(`[${new Date().toISOString()}] Primary STL rendered at ${stlPathAbs}`);
+        if (stlPathAbsSecondary) {
+            console.log(`[${new Date().toISOString()}] Secondary STL rendered at ${stlPathAbsSecondary}`);
+        }
 
         // 5. Update database on success using raw SQL to bypass Prisma type issues
+        // For cable clips, success means *both* renders completed. stlRelativePath holds the 3.5mm path.
         await prisma.$executeRaw`
             UPDATE PrintOrderTask
             SET
@@ -203,6 +234,9 @@ async function processTask(task: { id: number; custom_text: string | null; color
         `;
 
         console.log(`✓ STL rendered successfully for task ${taskId} → ${stlRelativePath}`);
+        if (stlPathAbsSecondary) {
+            console.log(`✓ Secondary STL path (not stored in DB): ${path.join(STL_OUTPUT_DIR_RELATIVE, path.basename(stlPathAbsSecondary))}`);
+        }
 
     } catch (err: unknown) {
         console.error(`[${new Date().toISOString()}] Error processing task ${taskId}:`, err);
@@ -235,7 +269,7 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 annotation = ${`STL render error (${nextRetries}/${MAX_RETRIES}): ${fullError}`}
             WHERE id = ${taskId}
         `;
-        console.log(`✗ Failed to render STL for task ${taskId}. Retry ${nextRetries}/${MAX_RETRIES}. Marked as ${isOutOfRetries ? 'failed' : 'pending'}.`);
+        console.log(`✗ Failed to render STL for task ${taskId}. Retry ${nextRetries}/${MAX_RETRIES}. Marked as ${isOutOfRetries ? 'failed' : 'pending'}`);
     }
 }
 

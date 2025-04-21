@@ -3,9 +3,9 @@
 import { PrintTaskStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import debounce from 'lodash.debounce';
-import { X, CalendarIcon, RotateCcw } from 'lucide-react'; // Import icons
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
+import { CalendarIcon, RotateCcw, X } from 'lucide-react'; // Import icons
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
@@ -120,18 +120,24 @@ export function PrintQueueFilters({
     initialValidatedStatus as PrintTaskStatus | 'all' | 'active'
   );
 
-  const initialNeedsReviewParam = getFilterParam(currentFilters.needsReview) || 'all';
-  const initialValidatedNeedsReview = isReviewOption(initialNeedsReviewParam)
-    ? initialNeedsReviewParam
-    : 'all';
+  // Initialize needsReview state from currentFilters, defaulting to 'all' only if currentFilters.needsReview is undefined
+  // Initialize needsReview state from currentFilters, defaulting to 'no' if currentFilters.needsReview is undefined
+  // Initialize needsReview state from currentFilters, defaulting to 'no' if currentFilters.needsReview is undefined
+  // Initialize needsReview state from currentFilters, defaulting to 'no' if currentFilters.needsReview is undefined
+  // Initialize needsReview state from currentFilters, defaulting to 'no' if currentFilters.needsReview is undefined
+  const initialNeedsReviewParam = getFilterParam(currentFilters.needsReview);
+  const initialValidatedNeedsReview =
+    initialNeedsReviewParam && isReviewOption(initialNeedsReviewParam)
+      ? initialNeedsReviewParam
+      : 'no'; // Default to 'no' if param is missing or invalid
   const [needsReview, setNeedsReview] = useState<'yes' | 'no' | 'all'>(initialValidatedNeedsReview);
 
   // Color filters
   const initialColor1Param = getFilterParam(currentFilters.color1) || '';
-  const [color1, setColor1] = useState(initialColor1Param);
+  const [color1, setColor1] = useState<string>(initialColor1Param); // Explicitly type as string
 
   const initialColor2Param = getFilterParam(currentFilters.color2) || '';
-  const [color2, setColor2] = useState(initialColor2Param);
+  const [color2, setColor2] = useState<string>(initialColor2Param); // Explicitly type as string
 
   const initialColorParam = getFilterParam(currentFilters.color) || '';
   const [color, setColor] = useState(initialColorParam);
@@ -160,8 +166,13 @@ export function PrintQueueFilters({
       needsReview !== 'all' ||
       dateRange?.from !== undefined ||
       dateRange?.to !== undefined ||
-      color1 !== '' ||
-      color2 !== '' ||
+      query !== '' ||
+      status !== 'all' ||
+      needsReview !== 'all' ||
+      dateRange?.from !== undefined ||
+      dateRange?.to !== undefined ||
+      color1 !== '' || // Check if color1 is not an empty string (includes 'none')
+      color2 !== '' || // Check if color2 is not an empty string (includes 'none')
       color !== '' ||
       shippingMethod !== ''
     );
@@ -321,8 +332,8 @@ export function PrintQueueFilters({
     setStatus('all');
     setNeedsReview('all');
     setDateRange(undefined);
-    setColor1('');
-    setColor2('');
+    setColor1(''); // Reset color1 state to empty string
+    setColor2(''); // Reset color2 state to empty string
     setColor('');
     setShippingMethod('');
     // Call update with all filters explicitly set to undefined/default
@@ -343,28 +354,55 @@ export function PrintQueueFilters({
   };
 
   // Sync local state
+  // Sync local state with search params when search params change
   useEffect(() => {
-    setQuery(searchParams.get('query') || '');
+    // Only update state if the search param is different from the current state
+    const currentQueryParam = searchParams.get('query') || '';
+    if (query !== currentQueryParam) {
+      setQuery(currentQueryParam);
+    } // Added missing closing curly brace
 
-    const statusParam = searchParams.get('status') || 'all';
-    setStatus(isPrintTaskStatus(statusParam) || statusParam === 'all' ? statusParam : 'all');
+    const statusParam = searchParams.get('status') || 'active'; // Default to 'active'
+    const validatedStatusParam = isExtendedPrintTaskStatus(statusParam) ? statusParam : 'active';
+    if (status !== validatedStatusParam) {
+      setStatus(validatedStatusParam as PrintTaskStatus | 'all' | 'active');
+    }
 
-    const needsReviewParam = searchParams.get('needsReview') || 'all';
-    setNeedsReview(isReviewOption(needsReviewParam) ? needsReviewParam : 'all');
+    // needsReview state is initialized from props, no need to sync from searchParams here
 
     const start = searchParams.get('shipByDateStart');
     const end = searchParams.get('shipByDateEnd');
     const startDate = start && !isNaN(new Date(start).getTime()) ? new Date(start) : undefined;
     const endDate = end && !isNaN(new Date(end).getTime()) ? new Date(end) : undefined;
-    setDateRange({ from: startDate, to: endDate });
 
-    setColor1(searchParams.get('color1') || '');
-    setColor2(searchParams.get('color2') || '');
-    setColor(searchParams.get('color') || '');
-    setShippingMethod(searchParams.get('shippingMethod') || '');
-    // Keep dependency array simple
-  }, [searchParams]);
+    // Check if dateRange needs updating to avoid unnecessary re-renders
+    const currentStartDate = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined;
+    const currentEndDate = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined;
 
+    if (currentStartDate !== start || currentEndDate !== end) {
+      setDateRange({ from: startDate, to: endDate });
+    }
+
+    const color1Param = searchParams.get('color1') || '';
+    if (color1 !== color1Param) {
+      setColor1(color1Param);
+    }
+
+    const color2Param = searchParams.get('color2') || '';
+    if (color2 !== color2Param) {
+      setColor2(color2Param);
+    }
+
+    const colorParam = searchParams.get('color') || '';
+    if (color !== colorParam) {
+      setColor(colorParam);
+    }
+
+    const shippingMethodParam = searchParams.get('shippingMethod') || '';
+    if (shippingMethod !== shippingMethodParam) {
+      setShippingMethod(shippingMethodParam);
+    }
+  }, [searchParams]); // Only run effect when searchParams change
   const statusOptions = [
     { value: 'active', label: 'Active Tasks' },
     { value: 'all', label: 'All Statuses' },
@@ -534,11 +572,12 @@ export function PrintQueueFilters({
           Color 1
         </Label>
         <Select
-          value={color1 || 'all'}
+          value={color1 || 'all'} // Use 'all' as the default display value
           onValueChange={value => {
-            const newValue = value === 'all' ? '' : value;
+            const newValue = value === 'all' ? '' : value; // Map 'all' to empty string for internal state/param
             setColor1(newValue);
-            updateSearchParams({ color1: newValue || undefined });
+            // If value is 'none', set param to 'none'. If 'all', set param to undefined. Otherwise, set param to value.
+            updateSearchParams({ color1: value === 'all' ? undefined : value });
           }}
         >
           <SelectTrigger id="color1-filter" className="w-[160px] h-9">
@@ -546,6 +585,7 @@ export function PrintQueueFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Colors</SelectItem>
+            <SelectItem value="none">None</SelectItem> {/* Added None option */}
             {colorOptions.map(colorOption => (
               <SelectItem key={colorOption} value={colorOption}>
                 {colorOption}
@@ -561,11 +601,12 @@ export function PrintQueueFilters({
           Color 2
         </Label>
         <Select
-          value={color2 || 'all'}
+          value={color2 || 'all'} // Use 'all' as the default display value
           onValueChange={value => {
-            const newValue = value === 'all' ? '' : value;
+            const newValue = value === 'all' ? '' : value; // Map 'all' to empty string for internal state/param
             setColor2(newValue);
-            updateSearchParams({ color2: newValue || undefined });
+            // If value is 'none', set param to 'none'. If 'all', set param to undefined. Otherwise, set param to value.
+            updateSearchParams({ color2: value === 'all' ? undefined : value });
           }}
         >
           <SelectTrigger id="color2-filter" className="w-[160px] h-9">
@@ -573,6 +614,7 @@ export function PrintQueueFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Colors</SelectItem>
+            <SelectItem value="none">None</SelectItem> {/* Added None option */}
             {colorOptions.map(colorOption => (
               <SelectItem key={colorOption} value={colorOption}>
                 {colorOption}

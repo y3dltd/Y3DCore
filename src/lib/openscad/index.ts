@@ -136,7 +136,7 @@ export async function renderDualColourFromConfig(
     }
 
     // Combine config parameters with dynamic task data
-    const variables: Record<string, string | number> = {
+    const variablesFromConfig: Record<string, string | number> = {
         ...parameterSet,
         line1: customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] ?? '',
         line2: customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[1] ?? '',
@@ -144,19 +144,99 @@ export async function renderDualColourFromConfig(
         // Note: Colors are ignored for these new styles as per clarification
     };
 
-    // Ensure numeric values are treated as numbers
-    for (const key in variables) {
-        if (typeof variables[key] === 'string' && !isNaN(Number(variables[key]))) {
-            variables[key] = Number(variables[key]);
+    // Ensure numeric values are treated as numbers and filter out internal variables
+    const finalVariables: Record<string, string | number> = {};
+    const internalVarsToExclude = ['offset_delta_workaround_fonts']; // Add other internal vars if needed
+
+    for (const key in variablesFromConfig) {
+        if (internalVarsToExclude.includes(key)) {
+            continue; // Skip internal variables
+        }
+        if (typeof variablesFromConfig[key] === 'string' && !isNaN(Number(variablesFromConfig[key]))) {
+            finalVariables[key] = Number(variablesFromConfig[key]);
+        } else {
+            finalVariables[key] = variablesFromConfig[key];
         }
     }
 
-
     return renderScadToStl(scadPath, { // Use scadPath here
         ...options,
-        variables,
+        variables: finalVariables, // Pass the filtered variables
         fileName: options.fileName,
     });
+}
+
+/**
+ * Renders RegKey.scad to STL.
+ */
+export async function renderRegKey(
+    text: string,
+    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & {
+        fileName?: string,
+    } = {}
+): Promise<string> {
+    const projectRoot = process.cwd()
+    const scad = path.join(projectRoot, 'openscad', 'RegKey.scad')
+    return renderScadToStl(scad, {
+        ...options,
+        variables: {
+            Text: text,
+        },
+        fileName: options.fileName,
+    })
+}
+
+/**
+ * Renders iPhoneCable.scad to STL.
+ */
+export async function renderCableClip(
+    line1: string,
+    cabledia: number,
+    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & {
+        fileName?: string,
+    } = {}
+): Promise<string> {
+    const projectRoot = process.cwd()
+    const scad = path.join(projectRoot, 'openscad', 'iPhoneCable.scad')
+    return renderScadToStl(scad, {
+        ...options,
+        variables: {
+            line1: line1,
+            cabledia: cabledia,
+            // Set other params to defaults or make them configurable if needed
+            line2: "",
+            line3: "",
+            line4: "",
+            line5: "",
+            character_spacing: 1.0,
+            line_spacing: 1.8,
+            bar_style: "bar_only",
+            lug_style: "plate",
+            writing_direction: "ltr",
+            font_name: "Impact", // Or another default/configurable font
+            font_size: 16,
+            font_narrow_widen: 0,
+            font_weight: 3,
+            font_outline_width: 0.0,
+            lug_text_distance: -1.0,
+            lug_length: 0,
+            lug_width: 0,
+            hole_extra_margin: 0.0,
+            bar_shift: 5,
+            bar_width: 13,
+            bar_length_trim: 0,
+            glyph_coalesce: 20,
+            glyph_coalesce_strategy: "bar and glyphs",
+            border_width: 0,
+            inner_margin_width: 0,
+            outer_margin_width: 0,
+            bar_thickness: 7,
+            outline_thickness: 6,
+            text_thickness: 10,
+            border_thickness: 0,
+        },
+        fileName: options.fileName,
+    })
 }
 
 // helper slug

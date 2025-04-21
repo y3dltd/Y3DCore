@@ -99,89 +99,46 @@ async function getPrintTasks({
   // --- No more validation or getQueryParam needed here ---
 
   const skip = Math.max(0, (validatedPage - 1) * validatedLimit);
-  const whereClause: Prisma.PrintOrderTaskWhereInput = {};
+
+  const filters: Prisma.PrintOrderTaskWhereInput[] = [];
 
   // Status filter
   if (validatedStatus === 'active') {
-    // Show only pending and in_progress tasks
-    whereClause.status = {
-      in: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
-    };
+    filters.push({
+      status: {
+        in: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
+      },
+    });
   } else if (validatedStatus !== 'all') {
-    // Show tasks with a specific status
-    whereClause.status = validatedStatus;
+    filters.push({ status: validatedStatus });
   }
+
+  // Needs Review filter
   if (validatedNeedsReview !== 'all') {
-    whereClause.needs_review = validatedNeedsReview === 'yes';
-  }
-  if (validatedQuery) {
-    // Trim spaces from search query
-    const trimmedQuery = validatedQuery.trim();
-
-    if (trimmedQuery) {
-      // Check if the search query looks like a marketplace order number
-      const detection = detectMarketplaceOrderNumber(trimmedQuery);
-
-      if (detection.isMarketplaceNumber) {
-        // If it's a marketplace order number, do an exact match instead of contains
-        whereClause.OR = [
-          { marketplace_order_number: trimmedQuery }, // Exact match
-          // Fallback to contains search if exact match doesn't work
-          { marketplace_order_number: { contains: trimmedQuery } },
-          { custom_text: { contains: trimmedQuery } },
-          { color_1: { contains: trimmedQuery } },
-          { color_2: { contains: trimmedQuery } },
-          { product: { name: { contains: trimmedQuery } } },
-          { product: { sku: { contains: trimmedQuery } } },
-        ];
-      } else {
-        // Regular search
-        whereClause.OR = [
-          { marketplace_order_number: { contains: trimmedQuery } },
-          { custom_text: { contains: trimmedQuery } },
-          { color_1: { contains: trimmedQuery } },
-          { color_2: { contains: trimmedQuery } },
-          { product: { name: { contains: trimmedQuery } } },
-          { product: { sku: { contains: trimmedQuery } } },
-        ];
-
-        // If the query is numeric, also search by ID
-        const parsedId = parseInt(trimmedQuery, 10);
-        if (!isNaN(parsedId)) {
-          whereClause.OR.push({ id: parsedId });
-          // Also search by orderItemId
-          whereClause.OR.push({ orderItemId: parsedId });
-        }
-      }
-    }
-  }
-
-  // Color 1 filter
-  if (validatedColor1) {
-    whereClause.color_1 = { contains: validatedColor1 };
-  }
-
-  // Color 2 filter
-  if (validatedColor2) {
-    whereClause.color_2 = { contains: validatedColor2 };
+    filters.push({ needs_review: validatedNeedsReview === 'yes' });
   }
 
   // Product Name filter
   if (validatedProductName && validatedProductName !== 'all') {
-    whereClause.product = {
-      name: validatedProductName,
-    };
+    filters.push({
+      product: {
+        name: validatedProductName,
+      },
+    });
   }
 
   // Shipping Method filter
   if (validatedShippingMethod && validatedShippingMethod !== 'all') {
-    whereClause.order = {
-      is: {
-        requested_shipping_service: validatedShippingMethod,
+    filters.push({
+      order: {
+        is: {
+          requested_shipping_service: validatedShippingMethod,
+        },
       },
-    };
+    });
   }
 
+  // Date filter
   const dateFilter: { gte?: Date; lte?: Date } = {};
   let dateFilterApplied = false;
 
@@ -193,7 +150,6 @@ async function getPrintTasks({
         dateFilter.gte = startDate;
         dateFilterApplied = true;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_ignoredError) {
       console.warn('Invalid shipByDateStart format received:', validatedShipByDateStart);
     }
@@ -206,14 +162,79 @@ async function getPrintTasks({
         dateFilter.lte = endDate;
         dateFilterApplied = true;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_ignoredError) {
       console.warn('Invalid shipByDateEnd format received:', validatedShipByDateEnd);
     }
   }
 
   if (dateFilterApplied) {
-    whereClause.ship_by_date = dateFilter;
+    filters.push({ ship_by_date: dateFilter });
+  }
+
+  const orConditions: Prisma.PrintOrderTaskWhereInput[] = [];
+
+  // Query filter OR conditions
+  if (validatedQuery) {
+    const trimmedQuery = validatedQuery.trim();
+    if (trimmedQuery) {
+      const detection = detectMarketplaceOrderNumber(trimmedQuery);
+      if (detection.isMarketplaceNumber) {
+        orConditions.push({ marketplace_order_number: trimmedQuery }); // Exact match
+        orConditions.push({ marketplace_order_number: { contains: trimmedQuery } });
+      } else {
+        orConditions.push({ marketplace_order_number: { contains: trimmedQuery } });
+      }
+      orConditions.push({ custom_text: { contains: trimmedQuery } });
+      // Include color fields in the main query OR search
+      orConditions.push({ color_1: { contains: trimmedQuery } });
+      orConditions.push({ color_2: { contains: trimmedQuery } });
+      orConditions.push({ product: { name: { contains: trimmedQuery } } });
+      orConditions.push({ product: { sku: { contains: trimmedQuery } } });
+
+      const parsedId = parseInt(trimmedQuery, 10);
+      if (!isNaN(parsedId)) {
+        orConditions.push({ id: parsedId });
+        orConditions.push({ orderItemId: parsedId });
+      }
+    }
+  }
+
+  // Color 1 filter
+  if (validatedColor1) {
+    if (validatedColor1 === 'none') {
+      // Add to OR conditions for null or empty string
+      orConditions.push({ color_1: { equals: null } });
+      orConditions.push({ color_1: { equals: '' } });
+    } else {
+      // Add as an AND condition for specific color
+      filters.push({ color_1: { contains: validatedColor1 } });
+    }
+  }
+
+  // Color 2 filter
+  if (validatedColor2) {
+    if (validatedColor2 === 'none') {
+      // Add to OR conditions for null or empty string
+      orConditions.push({ color_2: { equals: null } });
+      orConditions.push({ color_2: { equals: '' } });
+    } else {
+      // Add as an AND condition for specific color
+      filters.push({ color_2: { contains: validatedColor2 } });
+    }
+  }
+
+  // Combine OR conditions if any exist and add to filters array
+  if (orConditions.length > 0) {
+    filters.push({ OR: orConditions });
+  }
+
+  // Combine all filters with AND
+  const whereClause: Prisma.PrintOrderTaskWhereInput = filters.length > 0 ? { AND: filters } : {};
+
+  // If there's only one filter and it's an OR condition, remove the redundant AND
+  if (filters.length === 1 && filters[0].OR) {
+    whereClause.OR = filters[0].OR;
+    delete whereClause.AND;
   }
 
   console.log('[getPrintTasks] Using validated filters:', {
@@ -394,12 +415,12 @@ export default async function PrintQueuePage({
       : 'active';
 
     const validReviewOptions: ('yes' | 'no' | 'all')[] = ['yes', 'no', 'all'];
-    const currentNeedsReview = needsReviewParam || 'all';
+    const currentNeedsReview = needsReviewParam || 'no'; // Default to 'no'
     const validatedNeedsReview = validReviewOptions.includes(
       currentNeedsReview as 'yes' | 'no' | 'all'
     )
       ? (currentNeedsReview as 'yes' | 'no' | 'all')
-      : 'all';
+      : 'no'; // Default to 'no'
 
     const validatedQuery = queryParam || '';
 
