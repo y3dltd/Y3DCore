@@ -1,9 +1,11 @@
 // import { Suspense } from 'react'; // Removed unused import
 import { AlertTriangle } from 'lucide-react';
+import { getServerSession } from 'next-auth/next';
 
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UsersTable } from '@/components/users-table'; // Client component for the table
-import { getCurrentUser } from '@/lib/auth';
+// import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // Admin User ID - Replace with role-based check later if possible
@@ -23,10 +25,14 @@ async function getUsers() {
 }
 
 export default async function UsersPage() {
-  const currentUser = await getCurrentUser();
+  // Get session server-side
+  const session = await getServerSession(authOptions);
 
-  // --- Authorization Check ---
-  if (!currentUser || currentUser.id !== ADMIN_USER_ID) {
+  // Perform Authorization Check based on session
+  // Note: user ID from session might be string, parse if needed or compare directly if ADMIN_USER_ID is string
+  const currentUserId = session?.user?.id ? parseInt(session.user.id, 10) : null;
+
+  if (!session || !session.user || currentUserId !== ADMIN_USER_ID) {
     return (
       <div className="container mx-auto py-10">
         <Alert variant="destructive">
@@ -37,7 +43,6 @@ export default async function UsersPage() {
       </div>
     );
   }
-  // --- End Authorization Check ---
 
   const users = await getUsers();
 

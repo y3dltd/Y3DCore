@@ -8,8 +8,8 @@ import { verifyPassword } from '@/lib/server-only/auth-password'; // We'll reuse
 const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
-    // Cast the adapter type for compatibility
-    adapter: PrismaAdapter(prisma) as any, // Use 'any' temporarily if types clash, refine later if needed
+    // Remove adapter type cast
+    adapter: PrismaAdapter(prisma),
     providers: [
         CredentialsProvider({
             name: 'Credentials',
@@ -25,6 +25,7 @@ export const authOptions: NextAuthOptions = {
 
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email },
+                    // select: { id: true, email: true, password: true, name: true, image: true } // Revert select
                 });
 
                 if (!user) {
@@ -41,13 +42,10 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 console.log(`Auth: User ${user.email} authorized successfully`);
-                // Return user object (excluding password) required by NextAuth
-                // Ensure the returned object matches NextAuth's expected user shape (id, email, name, image)
+                // Return only core fields guaranteed to exist
                 return {
-                    id: user.id.toString(), // ID must be a string for NextAuth User type
+                    id: user.id.toString(),
                     email: user.email,
-                    name: user.name, // Assuming you have a name field
-                    // image: user.image, // Add if you have an image field
                 };
             }
         })
@@ -57,26 +55,24 @@ export const authOptions: NextAuthOptions = {
         // Database strategy is also an option via the adapter
         strategy: 'jwt',
     },
-    // Define callbacks if needed (e.g., to add more data to JWT or session)
-    // callbacks: {
-    //   async jwt({ token, user }) {
-    //     // Add custom claims to token
-    //     if (user) {
-    //       token.id = user.id;
-    //       // token.role = user.role; // Example
-    //     }
-    //     return token;
-    //   },
-    //   async session({ session, token }) {
-    //     // Add custom claims to session object from token
-    //     if (token?.id && session.user) {
-    //        // NextAuth User type might not have id directly, depends on version/types
-    //        (session.user as any).id = token.id;
-    //       // (session.user as any).role = token.role; // Example
-    //     }
-    //     return session;
-    //   },
-    // },
+    // Define callbacks to add user ID to session and token
+    callbacks: {
+        async jwt({ token, user }) {
+            // Add user ID to token on sign-in
+            if (user) {
+                token.id = user.id; // user.id is available during sign-in
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            // Add user ID to session object from token
+            if (token?.id && session.user) {
+                // Add id to the session user object
+                (session.user as { id: string } & typeof session.user).id = token.id as string;
+            }
+            return session;
+        },
+    },
     // Add secret for JWT signing
     secret: process.env.NEXTAUTH_SECRET,
 
