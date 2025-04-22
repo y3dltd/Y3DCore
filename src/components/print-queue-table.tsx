@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils';
 import { ClientPrintTaskData } from '@/types/print-tasks';
 
 import { PrintTaskDetailModal } from './print-task-detail-modal';
+import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 
 // Define a product type suitable for client components (Decimals as strings)
 interface SerializableProduct extends Omit<PrismaProduct, 'weight' | 'item_weight_value'> {
@@ -601,14 +602,14 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         Custom Text <ArrowUpDown className="ml-1 h-3 w-3" />
       </Button>
     ),
-    cell: function CustomTextCell({ row, table }) {
+    cell: function CustomTextCell({ row }) {
       const text = row.getValue('custom_text') as string | null;
       const task = row.original;
-      const meta = table.options.meta as ExtendedTableMeta | undefined;
-      const { openModal } = meta || {};
+      const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
 
       const handleOpenModal = () => {
-        if (openModal) openModal(task);
+        setSelectedTask(task);
+        setIsModalOpen(true);
       };
       const handleCopy = (e: React.MouseEvent) => {
         e.stopPropagation();
