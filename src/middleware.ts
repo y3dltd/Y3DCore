@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 // Export the middleware with potential customizations
 export default withAuth(
   // `withAuth` augments your `Request` with the `token` object.
-  function middleware(req) {
+  function middleware(_req) {
     // Example: You could potentially add checks here based on req.nextauth.token
     // if (req.nextUrl.pathname.startsWith("/admin") && req.nextauth.token?.role !== "admin")
     //   return NextResponse.rewrite(
