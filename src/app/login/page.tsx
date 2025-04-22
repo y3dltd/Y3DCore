@@ -1,7 +1,8 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -11,10 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('mock@example.com'); // Keep mock email for convenience
-  const [password, setPassword] = useState(''); // Restore password state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,28 +25,25 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        // Backend ignores password, but we simulate sending it
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }), // Include password state visually
+        const result = await signIn('credentials', {
+          redirect: false,
+          email: email,
+          password: password,
         });
 
-        if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ message: 'An unknown error occurred' }));
-          // Simulate a generic error, as backend always succeeds
-          throw new Error(errorData.message || 'Login failed (simulated)');
+        if (result?.error) {
+          console.error('SignIn Error:', result.error);
+          toast.error(`Login failed: ${result.error}`);
+        } else if (result?.ok) {
+          toast.success('Login successful!');
+          router.push(callbackUrl);
+          router.refresh();
+        } else {
+          toast.error('Login failed: An unexpected error occurred.');
         }
-
-        // Login successful (mock backend)
-        toast.success('Login successful!'); // User sees normal success
-        router.push('/');
       } catch (error) {
-        console.error('Login UI error (backend is mocked):', error);
-        const errorMessage = error instanceof Error ? error.message : 'Login failed';
-        toast.error(`Login failed: ${errorMessage}`);
+        console.error('Login Exception:', error);
+        toast.error('Login failed: Network error or unexpected issue.');
       }
     });
   };
@@ -58,7 +58,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label> {/* Remove (Mock) */}
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -70,15 +70,14 @@ export default function LoginPage() {
                 autoComplete="username"
               />
             </div>
-            {/* Restore Password field */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 required
-                value={password} // Use password state
-                onChange={e => setPassword(e.target.value)} // Update password state
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 disabled={isPending}
                 autoComplete="current-password"
               />

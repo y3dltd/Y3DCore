@@ -1,5 +1,6 @@
 'use client';
 
+import { useSession } from 'next-auth/react'; // Import useSession
 import Image from 'next/image'; // Import the Image component
 import Link from 'next/link';
 // Remove unused imports
@@ -14,9 +15,10 @@ import LogoutButton from './logout-button'; // Import the client component
 
 // Mocked Navbar - Assumes user is always logged in
 export default function Navbar() {
-  // Assume always logged in with mock user details
-  const isLoggedIn = true;
-  const userEmail = 'mock@example.com'; // Directly use mock user email
+  const { data: session, status } = useSession(); // Use the hook
+  const isLoggedIn = status === 'authenticated';
+  const isLoading = status === 'loading';
+  const userEmail = session?.user?.email; // Get email from session data
 
   // Removed useEffect and state management related to auth checking
 
@@ -64,14 +66,17 @@ export default function Navbar() {
 
           {/* Right side: Auth Status */}
           <div className="flex items-center">
-            {/* Always show logged-in state */}
-            {isLoggedIn ? (
+            {isLoading ? (
+              // Optional: Show a loading indicator
+              <span className="text-sm text-muted-foreground">Loading...</span>
+            ) : isLoggedIn ? (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-muted-foreground">{userEmail}</span>
+                <span className="text-sm text-muted-foreground">
+                  {userEmail || 'User'} {/* Fallback if email is missing */}
+                </span>
                 <LogoutButton />
               </div>
             ) : (
-              // This part should ideally never be reached now
               <Link href="/login">
                 <Button variant="outline" size="sm">
                   Login

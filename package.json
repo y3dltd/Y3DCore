@@ -28,12 +28,13 @@
     "worker:stl": "tsx src/workers/stl-render-worker.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.9.0",
     "@aws-sdk/credential-provider-node": "^3.787.0",
     "@aws-sdk/signature-v4": "^3.374.0",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.0",
     "@nextui-org/react": "^2.6.11",
-    "@prisma/client": "^6.5.0",
+    "@prisma/client": "^6.6.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -80,6 +81,7 @@
     "jszip": "^3.10.1",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.485.0",
+    "next-auth": "^4.24.11",
     "next-themes": "^0.3.0",
     "openai": "^4.94.0",
     "papaparse": "^5.5.2",

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
+import SessionProviderWrapper from '@/app/SessionProviderWrapper'; // Import the new wrapper
 import { Footer } from '@/components/layout/footer'; // Import Footer
 import Navbar from '@/components/layout/navbar';
 import { cn } from '@/lib/utils'; // Import cn utility
@@ -45,9 +46,12 @@ export default function RootLayout({
           'font-sans antialiased flex flex-col min-h-screen'
         )}
       >
-        <Navbar />
-        <main className="flex-grow px-4 py-4">{children}</main>
-        <Footer /> {/* Add Footer here */}
+        {/* Wrap content with SessionProvider */}
+        <SessionProviderWrapper>
+          <Navbar />
+          <main className="flex-grow px-4 py-4">{children}</main>
+          <Footer /> {/* Add Footer here */}
+        </SessionProviderWrapper>
       </body>
     </html>
   );

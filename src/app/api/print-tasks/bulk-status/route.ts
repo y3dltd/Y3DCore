@@ -1,4 +1,6 @@
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { PrintTaskStatus, Prisma } from '@prisma/client';
+import { getServerSession } from 'next-auth/next';
 // Old auth imports removed
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -16,9 +18,15 @@ const bulkUpdateStatusSchema = z.object({
 });
 
 export async function PATCH(request: NextRequest) {
-  try {
-    // Session check removed
+  // --- Get Session --- 
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    console.error('[API Bulk Status PATCH] Unauthorized: No session found.');
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+  // --- End Get Session ---
 
+  try {
     let validatedData: z.infer<typeof bulkUpdateStatusSchema>;
     try {
       const body = await request.json();
@@ -49,7 +57,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     console.log(
-      `Mock Bulk updated status to ${status} for ${result.count} tasks (requested: ${taskIds.length}).`
+      `Bulk status updated to ${status} for ${result.count} tasks by user ${session.user.email}.` // Log user
     );
 
     return NextResponse.json({

@@ -180,6 +180,7 @@ model PrintOrderTask {
   @@index([customerId])
   @@index([needs_review])
   @@index([status, updated_at])
+  @@index([stl_render_state])
 }
 
 model AmazonCustomizationFile {
@@ -241,11 +242,59 @@ model ScriptRunLog {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String   // Used by Credentials provider
+  name          String?  // Optional: Add if not present
+  emailVerified DateTime? // Required by adapter
+  image         String?  // Optional: Add if not present
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Auth.js specific relations
+  accounts      Account[]
+  sessions      Session[]
+}
+
+// Auth.js Account model
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Auth.js Session model
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Auth.js VerificationToken model
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 model SyncProgress {

@@ -1,4 +1,6 @@
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Import your authOptions
 import { PrintTaskStatus } from '@prisma/client';
+import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { handleApiError } from '@/lib/errors';
@@ -12,6 +14,15 @@ function isValidPrintTaskStatus(status: unknown): status is PrintTaskStatus {
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { taskId: string } }) {
+  // --- Get Session --- 
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    console.error('[API Status PATCH] Unauthorized: No session found.');
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+  // console.log(`[API Status PATCH] Authorized user: ${session.user.email}`); // Optional logging
+  // --- End Get Session ---
+
   try {
     const { taskId } = params;
     const taskIdInt = parseInt(taskId, 10);

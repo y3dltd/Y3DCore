@@ -1,5 +1,6 @@
-
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { PrintTaskStatus } from '@prisma/client';
+import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -13,7 +14,13 @@ const autoCompleteSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // Authentication Check removed
+  // --- Get Session --- 
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    console.error('[API Auto Complete POST] Unauthorized: No session found.');
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+  // --- End Get Session ---
 
   try {
     const body = await request.json();
@@ -59,6 +66,8 @@ export async function POST(request: NextRequest) {
         updated_at: new Date(),
       },
     });
+
+    console.log(`Auto-completed ${updateResult.count} tasks for order ${orderId} by user ${session.user.email}`); // Log user
 
     return NextResponse.json({
       message: `Successfully auto-completed ${updateResult.count} print tasks for order ${orderId}.`,

@@ -160,6 +160,35 @@ Detailed documentation is available in the `/docs` directory:
 - Integration details
 - Troubleshooting tips
 
+## Authentication (Current State: Mocked)
+
+**WARNING:** Real authentication has been temporarily removed due to persistent issues with session management (`iron-session`) in the Vercel deployment environment (Edge vs. Serverless Function cookie handling).
+
+**Current Implementation:**
+
+- **No Real Security:** There are currently no authentication or authorization checks enforced by the application.
+- **Middleware:** `src/middleware.ts` bypasses all auth checks and allows all requests.
+- **Auth APIs (`/api/auth/*`):**
+  - `/login`: Ignores input, always returns success with a hardcoded mock user (ID 1).
+  - `/logout`: Does nothing server-side, returns success.
+  - `/user`: Always returns hardcoded mock user data.
+- **Protected APIs:** Routes like task updates, user management, etc., no longer perform session/user ID checks.
+- **`iron-session`:** The `iron-session` package has been uninstalled.
+- **`getCurrentUser`:** The `src/lib/auth.ts -> getCurrentUser` function is mocked to return User ID 1 from the database.
+- **Password Hashing:** Password hashing functions (`src/lib/server-only/auth-password.ts`) and their usage in user creation/update APIs remain solely for database schema compatibility with existing hashed passwords. No verification is performed.
+- **Frontend:** The login page and navbar have been simplified to reflect the mock state.
+
+**Next Steps for Real Authentication:**
+
+1.  Choose a robust authentication library/strategy compatible with Next.js App Router and Vercel (see recommendations below).
+2.  Remove the mock implementations.
+3.  Re-implement authentication checks (likely leveraging middleware where appropriate for the chosen library).
+4.  Update frontend components to handle real login state, errors, and user data.
+5.  Re-install necessary dependencies (e.g., `npm install next-auth`).
+6.  Configure required environment variables (secrets, provider keys, etc.).
+
+---
+
 ## License
 
 [Proprietary] © 2025 Yorkshire3D Limited. All rights reserved.

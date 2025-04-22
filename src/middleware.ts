@@ -1,27 +1,41 @@
-import type { NextRequest } from 'next/server';
+import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
-// Removed iron-session and sessionOptions imports
+// Export the middleware with potential customizations
+export default withAuth(
+  // `withAuth` augments your `Request` with the `token` object.
+  function middleware(req) {
+    // Example: You could potentially add checks here based on req.nextauth.token
+    // if (req.nextUrl.pathname.startsWith("/admin") && req.nextauth.token?.role !== "admin")
+    //   return NextResponse.rewrite(
+    //     new URL("/denied", req.url)
+    //   )
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const { pathname } = request.nextUrl;
-  const userId = 1; // Mock user ID
+    // By default, just proceed if authorized
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      // Return true if the user is authorized, otherwise redirect to login
+      authorized: ({ token }) => !!token, // Checks if the JWT token exists (user is logged in)
+    },
+    // Customize the login page URL if different from default
+    pages: {
+      signIn: '/login',
+    },
+  }
+);
 
-  console.log(`Mock Middleware processing request for: ${pathname}, MockUserID: ${userId}`);
-
-  // Old redirection logic removed
-
-  // Always allow the request to proceed
-  return response;
-}
-
+// Configure which routes are protected by the middleware
 export const config = {
-  // Update matcher to exclude static assets, API routes (except auth), and specific files
+  // Match all routes except for:
+  // - API routes (handled separately or by NextAuth itself for /api/auth)
+  // - _next/static (static files)
+  // - _next/image (image optimization files)
+  // - favicon.ico
+  // - /login page (allow access for login)
+  // - Specific public assets (like logo.png, manifest.json, fav/*)
   matcher: [
-    // Exclude specific files and directories
-    '/((?!_next/static|_next/image|favicon\.ico|manifest\.json|logo\.png|fav/).*)',
-    // Exclude common image/asset file extensions - adjust if needed
-    '/((?!.*\.(?:png|svg|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|login|logo.png|manifest.json|fav/).*)',
   ],
 };

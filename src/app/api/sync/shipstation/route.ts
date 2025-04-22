@@ -1,3 +1,5 @@
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Old auth imports removed
@@ -10,10 +12,16 @@ import { syncShipStationTags } from '@/lib/shipstation/db-sync';
  * Requires a valid API key provided in the 'X-Sync-API-Key' header.
  */
 export async function POST(request: NextRequest) {
-  console.log('Received request to trigger ShipStation sync (Auth Disabled)...');
+  console.log('Received request to trigger ShipStation sync...');
 
-  // Authentication Check removed
-  // Old API Key Check logic also removed previously
+  // --- Get Session --- 
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    console.error('[API Sync POST] Unauthorized: No session found.');
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+  console.log(`[API Sync POST] Sync triggered by user: ${session.user.email}`);
+  // --- End Get Session ---
 
   try {
     try {
