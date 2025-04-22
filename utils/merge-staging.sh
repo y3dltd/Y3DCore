@@ -19,3 +19,6 @@ git push origin main
 git checkout staging
 
 echo "Successfully merged staging into main"
+
+
+# git merge-staging
