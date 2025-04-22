@@ -160,32 +160,28 @@ Detailed documentation is available in the `/docs` directory:
 - Integration details
 - Troubleshooting tips
 
-## Authentication (Current State: Mocked)
+## Authentication (Implemented with NextAuth.js)
 
-**WARNING:** Real authentication has been temporarily removed due to persistent issues with session management (`iron-session`) in the Vercel deployment environment (Edge vs. Serverless Function cookie handling).
+Authentication is handled using **Auth.js (NextAuth.js)** with the following setup:
 
-**Current Implementation:**
+- **Strategy:** JWT (JSON Web Tokens) sessions.
+- **Provider:** Credentials (email/password).
+- **Adapter:** `@auth/prisma-adapter` storing user, account, session, and verification token data in the database.
+- **Configuration:** Core options are defined in `src/lib/auth.ts` and used by the route handler `src/app/api/auth/[...nextauth]/route.ts`.
+- **Protection:**
+  - **Pages:** Middleware (`src/middleware.ts`) protects most pages (excluding `/login`, `/api`, static assets) by redirecting unauthenticated users to `/login`.
+  - **API Routes:** Sensitive API routes (e.g., task updates, sync) use `getServerSession` from `next-auth/next` to verify the user's session server-side.
+- **Frontend:**
+  - The root layout (`src/app/layout.tsx`) is wrapped in `<SessionProvider>` via `src/app/SessionProviderWrapper.tsx`.
+  - The login page (`src/app/login/page.tsx`) uses `signIn()` from `next-auth/react`.
+  - The Navbar (`src/components/layout/navbar.tsx`) uses `useSession()` to display user status and email.
+  - The Logout Button (`src/components/layout/logout-button.tsx`) uses `signOut()` from `next-auth/react`.
+- **Required Environment Variables:**
+  - `NEXTAUTH_SECRET`: A strong secret key for signing tokens.
+  - `NEXTAUTH_URL`: The canonical URL of the deployment (handled automatically by Vercel for `.vercel.app` URLs, needs explicit setting for custom domains or local dev).
+  - `DATABASE_URL`: Required by the Prisma adapter.
 
-- **No Real Security:** There are currently no authentication or authorization checks enforced by the application.
-- **Middleware:** `src/middleware.ts` bypasses all auth checks and allows all requests.
-- **Auth APIs (`/api/auth/*`):**
-  - `/login`: Ignores input, always returns success with a hardcoded mock user (ID 1).
-  - `/logout`: Does nothing server-side, returns success.
-  - `/user`: Always returns hardcoded mock user data.
-- **Protected APIs:** Routes like task updates, user management, etc., no longer perform session/user ID checks.
-- **`iron-session`:** The `iron-session` package has been uninstalled.
-- **`getCurrentUser`:** The `src/lib/auth.ts -> getCurrentUser` function is mocked to return User ID 1 from the database.
-- **Password Hashing:** Password hashing functions (`src/lib/server-only/auth-password.ts`) and their usage in user creation/update APIs remain solely for database schema compatibility with existing hashed passwords. No verification is performed.
-- **Frontend:** The login page and navbar have been simplified to reflect the mock state.
-
-**Next Steps for Real Authentication:**
-
-1.  Choose a robust authentication library/strategy compatible with Next.js App Router and Vercel (see recommendations below).
-2.  Remove the mock implementations.
-3.  Re-implement authentication checks (likely leveraging middleware where appropriate for the chosen library).
-4.  Update frontend components to handle real login state, errors, and user data.
-5.  Re-install necessary dependencies (e.g., `npm install next-auth`).
-6.  Configure required environment variables (secrets, provider keys, etc.).
+**Note on Migrations:** Due to previous inconsistencies, the Prisma migration history needs to be resolved (likely via `prisma migrate reset` or manual intervention) before `prisma migrate dev` can be used for future schema changes.
 
 ---
 

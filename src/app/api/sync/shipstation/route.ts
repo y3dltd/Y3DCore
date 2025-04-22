@@ -2,7 +2,6 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Old auth imports removed
 import { handleApiError } from '@/lib/errors';
 import { syncShipstationData } from '@/lib/shipstation';
 import { syncShipStationTags } from '@/lib/shipstation/db-sync';

@@ -1,7 +1,6 @@
 import { authOptions } from '@/lib/auth';
 import { PrintTaskStatus, Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
-// Old auth imports removed
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

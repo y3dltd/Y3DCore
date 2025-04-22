@@ -4,7 +4,6 @@ import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Old auth imports removed
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 

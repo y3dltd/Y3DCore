@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Old auth imports removed
-// import { getCurrentUser } from '@/lib/auth';
+// import { getCurrentUser } from '@/lib/auth'; // Keep this commented out as it's truly unused now
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/server-only/auth-password';
