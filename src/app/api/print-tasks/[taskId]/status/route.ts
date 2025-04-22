@@ -1,4 +1,4 @@
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Import your authOptions
+import { authOptions } from '@/lib/auth'; // Updated import path
 import { PrintTaskStatus } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';

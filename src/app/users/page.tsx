@@ -2,9 +2,9 @@
 import { AlertTriangle } from 'lucide-react';
 import { getServerSession } from 'next-auth/next';
 
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UsersTable } from '@/components/users-table'; // Client component for the table
+import { authOptions } from '@/lib/auth';
 // import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
