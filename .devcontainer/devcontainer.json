@@ -1,6 +1,8 @@
 {
 	"name": "Y3DHub Dev Environment (Node 22 + MySQL 8)",
-	"dockerComposeFile": "docker-compose.yml",
+	"dockerComposeFile": [
+		"docker-compose.yml"
+	],
 	"service": "app",
 	"workspaceFolder": "/workspace",
 

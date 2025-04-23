@@ -1,17 +1,20 @@
 # .devcontainer/docker-compose.yml
 
 services:
-  db: # ← only if you actually need a database
-    image: postgres:15-alpine
+  db:
+    image: mysql:8.0
     restart: unless-stopped
     environment:
-      POSTGRES_USER: node
-      POSTGRES_PASSWORD: secret_password
-      POSTGRES_DB: myapp_dev
+      MYSQL_ROOT_PASSWORD: secret_password
+      MYSQL_USER: node
+      MYSQL_PASSWORD: secret_password
+      MYSQL_DATABASE: myapp_dev
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/mysql
+    ports:
+      - '3306:3306'
     healthcheck:
-      test: ['CMD', 'pg_isready', '-U', 'node']
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '--silent']
       interval: 5s
       timeout: 5s
       retries: 5
