@@ -1,19 +1,22 @@
 version: '3.8'
 services:
   app:
-    image: node:22-alpine # Use Node.js 22 Alpine for a smaller image
+    build: # Add this build section
+      context: .. # Context is the parent directory (project root)
+      dockerfile: Dockerfile # Specify the Dockerfile name
+    # image: node:22-alpine # Remove or comment out the direct image line
     volumes:
-      # Mount the project directory to '/workspace'
+      # Keep mounting for development live reload
       - ..:/workspace:cached
-      # Named volume for node_modules to persist installs
       - node_modules:/workspace/node_modules
     working_dir: /workspace
-    # Keep the container running
-    command: sleep infinity
+    command: sleep infinity # Keep for Dev Container
     env_file:
-      - ../.env # Load environment variables from .env file in the root
+      - ../.env
     depends_on:
       - db
+    ports: # Expose app port if needed directly (Dev Container forwards handle this too)
+      - "3002:3002"
 
   db:
     image: mysql:8.0
@@ -30,4 +33,4 @@ services:
 
 volumes:
   mysql-data:
-  node_modules: # Define the named volume for node_modules
+  node_modules:
