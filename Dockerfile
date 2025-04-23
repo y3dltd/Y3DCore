@@ -1,29 +1,41 @@
-# Dockerfile (in project root: /home/jayson/y3dhub/Dockerfile)
 FROM node:22-alpine AS base
 
+# Create app directory and set permissions
 WORKDIR /workspace
 
-# Copy package files and install dependencies
-COPY package*.json ./
+# Add necessary permissions tools
+RUN apk add --no-cache shadow
+
+# Create node user and group with specific IDs
+RUN groupadd -g 1000 node && useradd -u 1000 -g node -s /bin/sh -m node
+
+# Set ownership
+RUN chown -R node:node /workspace
+
+# Switch to non-root user
+USER node
+
+# Copy package manifests with correct ownership
+COPY --chown=node:node package*.json ./
+
+# Copy Prisma schema with correct ownership
+COPY --chown=node:node prisma ./prisma
+
+# Install dependencies
 RUN npm install
 
-# Copy the rest of the application code
-COPY . .
+# Copy the rest of your application code with correct ownership
+COPY --chown=node:node . .
 
 # --- Development Stage (used by Dev Container) ---
-# No specific build step needed here as Dev Container mounts code
-# and runs install/migrate via postCreateCommand.
-# The 'sleep infinity' in docker-compose keeps it running.
+# (Dev Container mounts your source and will run further commands via postCreateCommand)
+# No extra steps here; container will stay up per your compose file.
 
-# --- Production Stage (Example - Adjust as needed) ---
+# --- Production Stage (uncomment & adjust as needed) ---
 # FROM base AS production
 # WORKDIR /workspace
 # COPY --from=base /workspace /workspace
-# RUN npm run build # Add your build command if you have one
+# RUN npm run build       # e.g. compile TypeScript, bundler, etc.
 # EXPOSE 3002
-# USER node # Optional: run as non-root user
-# CMD ["npm", "run", "start"] # Command to start your app in production
-
-# For Dev Container, we just need the base image with dependencies installed.
-# The actual running command comes from docker-compose.yml (sleep infinity)
-# or commands run manually inside the container.
+# USER node               # drop privileges
+# CMD ["npm", "run", "start"]

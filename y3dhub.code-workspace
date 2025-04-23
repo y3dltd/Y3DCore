@@ -1,0 +1,33 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"tailwindCSS.includeLanguages": {
+			"typescript": "javascript",
+			"typescriptreact": "javascript"
+		},
+		"typescript.tsdk": "node_modules/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true,
+		"emmet.includeLanguages": {
+			"javascript": "javascriptreact",
+			"typescript": "typescriptreact"
+		},
+		"files.associations": {
+			"*.css": "tailwindcss",
+			"*.json": "jsonc"
+		},
+		"terminal.integrated.defaultProfile.linux": "bash",
+		"js/ts.implicitProjectConfig.checkJs": false,
+		"typescript.tsserver.maxTsServerMemory": 4096,
+		"typescript.tsserver.watchOptions": {
+			"watchFile": "useFsEvents",
+			"watchDirectory": "useFsEvents",
+			"fallbackPolling": "dynamicPriorityPolling"
+		},
+		"github.copilot.chat.scopeSelection": true,
+		"github.copilot.chat.generateTests.codeLens": true
+	}
+}
