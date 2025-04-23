@@ -1,0 +1,488 @@
+/* Enhanced styling for packing slip - v5: Layout & More Color */
+:root {
+  /* Define brand colors */
+  --brand-dark-start: #303030;
+  --brand-dark-end: #1a1a1a;
+  --brand-dark: #222;
+  --brand-accent-start: #00d4ee; /* Lighter accent */
+  --brand-accent-end: #00a8c0; /* Darker accent */
+  --brand-accent: #00bcd4; /* Main accent */
+  --brand-accent-light: #e0f7fa; /* Very light accent for backgrounds */
+  --brand-light: #ffffff;
+  --text-primary: #333;
+  --text-secondary: #555;
+  --border-color: #e0e0e0;
+  --background-light: #f9f9f9;
+  --border-radius-main: 12px;
+  --border-radius-inner: 8px;
+  /* Marketplace colors (examples) */
+  --amazon-orange: #ff9900;
+  --etsy-orange: #f16521;
+  /* Add other marketplace colors */
+  --ebay-blue: #3366cc;
+  --website-color: var(--brand-accent); /* Use brand accent for direct website orders */
+}
+
+/* Basic elements */
+.packaging-slip-body {
+  font-family:
+    'Poppins',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  margin: 0;
+  padding: 20px;
+  color: var(--text-primary);
+  background-color: var(--background-light);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  border: 1px solid var(--border-color);
+  padding: 0;
+  max-width: 750px;
+  margin: 20px auto;
+  background-color: var(--brand-light);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius-main);
+  overflow: hidden;
+}
+
+/* Barcode Area Styling */
+.barcode-area {
+  padding: 15px 35px 10px 35px;
+  background-color: #f1f1f1;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+.barcode-graphic {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+  background-color: white;
+  height: 40px;
+  margin-bottom: 5px;
+}
+.barcode-graphic span {
+  display: inline-block;
+  width: 2px;
+  height: 100%;
+  background-color: black;
+  margin: 0 1px;
+  vertical-align: top;
+}
+.barcode-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+/* Header Styling with Gradient */
+.header {
+  background: linear-gradient(to bottom, var(--brand-dark-start), var(--brand-dark-end));
+  background-color: var(--brand-dark);
+  color: var(--brand-light);
+  padding: 25px 35px;
+  text-align: center;
+  /* Default border color */
+  border-bottom: 4px solid var(--brand-accent);
+  position: relative;
+  transition: border-color 0.3s ease; /* Smooth transition for marketplace color */
+}
+.header img.logo {
+  max-height: 60px;
+  margin-bottom: 15px;
+  filter: brightness(0) invert(1);
+}
+.header h1 {
+  margin: 0;
+  font-size: 1.7em;
+  font-weight: 600;
+  color: var(--brand-light);
+}
+.header h1 span {
+  color: var(--brand-accent);
+  font-weight: 700;
+}
+
+/* Marketplace-specific styling */
+body.amazon-order .header {
+  border-bottom-color: var(--amazon-orange);
+}
+
+body.etsy-order .header {
+  border-bottom-color: var(--etsy-orange);
+}
+
+body.ebay-order .header {
+  border-bottom-color: var(--ebay-blue);
+}
+
+body.website-order .header {
+  border-bottom-color: var(--website-color);
+} /* Uses brand accent */
+
+/* Content Padding */
+.content-padding {
+  padding: 30px 35px;
+}
+
+.order-info {
+  text-align: right;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+}
+.order-info strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Addresses Styling */
+.addresses {
+  display: flex;
+  justify-content: space-between;
+  gap: 25px;
+  margin-bottom: 35px;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+.address-block {
+  flex-grow: 1;
+  flex-basis: 0;
+  min-width: 250px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-inner);
+  padding: 20px;
+  background-color: #fff;
+  position: relative;
+}
+.address-block h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--brand-dark);
+  border-bottom: 2px solid var(--brand-accent);
+  padding-bottom: 6px;
+  display: inline-block;
+}
+.yorkshire-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--brand-accent);
+  border: 1px solid var(--brand-accent);
+  padding: 2px 5px;
+  border-radius: 4px;
+  opacity: 0.8;
+}
+
+/* Greeting Styling */
+.greeting {
+  text-align: center;
+  margin: 15px auto 35px auto;
+  font-size: 1.15em;
+  font-weight: 500;
+  color: var(--text-primary);
+  max-width: 95%;
+  background-color: var(--brand-accent-light);
+  padding: 15px 20px;
+  border-radius: var(--border-radius-inner);
+  border-left: 4px solid var(--brand-accent);
+}
+
+/* Items Table Styling */
+.items-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 35px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-inner);
+  overflow: hidden;
+}
+.items-table th,
+.items-table td {
+  border-bottom: 1px solid var(--border-color);
+  padding: 15px 12px;
+  text-align: left;
+  font-size: 0.95em;
+  vertical-align: top;
+}
+.items-table th {
+  background: linear-gradient(to bottom, var(--brand-accent-start), var(--brand-accent-end));
+  background-color: var(--brand-accent);
+  color: var(--brand-light);
+  font-weight: 600;
+  border-bottom: none;
+}
+.items-table thead th:first-child {
+  border-top-left-radius: calc(var(--border-radius-inner) - 1px);
+}
+.items-table thead th:last-child {
+  border-top-right-radius: calc(var(--border-radius-inner) - 1px);
+}
+.items-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Item Details & Color Swatches */
+.items-table .item-details {
+  padding-left: 5px;
+  margin-top: 8px;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.item-details strong {
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-right: 3px;
+  display: inline-block;
+  min-width: 80px;
+}
+.color-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  margin-left: 5px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.items-table .col-qty,
+.items-table .col-price {
+  text-align: right;
+  width: 15%;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.items-table .col-item {
+  width: 70%;
+  font-weight: 500;
+}
+
+/* Totals Styling */
+.totals {
+  text-align: right;
+  margin-bottom: 35px;
+  padding: 20px 0 0 0;
+  border-top: 2px solid var(--brand-accent);
+  font-size: 1em;
+  line-height: 1.8;
+}
+.totals span {
+  color: var(--text-secondary);
+  margin-right: 15px;
+}
+.totals strong {
+  font-size: 1.25em;
+  font-weight: 700;
+  color: var(--brand-accent);
+}
+.totals strong span {
+  color: var(--brand-dark);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Footer Styling */
+.footer {
+  background: linear-gradient(to top, var(--brand-dark-start), var(--brand-dark-end));
+  background-color: var(--brand-dark);
+  color: #ccc;
+  padding: 30px 35px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+}
+.footer-thanks {
+  font-size: 0.95em;
+  font-style: italic;
+  flex-basis: calc(60% - 18px);
+  min-width: 260px;
+  line-height: 1.6;
+}
+.footer-thanks i {
+  color: var(--brand-light);
+  font-weight: 500;
+}
+.footer-qr {
+  text-align: center;
+  flex-basis: calc(35% - 18px);
+  min-width: 140px;
+  background-color: var(--brand-light);
+  padding: 20px 15px;
+  border-radius: var(--border-radius-inner);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+.footer-qr img {
+  max-width: 105px;
+  height: auto;
+  display: block;
+  margin: 0 auto 12px auto;
+}
+.footer-qr span {
+  font-size: 0.9em;
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
+/* Contact Info Styling */
+.contact-info {
+  text-align: center;
+  padding: 20px 35px;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  background-color: #f0f0f0;
+  border-top: 3px solid var(--brand-accent);
+}
+.contact-info a {
+  color: var(--brand-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.contact-info a:hover {
+  text-decoration: underline;
+}
+
+/* Print-specific optimizations */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--brand-light);
+    color: #000 !important;
+    font-size: 10pt;
+  }
+  .container {
+    border: none;
+    box-shadow: none;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+  .barcode-area {
+    background-color: #fff !important;
+    padding: 10mm 15mm 5mm 15mm;
+    border-bottom: 1px solid #ccc !important;
+  }
+  .barcode-graphic {
+    border: 1px solid #666 !important;
+  }
+  .barcode-graphic span {
+    background-color: black !important;
+  }
+  .header,
+  .footer {
+    background-color: var(--brand-dark) !important;
+    color: var(--brand-light) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .items-table th {
+    background-color: var(--brand-accent) !important;
+    color: var(--brand-light) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Use default accent for print header border */
+  .header {
+    border-bottom-color: var(--brand-accent) !important;
+  }
+  .header h1 span,
+  .totals strong,
+  .contact-info a {
+    color: var(--brand-accent) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .marketplace-info {
+    display: none;
+  }
+  /* Ensure addresses print side-by-side if possible */
+  .addresses {
+    flex-wrap: nowrap !important;
+  }
+  .address-block {
+    border: none;
+    padding: 0;
+    background-color: transparent !important;
+    flex-basis: 48% !important;
+    min-width: 0 !important;
+  }
+  .yorkshire-badge {
+    display: none;
+  }
+  .greeting {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 10px 0 !important;
+  }
+  .items-table {
+    border: none;
+    border-radius: 0;
+  }
+  .items-table th,
+  .items-table td {
+    border-bottom: 1px solid #ccc !important;
+  }
+  .items-table thead th:first-child,
+  .items-table thead th:last-child {
+    border-radius: 0;
+  }
+  .items-table tbody tr:last-child td {
+    border-bottom: none !important;
+  }
+  .color-swatch {
+    border: 1px solid #666 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .totals {
+    border-top: 1px solid #999 !important;
+  } /* Simpler border for print */
+  .footer-qr {
+    background-color: var(--brand-light) !important;
+    box-shadow: none;
+    border: 1px solid #ccc !important;
+    border-radius: 0;
+    padding: 10px;
+  }
+  .footer-qr span {
+    color: var(--brand-dark) !important;
+  }
+  .contact-info {
+    background-color: #eee !important;
+    padding: 10mm 15mm;
+    border-top: 1px solid #ccc !important;
+  }
+  .content-padding {
+    padding: 15mm;
+  }
+  .header,
+  .footer {
+    padding: 10mm 15mm;
+  }
+  .addresses,
+  .items-table,
+  .totals,
+  .footer {
+    page-break-inside: avoid;
+  }
+}

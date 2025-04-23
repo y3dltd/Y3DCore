@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test Print Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .header {
+      background-color: #41b8d8;
+      color: white;
+      padding: 20px;
+      border-radius: 5px;
+    }
+    .content {
+      margin-top: 20px;
+    }
+    .logo {
+      height: 60px;
+    }
+    button {
+      background-color: #41b8d8;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/logom.jpg" alt="Yorkshire3D Logo" class="logo">
+    <h1>Test Print Page</h1>
+  </div>
+  
+  <div class="content">
+    <p>This is a test page to troubleshoot printing issues.</p>
+    <p>If you can see this page and print it properly, then the issue might be with the template rendering.</p>
+  </div>
+  
+  <button onclick="window.print()">Print This Page</button>
+
+  <script>
+    // You can also test the print function from here
+    function testPrint() {
+      const printWindow = window.open('', '_blank');
+      
+      if (!printWindow) {
+        alert('Please allow pop-ups for printing');
+        return;
+      }
+      
+      const content = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Print Test</title>
+        <style>
+          body { font-family: Arial; margin: 20px; }
+          .header { background-color: #41b8d8; color: white; padding: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Print Test Content</h1>
+        </div>
+        <p>This is test content for printing.</p>
+      </body>
+      </html>
+      `;
+      
+      printWindow.document.write(content);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    }
+  </script>
+</body>
+</html> 

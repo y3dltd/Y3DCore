@@ -13,7 +13,7 @@ const RENDER_STATE = {
 } as const;
 
 // Configuration --------------------------
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 10;
 const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '2')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
 const prisma = new PrismaClient();
@@ -111,8 +111,8 @@ async function reserveTask() {
         return reservedTask as { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }; // Return the full task details needed by processTask
 
     }, {
-        maxWait: 10000, // Optional: Adjust transaction timeouts if needed
-        timeout: 20000
+        maxWait: 100000, // Optional: Adjust transaction timeouts if needed
+        timeout: 200000
     });
 }
 
@@ -160,8 +160,8 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 }
             }
             const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
-            const fontNarrowWiden = -5.5;
-            const characterSpacing = 0.92;
+            const fontNarrowWiden = 0;
+            const characterSpacing = 0.93;
             stlPathAbs = await renderDualColourTag(line1, line2, line3, {
                 fileName: outputFilename,
                 fontNarrowWiden,
@@ -327,39 +327,29 @@ export async function runTaskBatch() {
     }
 }
 
+// Track active in-flight tasks to respect the configured concurrency
+let activeTasks = 0;
+
 async function workerLoop() {
 
     // Function to handle a single iteration of the worker loop
     async function iteration() {
         console.log(`[${new Date().toISOString()}] Checking for pending STL render tasks...`);
-        let tasksStartedThisIteration = 0;
 
         // Fix any invalid stl_render_state values at the start of each iteration
         await fixInvalidStlRenderStates();
 
-        // Try to fill up available concurrency slots for *this iteration*
-        // We don't need to track promises across iterations anymore,
-        // the database lock handles the actual concurrency.
-        // We just limit how many tasks *this specific check* tries to start.
-        for (let i = 0; i < CONCURRENCY; i++) {
+        // Start new tasks until we hit the global concurrency limit
+        while (activeTasks < CONCURRENCY) {
             const task = await reserveTask();
-            if (!task) {
-                // console.log(`[${new Date().toISOString()}] No more pending tasks found this iteration.`);
-                break; // No more tasks found to reserve in this loop
-            }
-            // If reserveTask succeeded, it returns the task details
-            console.log(`[${new Date().toISOString()}] Found and reserved task ${task.id}, spinning up render`);
-            tasksStartedThisIteration++;
-            // Start processing the task, but don't wait for it here (fire and forget within the loop)
-            // Error handling is inside processTask
-            processTask(task).catch(err => {
-                // Log unexpected errors from processTask promise itself, though it should handle its own errors
-                console.error(`[${new Date().toISOString()}] Uncaught error from processTask for task ${task.id}:`, err);
-            });
+            if (!task) break;
+            console.log(`[${new Date().toISOString()}] Found and reserved task ${task.id}, spinning up render (active ${activeTasks + 1}/${CONCURRENCY})`);
+            activeTasks++;
+            processTask(task)
+                .catch(err => console.error(`[${new Date().toISOString()}] Uncaught error from processTask for task ${task.id}:`, err))
+                .finally(() => { activeTasks--; });
         }
-
-        // Log summary for this iteration's attempt
-        console.log(`[${new Date().toISOString()}] Iteration check complete; attempted to start ${tasksStartedThisIteration} tasks.`);
+        console.log(`[${new Date().toISOString()}] Active tasks: ${activeTasks}/${CONCURRENCY}`);
     } // End of iteration function
 
     // Function to schedule the next iteration using setTimeout

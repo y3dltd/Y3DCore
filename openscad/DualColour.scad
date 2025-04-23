@@ -95,7 +95,7 @@ font_with_style=""; //[SimHei:style=Regular,ABeeZee (Regular),ABeeZee (Italic),A
 font_size=20; //[5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10,10.5,11,11.5,12,13,14,15,16,17,18,19,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,51,54,57,60,63,66,69,72,76,80,84,88,92,96]
 
 font_narrow_widen=0; // [-50:100]
-font_weight=0; // [-25:50]
+font_weight=7; // [-25:50]
 
 //use 0 to remove outline
 font_outline_width=0.1; //[0:0.1:10]
@@ -115,7 +115,7 @@ hole_extra_margin=0.4; //[0:0.2:25]
 bar_shift=0; //[-50:50]
 
 // in mm. Zero to remove.
-function barlenfun(y=7) = (len(line2)>0) ? 35 : 16 ;
+function barlenfun(y=7) = (len(line2)>0) ? 35 : 17 ;
 bar_width = barlenfun();//[0:.5:100]
 bar_length_trim=0; //[-50:100]
 

@@ -29,13 +29,13 @@ export default withAuth(
 // Configure which routes are protected by the middleware
 export const config = {
   // Match all routes except for:
-  // - API routes (handled separately or by NextAuth itself for /api/auth)
-  // - _next/static (static files)
-  // - _next/image (image optimization files)
-  // - favicon.ico
-  // - /login page (allow access for login)
-  // - Specific public assets (like logo.png, manifest.json, fav/*)
+  // - API routes
+  // - _next/static & _next/image
+  // - /login page
+  // - Paths ending with common static file extensions
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|login|logo.png|manifest.json|fav/).*)',
+    // Exclude API routes, Next.js internals, login page, and paths with file extensions
+    '/((?!api|_next/static|_next/image|login|.*\.(?:png|jpg|jpeg|gif|svg|ico|xml|json)$).*)',
+    // Note: Removed explicit fav/, logo.png, manifest.json exclusions as the extension pattern should cover them.
   ],
 };

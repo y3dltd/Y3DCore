@@ -1,22 +1,23 @@
-import { Tag, Prisma, Customer, OrderItem, Product, PrintOrderTask } from '@prisma/client';
+import { Prisma, Tag } from '@prisma/client';
 import {
-  ArrowLeft,
-  User,
-  MapPin,
-  Truck,
-  Package as PackageIcon,
   AlertCircle,
+  ArrowLeft,
+  MapPin,
+  Package as PackageIcon,
   ShoppingCart,
   StickyNote,
+  Truck,
+  User,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { MoreDetailsCard } from '@/components/orders/more-details-card';
+import { PrintPackagingSlipButton } from '@/components/orders/print-packaging-slip-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -27,19 +28,21 @@ import {
 } from '@/components/ui/table';
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 import {
-  formatCarrierCode,
-  formatServiceCode,
-  formatPackageCode,
-  formatConfirmation,
   formatBooleanYN,
-  formatWarehouseId,
+  formatCarrierCode,
+  formatConfirmation,
   formatCountryCode,
+  formatPackageCode,
+  formatServiceCode,
+  formatWarehouseId,
 } from '@/lib/formatting';
 import { prisma } from '@/lib/prisma';
-import { formatRelativeTime, formatDateTime } from '@/lib/shared/date-utils';
+import { formatDateTime, formatRelativeTime } from '@/lib/shared/date-utils';
 import { cn } from '@/lib/utils';
-
-// --- Define Serializable Types --- START
+import type {
+  SerializableOrderDetailsData,
+  SerializableOrderItemForDetails,
+} from '@/types/order-details';
 
 // Base type from Prisma payload
 type OrderDataFromPrisma = Prisma.OrderGetPayload<{
@@ -53,94 +56,6 @@ type OrderDataFromPrisma = Prisma.OrderGetPayload<{
     };
   };
 }>;
-
-// Interface for the serialized Product
-interface SerializableProductForDetails
-  extends Omit<Product, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
-  weight: string | null;
-  item_weight_value: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Interface for the serialized OrderItem
-interface SerializableOrderItemForDetails
-  extends Omit<OrderItem, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
-  unit_price: string;
-  created_at: string;
-  updated_at: string | null;
-  product: SerializableProductForDetails | null; // Product can be null
-  printTasks: Array<
-    Omit<PrintOrderTask, 'created_at' | 'updated_at' | 'ship_by_date'> & {
-      created_at: string;
-      updated_at: string | null;
-      ship_by_date: string | null;
-    }
-  >;
-}
-
-// Interface for the serialized Customer
-interface SerializableCustomerForDetails extends Omit<Customer, 'created_at' | 'updated_at'> {
-  created_at: string;
-  updated_at: string | null;
-}
-
-// Explicitly define the serializable version of the main Order data
-interface SerializableOrderDetailsData
-  extends Omit<
-    OrderDataFromPrisma,
-    | 'shipping_price'
-    | 'tax_amount'
-    | 'discount_amount'
-    | 'shipping_amount_paid'
-    | 'shipping_tax'
-    | 'total_price'
-    | 'amount_paid'
-    | 'order_weight_value'
-    | 'dimensions_height'
-    | 'dimensions_length'
-    | 'dimensions_width'
-    | 'insurance_insured_value'
-    | 'order_date'
-    | 'created_at'
-    | 'updated_at'
-    | 'payment_date'
-    | 'ship_by_date'
-    | 'shipped_date'
-    | 'last_sync_date'
-    | 'void_date'
-    | 'items'
-    | 'customer' // Omit relations that will be replaced
-  > {
-  // Re-define Decimal fields as string | null
-  shipping_price: string | null;
-  tax_amount: string | null;
-  discount_amount: string | null;
-  shipping_amount_paid: string | null;
-  shipping_tax: string | null;
-  total_price: string; // Not nullable in schema, ensure it's string
-  amount_paid: string | null;
-  order_weight_value: string | null;
-  dimensions_height: string | null;
-  dimensions_length: string | null;
-  dimensions_width: string | null;
-  insurance_insured_value: string | null;
-  // Re-define Date fields as string | null
-  order_date: string | null;
-  created_at: string; // Not nullable
-  updated_at: string | null;
-  payment_date: string | null;
-  ship_by_date: string | null;
-  shipped_date: string | null;
-  last_sync_date: string | null;
-  void_date: string | null;
-  // Re-define relations with their serializable types
-  items: SerializableOrderItemForDetails[];
-  customer: SerializableCustomerForDetails | null; // Customer can be null
-  tag_ids: Prisma.JsonValue;
-}
-
-// --- Define Serializable Types --- END
 
 // --- Explicit Serialization Helper ---
 function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDetailsData {
@@ -488,15 +403,18 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 ?.replace(/_/g, ' ')
                 .replace(/\b\w/g, (l: string) => l.toUpperCase()) ?? 'N/A'}
             </Badge>
-            <Link href="/orders">
-              <Button
-                variant="outline"
-                className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Orders
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <PrintPackagingSlipButton order={order} />
+              <Link href="/orders">
+                <Button
+                  variant="outline"
+                  className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Orders
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

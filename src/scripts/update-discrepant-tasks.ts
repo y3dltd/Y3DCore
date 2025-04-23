@@ -16,7 +16,7 @@ import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/share
 // --- !!! DEFINE TARGET ORDERS HERE !!! ---
 // Add the Order IDs or ShipStation Order Numbers you want to process in this array.
 const TARGET_ORDER_IDS: string[] = [
-    "580", // Example
+    "656", // Example
 ];
 // --- !!! DEFINE TARGET ORDERS HERE !!! ---
 /*

@@ -49,10 +49,24 @@ export async function renderScadToStl(
 
     // Variables via -D name=value
     Object.entries(variables).forEach(([key, value]) => {
-        // Strings need quotes so OpenSCAD treats them as strings
-        const formatted = typeof value === 'string' ? `\"${value}\"` : String(value)
-        args.push('-D', `${key}=${formatted}`)
-    })
+        let formatted: string;
+        if (Array.isArray(value)) {
+            // Serialize arrays as OpenSCAD-compatible lists (e.g., ["A", "B"])
+            const arr = value.map(v =>
+                typeof v === 'string'
+                    ? `\"${String(v).replace(/\\/g, '\\\\').replace(/\"/g, '\\\"')}\"`
+                    : String(v)
+            );
+            formatted = `[${arr.join(', ')}]`;
+        } else if (typeof value === 'string') {
+            // Escape embedded double quotes and backslashes
+            const safe = value.replace(/\\/g, '\\\\').replace(/\"/g, '\\\"');
+            formatted = `\"${safe}\"`;
+        } else {
+            formatted = String(value);
+        }
+        args.push('-D', `${key}=${formatted}`);
+    });
 
     // Finally, the source .scad
     args.push(scadPath)
