@@ -1,36 +1,21 @@
 version: '3.8'
 services:
   app:
-    build: # Add this build section
-      context: .. # Context is the parent directory (project root)
-      dockerfile: Dockerfile # Specify the Dockerfile name
-    # image: node:22-alpine # Remove or comment out the direct image line
+    build:
+      context: ..
+      dockerfile: Dockerfile
     volumes:
-      # Keep mounting for development live reload
       - ..:/workspace:cached
       - node_modules:/workspace/node_modules
     working_dir: /workspace
-    command: sleep infinity # Keep for Dev Container
+    command: sleep infinity
     env_file:
       - ../.env
     depends_on:
       - db
-    ports: # Expose app port if needed directly (Dev Container forwards handle this too)
-      - "3002:3002"
-
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme} # Use env var or default
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-y3dhub}           # Use env var or default
-    volumes:
-      # Named volume for data persistence
-      - mysql-data:/var/lib/mysql
     ports:
-      # Expose MySQL port to host (optional, for external tools)
-      - "3306:3306"
-
-volumes:
-  mysql-data:
-  node_modules:
+      - '3002:3002'
+    user: '1000:1000' # Use numeric IDs instead of user:group names
+    environment:
+      - NODE_ENV=development
+      - NPM_CONFIG_PREFIX=/home/node/.npm-global
