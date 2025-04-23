@@ -1,4 +1,5 @@
 # .devcontainer/docker-compose.yml
+version: '3.8'
 
 services:
   db:
@@ -35,7 +36,6 @@ services:
         condition: service_healthy # ← only if you kept the db service
     ports:
       - '3000:3000'
-    user: '1000:1000'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
