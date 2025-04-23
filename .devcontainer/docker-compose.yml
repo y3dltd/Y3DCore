@@ -1,5 +1,21 @@
-version: '3.8'
+# .devcontainer/docker-compose.yml
+
 services:
+  db: # ← only if you actually need a database
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: node
+      POSTGRES_PASSWORD: secret_password
+      POSTGRES_DB: myapp_dev
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'node']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   app:
     build:
       context: ..
@@ -12,10 +28,15 @@ services:
     env_file:
       - ../.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy # ← only if you kept the db service
     ports:
-      - '3002:3002'
-    user: '1000:1000' # Use numeric IDs instead of user:group names
+      - '3000:3000'
+    user: '1000:1000'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
+
+volumes:
+  node_modules: {} # ← Declare your named node_modules volume
+  db_data: {} # ← Only if you’re running the db service

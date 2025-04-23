@@ -3,13 +3,7 @@ FROM node:22-alpine AS base
 # Create app directory and set permissions
 WORKDIR /workspace
 
-# Add necessary permissions tools
-RUN apk add --no-cache shadow
-
-# Create node user and group with specific IDs
-RUN groupadd -g 1000 node && useradd -u 1000 -g node -s /bin/sh -m node
-
-# Set ownership
+# Ensure workspace is owned by the pre-existing node user
 RUN chown -R node:node /workspace
 
 # Switch to non-root user
