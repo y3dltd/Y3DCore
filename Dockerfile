@@ -6,10 +6,9 @@ WORKDIR /workspace
 # Ensure workspace is owned by the pre-existing node user
 RUN chown -R node:node /workspace
 
-# Install python3, pip and git-filter-repo inside Alpine
+# Install python3 and git-filter-repo inside Alpine
 USER root
-RUN apk update && apk add --no-cache python3 py3-pip \
-    && pip3 install --no-cache-dir git-filter-repo
+RUN apk update && apk add --no-cache python3 git-filter-repo
 
 # Switch back to non-root user
 USER node
