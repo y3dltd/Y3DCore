@@ -1,35 +1,54 @@
 {
-  "name": "Y3DHub Dev Environment (Node 22 + MySQL 8)",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/workspace",
+	"name": "Y3DHub Dev Environment (Node 22 + MySQL 8)",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace",
 
-  // Configure tool-specific properties.
-  "customizations": {
-    // Configure properties specific to VS Code.
-    "vscode": {
-      // Add the IDs of extensions you want installed when the container is created.
-      "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-azuretools.vscode-docker",
-        "prisma.prisma"
-      ]
-    }
-  },
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"esbenp.prettier-vscode",
+				"ms-azuretools.vscode-docker",
+				"prisma.prisma",
+				"eamodio.gitlens", // Enhanced Git capabilities
+				"mtxr.sqltools", // Database client
+				"mtxr.sqltools-driver-mysql" // MySQL driver for SQLTools
+			],
+			"settings": {
+				"cSpell.enabled": false, // Disable spell checking
+				"editor.formatOnSave": true, // Enable format on save
+				"[javascript]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				},
+				"[typescript]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				},
+				"[json]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				},
+				"[jsonc]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				}
+			}
+		}
+	},
 
-  // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  "forwardPorts": [
-    3002,
-    3306
-  ],
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [
+		3000,
+		3306
+	],
 
-  // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "npm install && npx prisma migrate dev --name init",
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "npm install && npx prisma migrate dev --name init",
 
-  // Use 'initializeCommand' to copy .env.example if .env doesn't exist
-  "initializeCommand": "if [ ! -f ../.env ]; then cp ../.env.example ../.env; fi",
+	// Use 'initializeCommand' to copy .env.example if .env doesn't exist
+	"initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
 
-  // Connect as the default non-root user. See https://aka.ms/dev-containers-non-root.
-  "remoteUser": "node"
+	// Connect as the default non-root user. See https://aka.ms/dev-containers-non-root.
+	"remoteUser": "node"
 }
