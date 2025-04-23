@@ -201,3 +201,43 @@ For more details on specific aspects of the system, see:
 - [API_REFERENCE.md](./API_REFERENCE.md) for documentation on API endpoints
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for help with common issues
 - [TESTING.md](./TESTING.md) for information on testing strategies and test coverage
+# Code Structure Guide
+
+This document provides an overview of the key directories and files in the Y3DHub project.
+
+## Project Root
+
+- `src/` – Main application source
+  - `app/` – Next.js App Router pages and API routes  
+    - `api/` – Backend API endpoints (orders, tasks, auth, etc.)  
+    - `orders/` – UI pages for order management  
+    - `print-queue/` – UI pages for print task workflows  
+  - `components/` – Shared React components  
+  - `lib/` – Reusable libraries  
+    - `db/` – Prisma database utilities  
+    - `shipstation/` – ShipStation API integration  
+    - `ai/` – OpenAI integration utilities  
+    - `openscad/` – OpenSCAD model generation scripts  
+  - `scripts/` – TypeScript scripts for backend jobs  
+    - `sync-orders.ts` – Sync orders from ShipStation  
+    - `populate-print-queue.ts` – Generate print tasks  
+    - `complete-shipped-print-tasks.ts` – Close completed tasks  
+  - `types/` – Custom TypeScript type definitions  
+  - `workers/` – Background worker processes  
+    - `stl-render-worker.ts` – STL rendering worker
+
+- `prisma/` – Prisma schema and migrations
+
+- `scripts/` – Shell automation scripts  
+  - `workflow.sh` – Full end-to-end workflow runner
+
+- `openscad/` – Raw OpenSCAD model files and scripts
+
+- `docs/` – Project documentation  
+  - `guides/` – How-to and conceptual guides  
+
+- `public/` – Static assets and generated STL files
+
+## How to Navigate
+
+Use this guide as a map when contributing or debugging—each directory encapsulates a specific concern.
