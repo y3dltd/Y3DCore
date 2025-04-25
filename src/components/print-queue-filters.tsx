@@ -1,7 +1,7 @@
 'use client';
 
 import { PrintTaskStatus } from '@prisma/client';
-import { format } from 'date-fns';
+import { format, startOfToday, endOfToday, startOfYesterday, endOfYesterday, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import debounce from 'lodash.debounce';
 import { CalendarIcon, RotateCcw, X } from 'lucide-react'; // Import icons
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -255,6 +255,27 @@ export function PrintQueueFilters({
     const start = range?.from ? format(range.from, 'yyyy-MM-dd') : undefined;
     const end = range?.to ? format(range.to, 'yyyy-MM-dd') : undefined;
     updateSearchParams({ shipByDateStart: start, shipByDateEnd: end });
+  };
+
+  // Quick presets for Ship By Date
+  const handlePresetClick = (preset: 'today' | 'yesterday' | 'nextWeek') => {
+    let range: DateRange | undefined;
+    switch (preset) {
+      case 'today':
+        range = { from: startOfToday(), to: endOfToday() };
+        break;
+      case 'yesterday':
+        range = { from: startOfYesterday(), to: endOfYesterday() };
+        break;
+      case 'nextWeek': {
+        const base = addDays(new Date(), 7);
+        range = { from: startOfWeek(base), to: endOfWeek(base) };
+        break;
+      }
+      default:
+        range = undefined;
+    }
+    handleDateRangeSelect(range);
   };
 
   // Handler for color1 input change
@@ -540,6 +561,11 @@ export function PrintQueueFilters({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-2 flex space-x-2">
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('today')}>Today</Button>
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('yesterday')}>Yesterday</Button>
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('nextWeek')}>Next Week</Button>
+              </div>
               <Calendar
                 initialFocus
                 mode="range"

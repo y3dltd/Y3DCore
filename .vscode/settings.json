@@ -115,7 +115,7 @@
   "editor.inlineSuggest.suppressSuggestions": false,
 
   // Code Spell Checker settings
-  "cSpell.enabled": true,
+  "cSpell.enabled": false,
   "cSpell.words": [
     "alphanum",
     "analysers",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatMarketplaceName, MARKETPLACE_DISPLAY } from '@/lib/marketplace-utils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,17 +34,35 @@ export default function PrintTasksByMarketplaceChart({ defaultDays = '7' }: Prop
       .finally(() => setLoading(false));
   }, [days]);
 
-  const labels = dataPoints.map(d => d.marketplace);
-  const counts = dataPoints.map(d => d.count);
-  const colors = ['#F59E0B', '#3B82F6', '#6366F1', '#10B981', '#EC4899', '#F87171', '#8B5CF6', '#14B8A6'];
+  // Filter out 'Unknown' marketplace from display
+  const filteredDataPoints = dataPoints.filter(d => d.marketplace.toLowerCase() !== 'unknown');
+  
+  // Get formatted labels and matching color scheme
+  const formattedLabels = filteredDataPoints.map(d => formatMarketplaceName(d.marketplace));
+  const filteredCounts = filteredDataPoints.map(d => d.count);
+  const backgroundColors = filteredDataPoints.map(d => {
+    const info = MARKETPLACE_DISPLAY[d.marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
+    // Extract color from Tailwind class by getting the general color family
+    const colorClass = info.badgeColor.split('-')[1];
+    // Map to hex or fallback
+    switch (colorClass) {
+      case 'blue': return '#3B82F6';
+      case 'yellow': return '#F59E0B';
+      case 'orange': return '#F97316';
+      case 'green': return '#10B981';
+      case 'violet': return '#8B5CF6';
+      case 'gray': return '#6B7280';
+      default: return '#3B82F6';
+    }
+  });
 
   const chartData = {
-    labels,
+    labels: formattedLabels,
     datasets: [
       {
         label: 'Print Tasks',
-        data: counts,
-        backgroundColor: labels.map((_, i) => colors[i % colors.length])
+        data: filteredCounts,
+        backgroundColor: backgroundColors
       }
     ]
   };
@@ -60,7 +79,7 @@ export default function PrintTasksByMarketplaceChart({ defaultDays = '7' }: Prop
     <div className="bg-card p-4 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Print Tasks by Marketplace</h3>
-        <select value={days} onChange={e => setDays(e.target.value)} className="border rounded px-2 py-1 text-sm">
+        <select value={days} onChange={e => setDays(e.target.value)} className="border rounded px-2 py-1 text-sm bg-transparent text-foreground">
           <option value="today">Today</option>
           <option value="7">7 days</option>
           <option value="14">14 days</option>

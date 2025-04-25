@@ -66,7 +66,7 @@ export default function PrintTasksOverTimeChart({ defaultDays = '7' }: Props) {
         <select
           value={days}
           onChange={e => setDays(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
+          className="border rounded px-2 py-1 text-sm bg-transparent text-foreground"
         >
           <option value="today">Today</option>
           <option value="7">7 days</option>

@@ -62,7 +62,7 @@ export default function OrdersOverTimeChart({ defaultDays = '7' }: Props) {
     <div className="bg-card p-4 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Orders Over Time</h3>
-        <select value={days} onChange={e => setDays(e.target.value)} className="border rounded px-2 py-1 text-sm">
+        <select value={days} onChange={e => setDays(e.target.value)} className="border rounded px-2 py-1 text-sm bg-transparent text-foreground">
           <option value="today">Today</option>
           <option value="7">7 days</option>
           <option value="14">14 days</option>
