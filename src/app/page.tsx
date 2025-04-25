@@ -131,11 +131,9 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6 p-4 md:p-6">
       {/* Gradient Welcome Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-700 text-primary-foreground p-6 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold mb-1">Welcome to the Y3DLabs Internal Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-1">Welcome to Y3DHub: Your 3D Printing Command Center.</h1>
         <p className="text-sm opacity-90 max-w-3xl">
-          Use search and filtering options to easily locate orders by number or customer name, also
-          view your metrics by other criteria or marketplaces, view metrics and manage metrics and
-          manage tasks.
+          Monitor orders, manage print tasks, and gain real-time insights into your production workflow.
         </p>
       </div>
 
