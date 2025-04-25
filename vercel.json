@@ -13,6 +13,7 @@
   "github": {
     "silent": true,
     "autoJobCancelation": true,
+    "productionBranch": "master",
     "enabled": true
   }
 }
