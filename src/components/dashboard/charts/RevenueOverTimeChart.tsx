@@ -12,6 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import type { ChartOptions, Tick } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -35,7 +36,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
 
   const labels = dataPoints.map(d => d.time);
   const revenues = dataPoints.map(d => d.revenue);
-
+ 
   const chartData = {
     labels,
     datasets: [
@@ -49,7 +50,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
     ],
   };
 
-  const options: any = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     plugins: {
       legend: { position: 'top' as const },
@@ -61,7 +62,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
     scales: {
       y: {
         ticks: {
-          callback: (value: any) => `$${value}`,
+          callback: (value: number | string, _index: number, _ticks: Tick[]) => `$${value}`,
         },
       },
     },

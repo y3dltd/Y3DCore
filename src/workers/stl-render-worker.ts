@@ -17,7 +17,7 @@ const MAX_RETRIES = 10;
 const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '10')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
 const prisma = new PrismaClient();
-const FORCE = process.argv.includes('--force');
+const _FORCE = process.argv.includes('--force');
 // New flag to control skipping existing files (defaults to false - overwrite by default)
 const SKIP_IF_EXISTS = process.argv.includes('--skip-if-exists');
 

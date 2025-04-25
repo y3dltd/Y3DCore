@@ -12,6 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import type { ChartOptions } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -47,7 +48,7 @@ export default function PrintTasksOverTimeChart({ defaultDays = '7' }: Props) {
     }],
   };
 
-  const options: any = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     plugins: {
       legend: { position: 'top' as const },
