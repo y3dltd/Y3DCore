@@ -16,7 +16,7 @@ import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/share
 // --- !!! DEFINE TARGET ORDERS HERE !!! ---
 // Add the Order IDs or ShipStation Order Numbers you want to process in this array.
 const TARGET_ORDER_IDS: string[] = [
-    "656", // Example
+    "840", // Example
 ];
 // --- !!! DEFINE TARGET ORDERS HERE !!! ---
 /*
@@ -77,7 +77,7 @@ const TARGET_ORDER_IDS: string[] = [
 // --- !!! CONFIGURE OPTIONS HERE !!! ---
 const DRY_RUN_MODE = false; // Set to false to apply changes, true to simulate
 const LOG_LEVEL = 'trace'; // Set to 'debug', 'info', 'warn', 'error'
-const OPENAI_MODEL = 'gpt-4.1';
+const OPENAI_MODEL = 'o4-mini';
 const FORCE_SHIPSTATION_UPDATE = true; // Set to true to update ShipStation even if DB task didn't change
 // --- !!! CONFIGURE OPTIONS HERE !!! ---
 
@@ -177,7 +177,19 @@ async function extractOrderPersonalization(
 
     interface ApiMessage { role: 'system' | 'user'; content: string; }
     interface ResponseFormat { type: 'json_object'; }
-    interface ApiPayload { model: string; messages: ApiMessage[]; temperature: number; max_tokens: number; response_format: ResponseFormat; top_p?: number; frequency_penalty?: number; presence_penalty?: number; }
+    // For legacy OpenAI models, use max_tokens. For new models (e.g., o4-mini), use max_completion_tokens.
+type ApiPayload = {
+    model: string;
+    messages: ApiMessage[];
+    temperature?: number; // Optional: only include for legacy models
+    response_format: ResponseFormat;
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    // Use one of the following depending on model:
+    max_tokens?: number;
+    max_completion_tokens?: number;
+};
 
     let rawResponse: string | null = null;
     const modelUsed = options.openaiModel;
@@ -189,7 +201,24 @@ async function extractOrderPersonalization(
     try {
         if (!apiKey) throw new Error('OpenAI API key missing');
         logger.info(`[AI Update][Order ${order.id}] Calling OpenAI (${modelUsed})...`);
-        const apiPayload: ApiPayload = { model: modelUsed, messages: [{ role: 'system', content: systemPromptContent }, { role: 'user', content: userPromptContent }], temperature: 0.0, top_p: 1.0, frequency_penalty: 0.0, presence_penalty: 0.0, max_tokens: 4096, response_format: { type: 'json_object' } };
+        // Switch between max_tokens and max_completion_tokens depending on model name
+const isCompletionTokensModel = /o4-mini|gpt-4o|gpt-4.1|gpt-4-turbo|gpt-4o-mini/i.test(modelUsed);
+
+// For models like o4-mini, omit temperature (or set to 1 if required); for legacy models, set temperature as needed.
+const apiPayload: ApiPayload = {
+    model: modelUsed,
+    messages: [
+        { role: 'system', content: systemPromptContent },
+        { role: 'user', content: userPromptContent }
+    ],
+    ...(isCompletionTokensModel
+        ? { max_completion_tokens: 4096 } // For o4-mini, gpt-4o, etc. (do not send temperature)
+        : { max_tokens: 4096, temperature: 0.0, top_p: 1.0, frequency_penalty: 0.0, presence_penalty: 0.0 } // For legacy GPT-3/3.5/4
+    ),
+    response_format: { type: 'json_object' },
+};
+// End model-specific token param logic
+// Note: If o4-mini or future models require temperature=1 explicitly, add it here as temperature: 1
         logger.trace(`[AI Update][Order ${order.id}] Payload: ${JSON.stringify(apiPayload)}`);
         const response = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(apiPayload) });
         const duration = Date.now() - startTime;
@@ -257,7 +286,8 @@ async function applyAiUpdatesToTasks(
     let createdCount = 0;
     const aiData = aiPersonalizations ?? [];
     const aiCount = aiData.length;
-    const dbCount = existingTasks.length;
+    const sortedDbTasks = [...existingTasks].sort((a, b) => (a.taskIndex ?? 0) - (b.taskIndex ?? 0));
+    const dbCount = sortedDbTasks.length;
     const finalAiTasksForShipStation: z.infer<typeof PersonalizationDetailSchema>[] = [];
 
     logger.debug(`[Update][Order ${orderId}][Item ${itemId}] Comparing ${dbCount} DB tasks with ${aiCount} AI suggestions. Explicit notes colors: C1=${notesColor1}, C2=${notesColor2}`);
@@ -281,10 +311,11 @@ async function applyAiUpdatesToTasks(
         return correctedTask;
     };
 
+    // --- Always update existing tasks, then create any missing ones if AI returns more ---
     if (aiCount === dbCount) {
-        logger.info(`[Update][Order ${orderId}][Item ${itemId}] Task counts match (${aiCount}). Updating existing tasks.`);
-        for (let i = 0; i < aiCount; i++) {
-            const dbTask = existingTasks[i];
+        logger.info(`[Update][Order ${orderId}][Item ${itemId}] AI returned the same number of tasks (${aiCount}) as exist in DB (${dbCount}). Updating existing tasks.`);
+        for (let i = 0; i < dbCount; i++) {
+            const dbTask = sortedDbTasks[i];
             const originalAiTask = aiData[i]; // Use original AI task for comparison base
             const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
@@ -350,7 +381,7 @@ async function applyAiUpdatesToTasks(
 
         // Update existing tasks (similar logic as above)
         for (let i = 0; i < dbCount; i++) {
-            const dbTask = existingTasks[i];
+            const dbTask = sortedDbTasks[i];
             const originalAiTask = aiData[i];
             const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
@@ -401,7 +432,7 @@ async function applyAiUpdatesToTasks(
             finalAiTasksForShipStation.push(getCorrectedAiTaskForShipStation(originalAiTask));
         }
 
-        // Create new tasks
+        // --- Create new tasks if AI returned more than exist in DB ---
         const orderItem = await tx.orderItem.findUnique({ where: { id: itemId }, include: { order: true, product: true } });
         if (!orderItem || !orderItem.order || !orderItem.product) {
             warnings.push(`Could not find full OrderItem context for Item ${itemId} to create new tasks.`);
@@ -431,7 +462,7 @@ async function applyAiUpdatesToTasks(
                 if (options.dryRun) {
                     logger.warn(`[Dry Run][Update][Order ${orderId}][Item ${itemId}] Would create new task (index ${i}) with data: ${JSON.stringify(newTaskData)}`);
                 } else {
-                    logger.info(`[Update][Order ${orderId}][Item ${itemId}] Creating new task (index ${i}) with data: ${JSON.stringify(newTaskData)}`); // Added info log
+                    logger.info(`[Update][Order ${orderId}][Item ${itemId}] Creating new task (index ${i}) with data: ${JSON.stringify(newTaskData)}`); // Log each creation
                     await tx.printOrderTask.create({ data: newTaskData });
                 }
                 createdCount++;
@@ -444,7 +475,7 @@ async function applyAiUpdatesToTasks(
 
         // Update matching tasks (similar logic as aiCount === dbCount)
         for (let i = 0; i < aiCount; i++) {
-            const dbTask = existingTasks[i];
+            const dbTask = sortedDbTasks[i];
             const originalAiTask = aiData[i];
             const updates: Prisma.PrintOrderTaskUpdateInput = {};
             let needsUpdate = false;
@@ -497,7 +528,7 @@ async function applyAiUpdatesToTasks(
 
         // Handle extra DB tasks
         for (let i = aiCount; i < dbCount; i++) {
-            const dbTaskToDelete = existingTasks[i];
+            const dbTaskToDelete = sortedDbTasks[i];
             // Only delete if the task is still PENDING, otherwise warn
             if (dbTaskToDelete.status === PrintTaskStatus.pending) {
                 if (options.dryRun) {
@@ -553,8 +584,21 @@ async function main() {
         logger.info('Prompts loaded.');
 
         const reinforcementInstruction = `
-# Additional Priority Instruction for this Run:
-CRITICAL: Pay extra attention to the 'customerNotes' field. If you see lines explicitly defining colors like "Colour: [COLOR_NAME]" or "Secondary colour: [COLOR_NAME]", you MUST extract these values for color1 and color2 respectively, overriding any other color source for this item.
+# Additional Priority Instruction for this Run (HIGH):
+
+1. **Color Override** – If the "customerNotes" field contains explicit lines such as "Colour:" / "Color:" / "Primary Colour:" or "Secondary colour:" / "Colour 2:", ALWAYS use those values for 'color1' / 'color2', overriding any other source.
+
+2. **Quantity Integrity (NEW RULE)** – For every item in the input JSON:
+   • Let 'expected_quantity' = 'quantityOrdered'.
+   • You MUST return exactly expected_quantity personalization objects and no more.
+   • If expected_quantity is 1, NEVER split the text into multiple personalization objects — even if multiple names or lines are present. Return exactly one object with 'quantity' = 1.
+   • Only consider splitting when expected_quantity > 1 and strong evidence exists (e.g., clearly numbered/bulleted multi-line notes AND the number of lines equals expected_quantity).
+
+3. **Mismatch Handling** – If after processing you believe the parsed quantity does not equal expected_quantity, do NOT create extra personalization objects. Instead:
+   • Return one object with 'needsReview' = true and 'reviewReason' = "QUANTITY_MISMATCH".
+   • Set 'overallNeedsReview' to true with 'overallReviewReason' = "QUANTITY_MISMATCH".
+
+Follow these rules strictly. Returning the wrong number of personalization objects breaks downstream logic.
 `;
         const systemPrompt = reinforcementInstruction + "\n\n" + baseSystemPrompt;
         logger.info('Added reinforcement instruction to system prompt for this run.');
