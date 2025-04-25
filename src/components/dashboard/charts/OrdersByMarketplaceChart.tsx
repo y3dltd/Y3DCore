@@ -76,12 +76,13 @@ export default function OrdersByMarketplaceChart({ defaultDays = '7' }: Props) {
           value={days}
           onChange={e => setDays(e.target.value)}
           className="border rounded px-2 py-1 text-sm bg-transparent text-foreground"
+          style={{ color: 'var(--foreground)', background: 'var(--background)' }}
         >
-          <option value="today">Today</option>
-          <option value={7}>7 days</option>
-          <option value={14}>14 days</option>
-          <option value={30}>30 days</option>
-          <option value={90}>90 days</option>
+          <option value="today" style={{ color: 'black', background: 'white' }}>Today</option>
+          <option value={7} style={{ color: 'black', background: 'white' }}>7 days</option>
+          <option value={14} style={{ color: 'black', background: 'white' }}>14 days</option>
+          <option value={30} style={{ color: 'black', background: 'white' }}>30 days</option>
+          <option value={90} style={{ color: 'black', background: 'white' }}>90 days</option>
         </select>
       </div>
       {loading ? <p>Loading...</p> : <Bar data={chartData} options={options} />}

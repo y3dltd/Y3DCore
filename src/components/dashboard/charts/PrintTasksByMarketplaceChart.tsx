@@ -79,12 +79,17 @@ export default function PrintTasksByMarketplaceChart({ defaultDays = '7' }: Prop
     <div className="bg-card p-4 rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Print Tasks by Marketplace</h3>
-        <select value={days} onChange={e => setDays(e.target.value)} className="border rounded px-2 py-1 text-sm bg-transparent text-foreground">
-          <option value="today">Today</option>
-          <option value="7">7 days</option>
-          <option value="14">14 days</option>
-          <option value="30">30 days</option>
-          <option value="90">90 days</option>
+        <select 
+          value={days} 
+          onChange={e => setDays(e.target.value)} 
+          className="border rounded px-2 py-1 text-sm bg-transparent text-foreground"
+          style={{ color: 'var(--foreground)', background: 'var(--background)' }}
+        >
+          <option value="today" style={{ color: 'black', background: 'white' }}>Today</option>
+          <option value="7" style={{ color: 'black', background: 'white' }}>7 days</option>
+          <option value="14" style={{ color: 'black', background: 'white' }}>14 days</option>
+          <option value="30" style={{ color: 'black', background: 'white' }}>30 days</option>
+          <option value="90" style={{ color: 'black', background: 'white' }}>90 days</option>
         </select>
       </div>
       {loading ? <p>Loading...</p> : <Bar data={chartData} options={options} />}

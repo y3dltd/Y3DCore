@@ -12,7 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import type { ChartOptions, Tick } from 'chart.js';
+import type { ChartOptions, Tick, ScriptableContext } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -37,15 +37,45 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
   const labels = dataPoints.map(d => d.time);
   const revenues = dataPoints.map(d => d.revenue);
  
+  // Define gradient colors
+  const startColor = '#10B981'; // emerald-500
+  const endColor = '#059669';   // emerald-600
+  
   const chartData = {
     labels,
     datasets: [
       {
         label: 'Revenue',
         data: revenues,
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+        borderColor: function(context: ScriptableContext<'line'>) {
+          const chart = context.chart;
+          const {ctx, chartArea} = chart;
+          
+          if (!chartArea) return startColor;
+          
+          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+          gradient.addColorStop(0, endColor);
+          gradient.addColorStop(1, startColor);
+          return gradient;
+        },
+        backgroundColor: function(context: ScriptableContext<'line'>) {
+          const chart = context.chart;
+          const {ctx, chartArea} = chart;
+          
+          if (!chartArea) return 'rgba(16, 185, 129, 0.2)';
+          
+          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+          gradient.addColorStop(0, 'rgba(5, 150, 105, 0.1)');
+          gradient.addColorStop(1, 'rgba(16, 185, 129, 0.4)');
+          return gradient;
+        },
         fill: true,
+        tension: 0.4, // Add curve to the line
+        borderWidth: 3,
+        pointBackgroundColor: startColor,
+        pointBorderColor: '#FFF',
+        pointRadius: 4,
+        pointHoverRadius: 6,
       },
     ],
   };
@@ -62,7 +92,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
     scales: {
       y: {
         ticks: {
-          callback: (value: number | string, _index: number, _ticks: Tick[]) => `$${value}`,
+          callback: (value: number | string, _index: number, _ticks: Tick[]) => `£${value}`,
         },
       },
     },
@@ -76,12 +106,13 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
           value={days}
           onChange={e => setDays(e.target.value)}
           className="border rounded px-2 py-1 text-sm bg-transparent text-foreground"
+          style={{ color: 'var(--foreground)', background: 'var(--background)' }}
         >
-          <option value="today">Today</option>
-          <option value="7">7 days</option>
-          <option value="14">14 days</option>
-          <option value="30">30 days</option>
-          <option value="90">90 days</option>
+          <option value="today" style={{ color: 'black', background: 'white' }}>Today</option>
+          <option value="7" style={{ color: 'black', background: 'white' }}>7 days</option>
+          <option value="14" style={{ color: 'black', background: 'white' }}>14 days</option>
+          <option value="30" style={{ color: 'black', background: 'white' }}>30 days</option>
+          <option value="90" style={{ color: 'black', background: 'white' }}>90 days</option>
         </select>
       </div>
       {loading ? <p>Loading...</p> : <Line data={chartData} options={options} />}
