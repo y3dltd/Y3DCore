@@ -125,6 +125,31 @@ export async function renderDualColourTag(
 }
 
 /**
+ * Convenience wrapper around `renderScadToStl` for the NewDC.scad
+ * file that ships with this repository.
+ */
+export async function renderDualColourTagNew(
+    line1: string,
+    line2 = '',
+    line3 = '',
+    options: Partial<Omit<OpenSCADRenderOptions, 'variables' | 'fileName'>> & {
+        fileName?: string,
+    } = {}
+) {
+    const projectRoot = process.cwd();
+    const scad = path.join(projectRoot, 'openscad', 'NewDC.scad');
+    return renderScadToStl(scad, {
+        ...options,
+        variables: {
+            line1,
+            line2,
+            line3,
+        },
+        fileName: options.fileName,
+    });
+}
+
+/**
  * Renders a .scad file using configuration from a JSON file and task data.
  */
 export async function renderDualColourFromConfig(

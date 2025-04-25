@@ -2,7 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespac
 import * as fs from 'fs/promises';
 import * as path from 'path';
 // Import new functions
-import { renderCableClip, renderDualColourFromConfig, renderDualColourTag, renderRegKey } from '../lib/openscad';
+import { renderCableClip, renderDualColourFromConfig, renderDualColourTagNew, renderRegKey } from '../lib/openscad';
 
 // Use direct string literals to match the database schema enum values
 const RENDER_STATE = {
@@ -14,9 +14,10 @@ const RENDER_STATE = {
 
 // Configuration --------------------------
 const MAX_RETRIES = 10;
-const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '2')
+const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '20')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
 const prisma = new PrismaClient();
+const FORCE = process.argv.includes('--force');
 
 // Paths (Consider making these configurable via environment variables)
 const STL_OUTPUT_DIR_ABS = path.join(process.cwd(), 'public', 'stl'); // Absolute path for file system ops
@@ -38,12 +39,27 @@ interface ExecError extends Error {
  */
 function slug(str: string): string {
     return str
-        .toLowerCase()
-        .replace(/\s+/g, '_') // Replace spaces with underscores
-        .replace(/[^\w-]+/g, '') // Remove all non-word chars except hyphen
-        .replace(/--+/g, '_') // Replace multiple hyphens with single underscore
-        .replace(/^-+/, '') // Trim hyphen from start of text
-        .replace(/-+$/, ''); // Trim hyphen from end of text
+        // Keep original case but sanitise for filesystem
+        .replace(/\s+/g, '_')               // spaces → underscore
+        .replace(/[^A-Za-z0-9_-]/g, '')       // allow hyphen, only alphanum _ -
+        .replace(/_+/g, '_')                 // collapse repeating underscores
+        .slice(0, 60) || 'Tag';              // fallback
+}
+
+// Maps SKU to a human-readable product folder name used in the output path
+function getProductFolder(sku: string): string {
+    if (sku === 'PER-KEY3D-STY3-Y3D') return 'dual-colours';
+    if (sku === 'Y3D-NKC-002') return 'style3-tag';
+    if (sku === 'N9-93VU-76VK') return 'new3-tag';
+    if (sku === 'Y3D-REGKEY-STL1') return 'reg-keys';
+    if (sku.startsWith('PER-2PER-')) return 'cable-clip';
+    return 'other';
+}
+
+// First-character directory (A-Z or # for non-letters)
+function getAlphaFolder(name: string): string {
+    const ch = name.charAt(0).toUpperCase();
+    return ch >= 'A' && ch <= 'Z' ? ch : '#';
 }
 
 // Database Interaction -------------------
@@ -108,7 +124,7 @@ async function reserveTask() {
         }
 
         console.log(`[${new Date().toISOString()}] Reserved task ${reservedTask.id} with status='${reservedTask.status}' and SKU '${reservedTask.product.sku}'`);
-        return reservedTask as { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }; // Return the full task details needed by processTask
+        return reservedTask as TaskWithProduct; // Return the full task details needed by processTask
 
     }, {
         maxWait: 100000, // Optional: Adjust transaction timeouts if needed
@@ -116,9 +132,18 @@ async function reserveTask() {
     });
 }
 
+// Common type for task records used by processTask
+type TaskWithProduct = {
+    id: number;
+    custom_text: string | null;
+    color_1: string | null;
+    color_2: string | null;
+    render_retries: number;
+    product: { sku: string };
+};
+
 // Worker Logic --------------------------
-// Updated task type to include product sku
-async function processTask(task: { id: number; custom_text: string | null; color_1: string | null; color_2: string | null; render_retries: number; product: { sku: string } }) {
+async function processTask(task: TaskWithProduct) {
     const taskId = task.id;
     const taskSku = task.product.sku;
     const customText = task.custom_text ?? '';
@@ -126,16 +151,33 @@ async function processTask(task: { id: number; custom_text: string | null; color
     let stlPathAbs: string | null = null; // Absolute path for the primary file
     let stlPathAbsSecondary: string | null = null; // Absolute path for the secondary file (cable clips)
 
+    // Helper to mark DB completed without rendering (captures taskId)
+    const completeWithoutRender = async (relativePath: string) => {
+        console.log(`[${new Date().toISOString()}] STL already exists for task ${taskId} → ${relativePath}. Skipping render.`);
+        await prisma.$executeRaw`
+            UPDATE PrintOrderTask
+            SET stl_path = ${relativePath}, stl_render_state = 'completed', annotation = NULL, render_retries = 0
+            WHERE id = ${taskId}
+        `;
+    };
+
     try {
         console.log(`[${new Date().toISOString()}] Processing task ${taskId} for SKU ${taskSku}...`);
 
-        // 1. Ensure output directory exists
-        await fs.mkdir(STL_OUTPUT_DIR_ABS, { recursive: true });
-        console.log(`[${new Date().toISOString()}] Ensured output directory exists: ${STL_OUTPUT_DIR_ABS}`);
+        // 1. Determine structured output directory (product / A-Z)
+        const productFolder = getProductFolder(taskSku);
+        const alphaFolder = getAlphaFolder(slug(customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] || `Tag${taskId}`));
+        const relativeDir = path.join(STL_OUTPUT_DIR_RELATIVE, productFolder, alphaFolder);
+        const absDir = path.join(STL_OUTPUT_DIR_ABS, productFolder, alphaFolder);
+
+        await fs.mkdir(absDir, { recursive: true });
+        console.log(`[${new Date().toISOString()}] Ensured output directory exists: ${absDir}`);
 
         // Create a unique, safe filename base
-        const safeName = slug(customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] || `task_${taskId}` || 'untitled');
-        const baseOutputFilename = `task_${taskId}_${safeName}`; // Base name without extension
+        const safeName = slug(customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean)[0] || `Tag${taskId}`);
+        // Append UC suffix for all-uppercase names to avoid Windows case-insensitive collisions
+        const isAllUpper = safeName === safeName.toUpperCase() && /[A-Z]/.test(safeName);
+        const baseOutputFilename = `${safeName}${isAllUpper ? '_UC' : ''}`; // Append _UC if uppercase
 
         console.log(`[${new Date().toISOString()}] Prepared data for task ${taskId}: Custom Text="${customText}"`);
 
@@ -145,7 +187,22 @@ async function processTask(task: { id: number; custom_text: string | null; color
         if (taskSku === 'PER-KEY3D-STY3-Y3D') {
             // Existing logic for the old SKU
             const outputFilename = `${baseOutputFilename}.stl`;
-            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
+            stlRelativePath = path.join(relativeDir, outputFilename);
+
+            // Skip or force override existing file
+            const existingPath = path.join(absDir, outputFilename);
+            let fileExists = false;
+            try { await fs.access(existingPath); fileExists = true; } catch {}
+            if (fileExists) {
+                if (!FORCE) {
+                    await completeWithoutRender(stlRelativePath);
+                    return;
+                } else {
+                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    await fs.unlink(existingPath);
+                }
+            }
+
             let lines = customText.split(/\r?\n|\\|\//).map(t => t.trim()).filter(Boolean);
             if (lines.length === 1 && lines[0].includes(' ') && !lines[1]) {
                 const nameParts = lines[0].split(' ');
@@ -160,40 +217,83 @@ async function processTask(task: { id: number; custom_text: string | null; color
                 }
             }
             const [line1, line2, line3] = [lines[0] ?? '', lines[1] ?? '', lines[2] ?? ''];
-            const fontNarrowWiden = 0;
-            const characterSpacing = 0.93;
-            stlPathAbs = await renderDualColourTag(line1, line2, line3, {
+            stlPathAbs = await renderDualColourTagNew(line1, line2, line3, {
                 fileName: outputFilename,
-                fontNarrowWiden,
-                characterSpacing
+                outputDir: absDir,
             });
 
         } else if (taskSku === 'Y3D-NKC-002') {
             // Existing logic for Y3D-NKC-002 using Style3 config
             const outputFilename = `${baseOutputFilename}.stl`;
-            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
+            stlRelativePath = path.join(relativeDir, outputFilename);
+
+            // Skip or force override existing file
+            const existingPath = path.join(absDir, outputFilename);
+            let fileExists = false;
+            try { await fs.access(existingPath); fileExists = true; } catch {}
+            if (fileExists) {
+                if (!FORCE) {
+                    await completeWithoutRender(stlRelativePath);
+                    return;
+                } else {
+                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    await fs.unlink(existingPath);
+                }
+            }
+
             stlPathAbs = await renderDualColourFromConfig(
-                'openscad/DualColourNew2.json',
+                'openscad/render_settings.json',
                 'Style3',
                 customText,
-                { fileName: outputFilename }
+                { fileName: outputFilename, outputDir: absDir }
             );
         } else if (taskSku === 'N9-93VU-76VK') {
             // Existing logic for N9-93VU-76VK using New3 config
             const outputFilename = `${baseOutputFilename}.stl`;
-            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
+            stlRelativePath = path.join(relativeDir, outputFilename);
+
+            // Skip or force override existing file
+            const existingPath = path.join(absDir, outputFilename);
+            let fileExists = false;
+            try { await fs.access(existingPath); fileExists = true; } catch {}
+            if (fileExists) {
+                if (!FORCE) {
+                    await completeWithoutRender(stlRelativePath);
+                    return;
+                } else {
+                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    await fs.unlink(existingPath);
+                }
+            }
+
             stlPathAbs = await renderDualColourFromConfig(
-                'openscad/DualColourNew2.json',
+                'openscad/render_settings.json',
                 'New3',
                 customText,
-                { fileName: outputFilename }
+                { fileName: outputFilename, outputDir: absDir }
             );
         } else if (taskSku === 'Y3D-REGKEY-STL1') {
             // New logic for RegKey
             const outputFilename = `${baseOutputFilename}.stl`;
-            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename);
+            stlRelativePath = path.join(relativeDir, outputFilename);
+
+            // Skip or force override existing file
+            const existingPath = path.join(absDir, outputFilename);
+            let fileExists = false;
+            try { await fs.access(existingPath); fileExists = true; } catch {}
+            if (fileExists) {
+                if (!FORCE) {
+                    await completeWithoutRender(stlRelativePath);
+                    return;
+                } else {
+                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    await fs.unlink(existingPath);
+                }
+            }
+
             stlPathAbs = await renderRegKey(customText, {
-                fileName: outputFilename
+                fileName: outputFilename,
+                outputDir: absDir
             });
         } else if (taskSku.startsWith('PER-2PER-')) {
             // New logic for Cable Clips (generate two files)
@@ -201,15 +301,33 @@ async function processTask(task: { id: number; custom_text: string | null; color
             const outputFilename35 = `${baseOutputFilename}_35mm.stl`;
             const outputFilename40 = `${baseOutputFilename}_40mm.stl`;
 
+            stlRelativePath = path.join(relativeDir, outputFilename35); // Store 3.5mm path in DB
+
+            // If both 3.5 and 4.0 already exist, skip rendering
+            const abs35 = path.join(absDir, outputFilename35);
+            const abs40 = path.join(absDir, outputFilename40);
+            let exist35 = false, exist40 = false;
+            try { await fs.access(abs35); exist35 = true; } catch { }
+            try { await fs.access(abs40); exist40 = true; } catch { }
+            if (exist35 && exist40) {
+                if (!FORCE) {
+                    await completeWithoutRender(stlRelativePath);
+                    return;
+                } else {
+                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing files ${abs35} and ${abs40}`);
+                    await fs.unlink(abs35);
+                    await fs.unlink(abs40);
+                }
+            }
+
             // Render 3.5mm version
             console.log(`[${new Date().toISOString()}] Rendering Cable Clip 3.5mm for task ${taskId}...`);
-            stlPathAbs = await renderCableClip(line1, 3.5, { fileName: outputFilename35 });
-            stlRelativePath = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename35); // Store 3.5mm path in DB
+            stlPathAbs = await renderCableClip(line1, 3.5, { fileName: outputFilename35, outputDir: absDir });
 
             // Render 4.0mm version
             console.log(`[${new Date().toISOString()}] Rendering Cable Clip 4.0mm for task ${taskId}...`);
-            stlPathAbsSecondary = await renderCableClip(line1, 4.0, { fileName: outputFilename40 });
-            const stlRelativePathSecondary = path.join(STL_OUTPUT_DIR_RELATIVE, outputFilename40);
+            stlPathAbsSecondary = await renderCableClip(line1, 4.0, { fileName: outputFilename40, outputDir: absDir });
+            const stlRelativePathSecondary = path.join(relativeDir, outputFilename40);
             console.log(`[${new Date().toISOString()}] Secondary Cable Clip (4.0mm) rendered for task ${taskId} -> ${stlRelativePathSecondary}`);
 
         } else {
@@ -380,10 +498,43 @@ async function workerLoop() {
 
 } // End of workerLoop function
 
-// Start the worker loop
-workerLoop().catch(e => {
-    // This catch is primarily for errors during the initial setup of workerLoop itself,
-    // before the first iteration starts. Iteration errors are caught inside iterationWrapper.
-    console.error(`[${new Date().toISOString()}] Worker loop failed during initial setup:`, e);
-    process.exit(1); // Exit if the loop setup itself fails critically
-});
+/** Manual render of a specific task when script is run with --task=<ID> */
+async function runManualTask(taskId: number) {
+    console.log(`[${new Date().toISOString()}] Manual mode: rendering task ${taskId}`);
+    const task = await prisma.printOrderTask.findUnique({
+        where: { id: taskId },
+        include: { product: true },
+    });
+    if (!task) {
+        console.error(`[${new Date().toISOString()}] Task ${taskId} not found.`);
+        process.exit(1);
+    }
+
+    try {
+        await processTask(task as TaskWithProduct);
+        console.log(`[${new Date().toISOString()}] Manual task ${taskId} completed.`);
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] Manual task ${taskId} failed:`, err);
+        process.exit(1);
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+// -------------------- Entry point --------------------
+const manualFlag = process.argv.find(arg => arg.startsWith('--task='));
+if (manualFlag) {
+    const id = Number(manualFlag.split('=')[1]);
+    if (Number.isNaN(id)) {
+        console.error('Invalid --task value. Use --task=<numericId>');
+        process.exit(1);
+    }
+    // Fire and forget (runManualTask handles process exit)
+    runManualTask(id);
+} else {
+    // Start the continuous worker loop
+    workerLoop().catch(e => {
+        console.error(`[${new Date().toISOString()}] Worker loop failed during initial setup:`, e);
+        process.exit(1);
+    });
+}

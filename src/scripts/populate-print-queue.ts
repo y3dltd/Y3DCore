@@ -275,7 +275,7 @@ async function extractOrderPersonalization(
   options: Pick<
     ProcessingOptions,
     'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate'
-  >
+  > & { forceRecreate?: boolean } // Added forceRecreate to options type
 ): Promise<{ success: boolean; data?: z.infer<typeof AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null }> {
   const simplifiedItems = order.items.map(item => ({
     itemId: item.id,
@@ -295,7 +295,15 @@ async function extractOrderPersonalization(
 
   const inputDataJson = JSON.stringify(inputData, null, 2);
   const userPromptContent = options.userPromptTemplate.replace('{INPUT_DATA_JSON}', inputDataJson);
-  const systemPromptContent = options.systemPrompt;
+  let systemPromptContent = options.systemPrompt; // Use let to allow modification
+
+  // Conditionally modify the system prompt if forceRecreate is true
+  if (options.forceRecreate) {
+    const forceRecreateInstruction = `\n\nIMPORTANT: The user is manually forcing the recreation of these tasks (force-recreate flag is active). Do NOT flag items for review (set needsReview: false) unless there is critical missing information that completely prevents processing (e.g., no text provided for a personalized item). Assume the user is aware and intends to proceed with the data as provided or extracted.`;
+    systemPromptContent += forceRecreateInstruction;
+    logger.info(`[AI][Order ${order.id}] Appended force-recreate instruction to system prompt.`);
+  }
+
   const fullPromptForDebug = `System:\n${systemPromptContent}\n\nUser:\n${userPromptContent}`;
 
   logger.debug(`[AI][Order ${order.id}] Preparing extraction...`);
@@ -343,7 +351,7 @@ async function extractOrderPersonalization(
     const apiPayload: ApiPayload = {
       model: modelUsed,
       messages: [
-        { role: 'system', content: systemPromptContent },
+        { role: 'system', content: systemPromptContent }, // Use potentially modified system prompt
         { role: 'user', content: userPromptContent },
       ],
       temperature: 0.0,
@@ -1229,16 +1237,6 @@ async function main() {
     const userPromptTemplate = await loadPromptFile('src/lib/ai/prompts/prompt-user-template-optimized.txt');
     logger.info('Prompts loaded.');
 
-    const processingOptionsForAI: Pick<
-      ProcessingOptions,
-      'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate'
-    > = {
-      openaiApiKey: cmdOptions.openaiApiKey ?? null,
-      openaiModel: cmdOptions.openaiModel,
-      systemPrompt,
-      userPromptTemplate,
-    };
-
     logger.info(
       `Commander Parsed Options (opts): ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })}`
     );
@@ -1359,7 +1357,14 @@ async function main() {
       try {
         orderDebugInfo.overallStatus = 'Extracting AI Data';
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
-        const extractionResult = await extractOrderPersonalization(order, processingOptionsForAI);
+        // Pass the forceRecreate flag when calling the function
+        const extractionResult = await extractOrderPersonalization(order, {
+          openaiApiKey: cmdOptions.openaiApiKey ?? null,
+          openaiModel: cmdOptions.openaiModel,
+          systemPrompt, // Pass the loaded base system prompt
+          userPromptTemplate, // Pass the loaded user template
+          forceRecreate: cmdOptions.forceRecreate // Pass the flag here
+        });
         orderDebugInfo.promptSent = extractionResult.promptUsed;
         orderDebugInfo.rawResponseReceived = extractionResult.rawResponse;
         orderDebugInfo.aiProvider = 'openai';
@@ -1475,7 +1480,7 @@ Options:
   --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
   --limit <number>          Limit orders fetched (no default; fetch all orders)
   --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
-  --openai-model <model>    OpenAI model (default: gpt-4.1-mini)
+  --openai-model <model>    OpenAI model (default: gpt-4-turbo)
   --debug                   Enable debug logging
   --verbose                 Enable verbose logging
   --log-level <level>       Set log level (default: info)

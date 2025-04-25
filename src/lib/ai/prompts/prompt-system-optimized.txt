@@ -77,20 +77,21 @@ For each item in the input `items` array:
 
 ### Special Handling: Multiple Personalizations / Complex Formatting (Revised Combined Logic)
 
-**Goal:** Accurately extract individual personalizations, even when multiple are combined into a single field (`customerNotes` or `print_settings` value) using various customer formats.
+**Goal:** Accurately extract individual personalizations, even when multiple are combined into a single field (`customerNotes` or `print_settings` value) using various customer formats, AND handle cases where `quantityOrdered` might mismatch the actual number of items described.
 
-**Core Principle:** Use the item's `quantityOrdered` as a primary guide. If `quantityOrdered > 1`, actively look for ways the provided text might represent that many distinct personalizations.
+**Core Principle:** Use multiple signals to determine if splitting is needed: `quantityOrdered`, product name patterns (e.g., "Nx", "Set of N"), and the structure of `customerNotes` (e.g., multiple lines).
 
 **Parsing Strategy:**
 
-1.  **Check for Multiple Items:** Examine the personalization text. Does it contain patterns *strongly* suggesting multiple distinct items? Look for:
-    *   **Newlines (`\n`):** Strongest indicator. Treat each non-empty line as a potential item.
-    *   **Explicit Separators:** Commas (`,`), Semicolons (`;`), Pipes (`|`) *between parts that look like distinct names/items*. Do NOT split multi-word names like "Jayson Espley" just because quantity is > 1. Only split by comma/semicolon if context strongly implies separate entities (e.g., "Jayson, Rob, Evie"). **Do NOT split on symbols like `•` or `-` unless they clearly separate distinct items AND quantity matches.**
-    *   **Repeated Structures:** Patterns like `Name (Color)`, `Quantity x Name`, `Color > Name`, `Name - Color`, etc., appearing multiple times.
-    *   **Numbered/Bulleted Lists:** Lines starting with numbers (1.), bullets (*, -), etc.
+1.  **Check for Multiple Items Trigger:** Examine the context. Should you *attempt* to split the personalization text? Trigger an attempt if ANY of the following are true:
+    *   `quantityOrdered > 1`.
+    *   The `productName` contains patterns like "Nx", "Set of N", "Pack of N" (where N is a number > 1).
+    *   The `customerNotes` contain multiple lines (`\n`) where each line appears to represent a distinct item.
+    *   The `customerNotes` use clear separators (commas, semicolons, pipes) between parts that look like distinct names/items (use caution with multi-word names).
+    *   The `customerNotes` show repeated structures or numbered/bulleted lists suggesting multiple items.
 
-2.  **Attempt Splitting/Parsing:**
-    *   If a clear separator or structure is found suggesting multiple items, attempt to split the text into individual items.
+2.  **Attempt Splitting/Parsing (If Triggered in Step 1):**
+    *   If a trigger condition was met, attempt to split the text (primarily from `customerNotes`, but consider `print_settings` value if notes are empty) into individual items based on the detected structure (newlines are the primary separator).
     *   For each potential item identified:
         *   Extract `customText`. Apply formatting rules (see "Field Formatting" below).
         *   Extract `color1` and `color2` if possible *from the item's specific text segment* (e.g., `(Blue >Jack)` -> color1="Blue"). If not specified per item, use the overall item context (separate `print_settings` Color option, product name variation, REGKEY rules). Apply the *same* context color(s) to all split items unless specified otherwise. Apply color mapping/validation (see "Field Formatting" below). Set to `null` if no color info is found.
@@ -98,15 +99,30 @@ For each item in the input `items` array:
         *   Create a separate personalization object in the output array `itemPersonalizations.<itemId>.personalizations`.
         *   Set `needsReview` to `false` initially for this sub-item (unless specific issues arise during parsing).
 
-3.  **Quantity Validation (CRITICAL):**
-    *   After attempting to parse/split, compare the **total number of personalization objects created** for the item ID against the item's `quantityOrdered`.
-    *   **If Count Matches `quantityOrdered`:** Parsing likely succeeded. Set `overallNeedsReview` to `false` (unless individual items had specific parsing issues).
-    *   **If Count DOES NOT Match `quantityOrdered`:** Parsing failed or is ambiguous.
-        *   Set `overallNeedsReview` to `true`.
-        *   Set `overallReviewReason` clearly explaining the mismatch: `"Quantity mismatch: Expected Qty ${quantityOrdered}, but parsed ${count} items from text."` Add details if possible.
-        *   **Action on Mismatch:** Create a *single* placeholder personalization object for the *entire* original text, setting its quantity to the full `quantityOrdered`, marking `needsReview: true`, and including the original complex text in the `reviewReason` or `annotation`. Discard any previously split items for this item ID.
+3.  **No Splitting Attempted (If Not Triggered in Step 1):**
+    *   If no trigger condition was met in Step 1, process the available text (from notes or print settings) as a *single* personalization object.
+    *   Set its `quantity` to the item's `quantityOrdered`.
+    *   Extract `customText`, `color1`, `color2` based on the overall context.
+    *   Proceed directly to Field Formatting rules for this single object. Set `overallNeedsReview` based on standard rules (e.g., missing info).
 
-4.  **No Splitting Attempted / Quantity is 1 / Ambiguous Multi-Word Name:** If the text didn't strongly suggest multiple items (e.g., `quantityOrdered` is 1, or text is simple), process it as a single personalization object with `quantity` set to the item's `quantityOrdered`. If `quantityOrdered > 1` but no split was performed, set `overallNeedsReview` to `true` with reason `"Single personalization found but Order Qty is ${quantityOrdered}"`.
+4.  **Quantity Validation (CRITICAL - Run AFTER Step 2 or 3):**
+    *   Let `parsed_count` be the total number of personalization objects created for the item ID (either 1 from Step 3, or the sum from Step 2).
+    *   Let `parsed_total_quantity` be the sum of the `quantity` fields from all created personalization objects for this item ID.
+    *   Let `expected_quantity` be the item's `quantityOrdered` from the input JSON.
+    *   Let `name_implied_quantity` be the quantity suggested by the product name (e.g., "30x" -> 30), or `null` if not present.
+    *   Let `notes_line_count` be the number of non-empty lines in `customerNotes` if splitting by newline was attempted, or `null` otherwise.
+
+    *   **Primary Check:** Does `parsed_total_quantity` match `expected_quantity`?
+        *   **If YES:** Parsing quantity matches the order quantity. This is generally good. Set `overallNeedsReview` based *only* on individual item review flags or other specific issues (like font requests). Set `overallReviewReason` accordingly.
+        *   **If NO:** There's a mismatch between parsed quantity and order quantity. This *always* requires review.
+            *   Set `overallNeedsReview` to `true`.
+            *   Construct `overallReviewReason`: Start with `QUANTITY_MISMATCH: OrderQty=${expected_quantity}, ParsedTotalQty=${parsed_total_quantity}.`.
+            *   Add context: If `name_implied_quantity` exists, add `ProductNameQty=${name_implied_quantity}.`. If `notes_line_count` exists, add `NotesLines=${notes_line_count}.`. Append any individual `reviewReason`s.
+            *   **Action on Mismatch (Revised Again):**
+                *   **Scenario A (Plausible Split Despite Mismatch):** If splitting *was attempted* (Step 2) based on triggers like `notes_line_count` or `name_implied_quantity`, **YOU MUST KEEP THE SPLIT RESULTS** derived from that structure (e.g., one object per line in notes, resulting in `parsed_count` objects). Assign `quantity: 1` to each split object unless explicitly stated otherwise in its text segment. Ensure `overallNeedsReview` is `true` and the detailed `overallReviewReason` clearly reflects the discrepancy (e.g., `QUANTITY_MISMATCH: OrderQty=1, ParsedTotalQty=33, NotesLines=33. Used notes structure.`). **DO NOT revert to a single placeholder just because `parsed_total_quantity` does not equal `expected_quantity`. The structure implied by `customerNotes` (especially newlines) or `productName` takes precedence over `quantityOrdered` in this scenario.**
+                *   **Scenario B (Unreliable Split or No Split Attempted):** Only if splitting was *not* triggered (Step 3 resulted in mismatch) OR if the splitting attempt (Step 2) itself failed badly (e.g., couldn't parse distinct items despite triggers like newlines), THEN discard any split results and create a *single* placeholder personalization object for the *entire* original text. Set its quantity to `expected_quantity`, mark `needsReview: true`, and include the original complex text and the mismatch details in the `reviewReason` or `annotation`.
+
+5.  **Final Review Check:** Ensure `overallNeedsReview` is `true` if any individual personalization object has `needsReview: true`, even if quantities matched. Compile all unique reasons into `overallReviewReason`.
 
 ### Field Formatting and Mapping
 

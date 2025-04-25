@@ -1,0 +1,38 @@
+# Y3DHub Windsurf Rules
+
+## Project Purpose
+Y3DHub is a Next.js-14 App-Router platform for managing 3D‐print workflows.  
+• Imports orders via ShipStation API  
+• Extracts personalization with OpenAI  
+• Generates and renders STL via OpenSCAD  
+• Tracks tasks through review/approval
+
+## Tech Stack
+- Frontend: Next.js 14 (App Router), React 18, NextUI, TailwindCSS  
+- Backend: Next.js API routes, Prisma ORM (MySQL)  
+- Integrations: ShipStation, OpenAI, OpenSCAD  
+- Tooling: ESLint, Prettier, Vitest, Playwright, TypeScript path aliases
+
+## Key Structure
+prisma/             — DB schema & migrations  
+src/lib/            — core logic (orders, mappers, shipstation, ai, openscad, logging)  
+src/app/            — UI pages & API routes  
+src/components/     — shared React components  
+scripts/            — CLI workflows (sync, queue, cleanup, etc.)  
+openscad/           — . scad models & presets  
+public/             — static assets (logo, icons)
+
+## Core WorkflowsQ
+1. **Order Sync** (scripts/sync-orders.ts → src/lib/orders/sync.ts)  
+2. **Print-Task Gen** (scripts/populate-print-queue.ts + AI/Amazon)  
+3. **STL Rendering** (workers/stl-render-worker.ts + OpenSCAD)  
+4. **Status Updates** (scripts/complete-shipped-print-tasks.ts)  
+5. **Print Queue UI** (pages, client, bulk-status API)  
+6. **Auth** (NextAuth.js w/ Prisma, login page, middleware)
+
+## Coding Guidelines
+- Use TS path aliases (`@lib/*`, `@components/*`, `@hooks/*`)  
+- Strict ESLint + Prettier formatting  
+- Write Vitest & Playwright tests for new logic/UI  
+- Leverage `src/lib/shared/logging.ts` for debug/info logs  
+- Follow existing patterns before introducing new files or folders  

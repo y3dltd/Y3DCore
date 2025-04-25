@@ -82,6 +82,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+/myenv/
 
 # Logs and temporary files
 /logs/
@@ -148,3 +149,4 @@ dev.log
 .aider.chat.history.md
 .aider.input.history
 .aider.tags.cache.v4/
+.aider*
