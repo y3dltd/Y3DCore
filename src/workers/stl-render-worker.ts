@@ -418,6 +418,45 @@ async function fixInvalidStlRenderStates() {
     }
 }
 
+// Helper to reset eligible tasks back to pending
+async function resetAllTasksToPending() {
+    console.log(`[${new Date().toISOString()}] Refresh mode: Resetting eligible tasks to pending...`);
+    const supportedStaticSKUs = ['PER-KEY3D-STY3-Y3D', 'Y3D-NKC-002', 'N9-93VU-76VK', 'Y3D-REGKEY-STL1'];
+    const supportedPrefix = 'PER-2PER-';
+
+    try {
+        const result = await prisma.printOrderTask.updateMany({
+            where: {
+                AND: [
+                    {
+                        OR: [
+                            { product: { sku: { in: supportedStaticSKUs } } },
+                            { product: { sku: { startsWith: supportedPrefix } } }
+                        ]
+                    },
+                    {
+                        // Only reset if the associated order is awaiting shipment
+                        order: {
+                            order_status: 'awaiting_shipment'
+                        }
+                    }
+                ]
+            },
+            data: {
+                stl_render_state: RENDER_STATE.pending,
+                render_retries: 0 // Also reset retries
+            }
+        });
+        console.log(`[${new Date().toISOString()}] Successfully reset ${result.count} tasks to pending state.`);
+        process.exit(0);
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] Failed to reset tasks:`, err);
+        process.exit(1);
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
 // Main Loop --------------------------
 // Simple version to run and process a single task batch (exported for testing)
 export async function runTaskBatch() {
@@ -525,7 +564,12 @@ async function runManualTask(taskId: number) {
 
 // -------------------- Entry point --------------------
 const manualFlag = process.argv.find(arg => arg.startsWith('--task='));
-if (manualFlag) {
+const refreshFlag = process.argv.includes('--refresh');
+
+if (refreshFlag) {
+    // Fire and forget (resetAllTasksToPending handles process exit)
+    resetAllTasksToPending();
+} else if (manualFlag) {
     const id = Number(manualFlag.split('=')[1]);
     if (Number.isNaN(id)) {
         console.error('Invalid --task value. Use --task=<numericId>');

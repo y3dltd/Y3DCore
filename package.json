@@ -26,6 +26,7 @@
     "docs:gen-commands": "tsx scripts/docs/gen-commands-table.ts",
     "test": "echo 'Skipping tests' && exit 0",
     "worker:stl": "tsx src/workers/stl-render-worker.ts",
+    "worker:stlrefresh": "tsx src/workers/stl-render-worker.ts --refresh",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
