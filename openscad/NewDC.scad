@@ -33,7 +33,7 @@ function is_vertical() = writing_direction == "btt" || writing_direction == "ttb
    Font
    ---------------------------------------------------------*/
 font_name          = "Comfortaa";
-font_size          = 19;
+font_size          = 20;
 font_narrow_widen  = 0;
 font_weight        = 15;
 font_outline_width = 0.00001;

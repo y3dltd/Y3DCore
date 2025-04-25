@@ -14,10 +14,12 @@ const RENDER_STATE = {
 
 // Configuration --------------------------
 const MAX_RETRIES = 10;
-const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '20')
+const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '10')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
 const prisma = new PrismaClient();
 const FORCE = process.argv.includes('--force');
+// New flag to control skipping existing files (defaults to false - overwrite by default)
+const SKIP_IF_EXISTS = process.argv.includes('--skip-if-exists');
 
 // Paths (Consider making these configurable via environment variables)
 const STL_OUTPUT_DIR_ABS = path.join(process.cwd(), 'public', 'stl'); // Absolute path for file system ops
@@ -189,16 +191,16 @@ async function processTask(task: TaskWithProduct) {
             const outputFilename = `${baseOutputFilename}.stl`;
             stlRelativePath = path.join(relativeDir, outputFilename);
 
-            // Skip or force override existing file
+            // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch {}
+            try { await fs.access(existingPath); fileExists = true; } catch { }
             if (fileExists) {
-                if (!FORCE) {
+                if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
                     return;
                 } else {
-                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    console.log(`[${new Date().toISOString()}] Overwriting existing file ${existingPath}`);
                     await fs.unlink(existingPath);
                 }
             }
@@ -227,16 +229,16 @@ async function processTask(task: TaskWithProduct) {
             const outputFilename = `${baseOutputFilename}.stl`;
             stlRelativePath = path.join(relativeDir, outputFilename);
 
-            // Skip or force override existing file
+            // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch {}
+            try { await fs.access(existingPath); fileExists = true; } catch { }
             if (fileExists) {
-                if (!FORCE) {
+                if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
                     return;
                 } else {
-                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    console.log(`[${new Date().toISOString()}] Overwriting existing file ${existingPath}`);
                     await fs.unlink(existingPath);
                 }
             }
@@ -252,16 +254,16 @@ async function processTask(task: TaskWithProduct) {
             const outputFilename = `${baseOutputFilename}.stl`;
             stlRelativePath = path.join(relativeDir, outputFilename);
 
-            // Skip or force override existing file
+            // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch {}
+            try { await fs.access(existingPath); fileExists = true; } catch { }
             if (fileExists) {
-                if (!FORCE) {
+                if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
                     return;
                 } else {
-                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    console.log(`[${new Date().toISOString()}] Overwriting existing file ${existingPath}`);
                     await fs.unlink(existingPath);
                 }
             }
@@ -277,16 +279,16 @@ async function processTask(task: TaskWithProduct) {
             const outputFilename = `${baseOutputFilename}.stl`;
             stlRelativePath = path.join(relativeDir, outputFilename);
 
-            // Skip or force override existing file
+            // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch {}
+            try { await fs.access(existingPath); fileExists = true; } catch { }
             if (fileExists) {
-                if (!FORCE) {
+                if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
                     return;
                 } else {
-                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing file ${existingPath}`);
+                    console.log(`[${new Date().toISOString()}] Overwriting existing file ${existingPath}`);
                     await fs.unlink(existingPath);
                 }
             }
@@ -303,18 +305,18 @@ async function processTask(task: TaskWithProduct) {
 
             stlRelativePath = path.join(relativeDir, outputFilename35); // Store 3.5mm path in DB
 
-            // If both 3.5 and 4.0 already exist, skip rendering
+            // If both 3.5 and 4.0 already exist, handle based on SKIP_IF_EXISTS flag
             const abs35 = path.join(absDir, outputFilename35);
             const abs40 = path.join(absDir, outputFilename40);
             let exist35 = false, exist40 = false;
             try { await fs.access(abs35); exist35 = true; } catch { }
             try { await fs.access(abs40); exist40 = true; } catch { }
             if (exist35 && exist40) {
-                if (!FORCE) {
+                if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
                     return;
                 } else {
-                    console.log(`[${new Date().toISOString()}] Force mode enabled, deleting existing files ${abs35} and ${abs40}`);
+                    console.log(`[${new Date().toISOString()}] Overwriting existing files ${abs35} and ${abs40}`);
                     await fs.unlink(abs35);
                     await fs.unlink(abs40);
                 }

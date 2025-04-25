@@ -10,7 +10,6 @@ import {
 import Link from 'next/link';
 
 import { StatsCard } from '@/components/dashboard/stats-card';
-import { SyncButton } from '@/components/sync-button'; // Keep SyncButton
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
@@ -24,50 +23,93 @@ import {
 } from '@/components/ui/table'; // Import Table components
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 import { prisma } from '@/lib/prisma';
+import dynamic from 'next/dynamic';
+const OrdersByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/OrdersByMarketplaceChart'), { ssr: false });
+const RevenueByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/RevenueByMarketplaceChart'), { ssr: false });
+const PrintTasksByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/PrintTasksByMarketplaceChart'), { ssr: false });
+const OrdersOverTimeChart = dynamic(() => import('@/components/dashboard/charts/OrdersOverTimeChart'), { ssr: false });
+const RevenueOverTimeChart = dynamic(() => import('@/components/dashboard/charts/RevenueOverTimeChart'), { ssr: false });
+const PrintTasksOverTimeChart = dynamic(() => import('@/components/dashboard/charts/PrintTasksOverTimeChart'), { ssr: false });
 
 // --- Data Fetching ---
 
 // Combined function to fetch all dashboard data
 async function getDashboardData() {
-  // Mock data for Orders (similar to orders page)
-  const ordersToday = 15;
-  const revenueToday = 345.67;
-  const totalItemsSoldToday = 28; // Example
-  const revenueThisWeek = 1234.56;
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfToday);
+  const day = startOfWeek.getDay();
+  const diff = day === 0 ? 6 : day - 1; // assume Monday as start of week
+  startOfWeek.setDate(startOfWeek.getDate() - diff);
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-  // Mock percentage changes
-  const ordersTodayPrev = '+10% vs yesterday';
-  const revenueTodayPrev = '+5.2% vs yesterday';
-  const itemsSoldPrev = '+8% vs yesterday';
-  const revenueWeekPrev = '+15% vs last week';
+  // Define same window yesterday for percentage comparisons
+  const windowDuration = now.getTime() - startOfToday.getTime();
+  const prevWindowEnd = new Date(startOfYesterday.getTime() + windowDuration);
 
-  // Mock data for Print Tasks
-  // TODO: Replace with actual Prisma counts
-  const tasksPending = await prisma.printOrderTask.count({ where: { status: 'pending' } }); // Example using Prisma
-  const tasksNeedReview = await prisma.printOrderTask.count({ where: { needs_review: true } }); // Example using Prisma
+  const [
+    ordersTodayCount,
+    ordersYesterdayCount,
+    revenueTodayAgg,
+    revenueYesterdayAgg,
+    itemsSoldTodayAgg,
+    itemsSoldYesterdayAgg,
+    revenueThisWeekAgg,
+    revenueLastWeekAgg,
+    tasksPendingCount,
+    tasksNeedReviewCount,
+    recentOrders,
+  ] = await prisma.$transaction([
+    prisma.order.count({ where: { created_at: { gte: startOfToday, lt: now } } }),
+    prisma.order.count({ where: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfToday, lt: now } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } }),
+    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { created_at: { gte: startOfToday, lt: now } } } }),
+    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfWeek, lt: startOfTomorrow } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfLastWeek, lt: startOfWeek } } }),
+    prisma.printOrderTask.count({ where: { status: 'pending' } }),
+    prisma.printOrderTask.count({ where: { needs_review: true } }),
+    prisma.order.findMany({
+      orderBy: { created_at: 'desc' },
+      take: 10,
+      select: { id: true, shipstation_order_number: true, customer_name: true, marketplace: true, total_price: true, order_status: true },
+    }),
+  ]);
 
-  // Fetch recent orders
-  const recentOrders = await prisma.order.findMany({
-    take: 5, // Fetch latest 5 orders
-    orderBy: {
-      order_date: 'desc', // Order by date descending
-    },
-    select: {
-      // Select only necessary fields
-      id: true,
-      shipstation_order_number: true,
-      customer_name: true,
-      marketplace: true,
-      total_price: true,
-      order_status: true,
-    },
-  });
+  // Convert Prisma Decimal values to numbers
+  const revenueToday = Number((revenueTodayAgg._sum.total_price ?? 0).toString());
+  const revenueYesterday = Number((revenueYesterdayAgg._sum.total_price ?? 0).toString());
+  const totalItemsSoldToday = Number((itemsSoldTodayAgg._sum.quantity ?? 0).toString());
+  const itemsSoldYesterday = Number((itemsSoldYesterdayAgg._sum.quantity ?? 0).toString());
+  const revenueThisWeek = Number((revenueThisWeekAgg._sum.total_price ?? 0).toString());
+  const revenueLastWeek = Number((revenueLastWeekAgg._sum.total_price ?? 0).toString());
 
-  // Fetch counts for Needs Attention
-  const ordersOnHoldCount = await prisma.order.count({ where: { order_status: 'on_hold' } });
+  function formatChange(current: number, previous: number, label: string) {
+    if (previous > 0) {
+      const change = ((current - previous) / previous) * 100;
+      return `${change.toFixed(1)}% vs ${label}`;
+    }
+    return 'N/A';
+  }
+
+  const ordersTodayPrev = formatChange(ordersTodayCount, ordersYesterdayCount, 'yesterday');
+  const revenueTodayPrev = formatChange(revenueToday, revenueYesterday, 'yesterday');
+  const itemsSoldPrev = formatChange(totalItemsSoldToday, itemsSoldYesterday, 'yesterday');
+  const revenueWeekPrev = formatChange(revenueThisWeek, revenueLastWeek, 'last week');
+  const tasksPending = tasksPendingCount;
+  const tasksNeedReview = tasksNeedReviewCount;
 
   return {
-    ordersToday,
+    recentOrders,
+    ordersOnHoldCount: 0, // TODO: implement on-hold count if needed
+    ordersToday: ordersTodayCount,
     revenueToday,
     totalItemsSoldToday,
     revenueThisWeek,
@@ -77,8 +119,6 @@ async function getDashboardData() {
     revenueWeekPrev,
     tasksPending,
     tasksNeedReview,
-    recentOrders,
-    ordersOnHoldCount,
   };
 }
 
@@ -138,27 +178,18 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Quick Actions / Sync Section */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-        <div className="md:col-span-1 bg-card text-card-foreground rounded-lg border p-4 flex flex-col items-center justify-center">
-          <h3 className="text-lg font-semibold mb-2">Sync Orders</h3>
-          <p className="text-sm text-muted-foreground mb-3 text-center">
-            Pull latest orders from ShipStation.
-          </p>
-          <SyncButton />
-        </div>
-        <div className="md:col-span-2 bg-card text-card-foreground rounded-lg border p-4 flex flex-col items-center justify-center space-y-3">
-          <h3 className="text-lg font-semibold">Quick Navigation</h3>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/orders">
-              <Button variant="outline">View All Orders</Button>
-            </Link>
-            <Link href="/print-queue">
-              <Button variant="outline">View Print Queue</Button>
-            </Link>
-            {/* Add other common actions here */}
-          </div>
-        </div>
+        <OrdersByMarketplaceChart defaultDays="7" />
+        <RevenueByMarketplaceChart defaultDays="7" />
+        <PrintTasksByMarketplaceChart defaultDays="7" />
+      </div>
+
+      {/* Over Time Charts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+        <OrdersOverTimeChart defaultDays="7" />
+        <RevenueOverTimeChart defaultDays="7" />
+        <PrintTasksOverTimeChart defaultDays="7" />
       </div>
 
       {/* Widgets Grid */}
