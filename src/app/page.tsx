@@ -94,7 +94,8 @@ async function getDashboardData() {
   function formatChange(current: number, previous: number, label: string) {
     if (previous > 0) {
       const change = ((current - previous) / previous) * 100;
-      return `${change.toFixed(1)}% vs ${label}`;
+      const sign = change > 0 ? '+' : ''; // prepend + for positive change
+      return `${sign}${change.toFixed(1)}% vs ${label}`;
     }
     return 'N/A';
   }
