@@ -1,4 +1,5 @@
-import { PrintTaskStatus, PrismaClient } from '@prisma/client'; // Import PrintTaskStatus directly
+import { PrintTaskStatus, PrismaClient } from '@prisma/client'; 
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'; 
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pino from 'pino';
@@ -138,10 +139,13 @@ async function main() {
 
     } catch (error) {
         // Log specific Prisma errors if possible
-        if (error instanceof Error && 'code' in error && 'meta' in error) { // Basic check for Prisma known error structure
-            logger.error({ err: { code: error.code, meta: error.meta, message: error.message, stack: error.stack } }, 'A Prisma error occurred during the process.')
+        if (error instanceof PrismaClientKnownRequestError) { // Use the specific Prisma error type
+            // Now TypeScript knows 'error' has code, meta, message, stack
+            logger.error({ err: { code: error.code, meta: error.meta, message: error.message, stack: error.stack } }, 'A Prisma error occurred during the process.');
         } else {
-            logger.error({ err: error }, 'An error occurred during the process.')
+            // Handle unknown error type more safely
+            const errDetails = error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) };
+            logger.error({ err: errDetails }, 'An error occurred during the process.');
         }
         process.exitCode = 1
     } finally {

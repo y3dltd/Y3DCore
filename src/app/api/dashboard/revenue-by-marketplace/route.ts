@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const groups = await prisma.order.groupBy({
     by: ['marketplace'],
-    where: { created_at: { gte: start, lt: end } },
+    where: { order_date: { gte: start, lt: end } },
     _sum: { total_price: true },
   });
 

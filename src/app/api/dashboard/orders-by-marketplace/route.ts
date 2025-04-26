@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const groups = await prisma.order.groupBy({
     by: ['marketplace'],
-    where: { created_at: { gte: start, lt: end } },
+    where: { order_date: { gte: start, lt: end } },
     _count: { id: true },
   });
   const data = groups.map(g => ({ marketplace: g.marketplace || 'Unknown', count: g._count.id }));
