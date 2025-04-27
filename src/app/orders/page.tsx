@@ -28,7 +28,7 @@ import {
 import { CURRENCY_SYMBOL } from '@/lib/constants'; // Import the constant
 import { detectMarketplaceOrderNumber } from '@/lib/order-utils';
 import { prisma } from '@/lib/prisma';
-import { formatDateForTable } from '@/lib/shared/date-utils'; // Import date utility functions
+import { formatDateForTable, formatDateTime } from '@/lib/shared/date-utils'; // Import date utility functions
 import { cn } from '@/lib/utils'; // Import cn utility for className concatenation
 import { PackingSlipBatchControls } from '@/components/orders/packing-slip-batch-controls';
 import { RowPrintPackingSlipButton } from '@/components/orders/row-print-packing-slip-button';
