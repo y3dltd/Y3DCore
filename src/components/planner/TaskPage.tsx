@@ -295,6 +295,7 @@ const TaskPage: React.FC<TaskPageProps> = ({
               </Tooltip>
               <Tooltip content="Generate Plan for Today & Tomorrow Orders Only">
                 <Button
+                  type="button"
                   color="warning"
                   variant="solid"
                   onPress={onGenerateTodayTomorrowPlan}
@@ -307,6 +308,7 @@ const TaskPage: React.FC<TaskPageProps> = ({
               </Tooltip>
               <Tooltip content="Generate New Optimized Plan for All Pending Orders">
                 <Button
+                  type="button"
                   color="primary"
                   variant="solid"
                   onPress={onGeneratePlan}
