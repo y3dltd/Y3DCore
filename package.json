@@ -32,7 +32,10 @@
     "test": "echo 'Skipping tests' && exit 0",
     "worker:stl": "tsx src/workers/stl-render-worker.ts",
     "worker:stlrefresh": "tsx src/workers/stl-render-worker.ts --refresh",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "git:reset-staging": "bash scripts/git/reset-to-staging.sh",
+    "git:merge-to-main": "bash scripts/git/merge-staging-to-main.sh",
+    "email:test": "tsx src/scripts/sendgrid-test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.0",
@@ -69,6 +72,7 @@
     "@radix-ui/react-toggle-group": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@scaleleap/selling-partner-api-sdk": "^8.4.0",
+    "@sendgrid/mail": "^7.7.0",
     "@tanstack/react-table": "^8.19.3",
     "@types/bwip-js": "^3.2.3",
     "@types/lodash.debounce": "^4.0.9",

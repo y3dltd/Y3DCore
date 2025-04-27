@@ -185,6 +185,19 @@ Authentication is handled using **Auth.js (NextAuth.js)** with the following set
 
 ---
 
+## Email (SendGrid)
+
+The application uses SendGrid for sending emails.
+
+- **Configuration:** The `SENDGRID_API_KEY` environment variable must be set. The default sender address is configured via `SENDGRID_FROM_EMAIL`.
+- **Utility:** The core email sending logic is in `src/lib/email/send-email.ts`. It provides an `initSendGrid()` function (called automatically by `sendEmail`) and a `sendEmail({ to, from?, subject, text?, html? })` helper function.
+- **Testing:** A test script is available to verify the integration:
+  - Set `SENDGRID_TEST_TO` (or `SENDGRID_TO_EMAIL`) in your environment to the desired recipient address.
+  - Run `npm run email:test`.
+  - This will send a basic text email using the configured API key and addresses.
+
+---
+
 ## License
 
 [Proprietary] © 2025 Yorkshire3D Limited. All rights reserved.

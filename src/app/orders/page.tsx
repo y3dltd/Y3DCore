@@ -30,6 +30,8 @@ import { detectMarketplaceOrderNumber } from '@/lib/order-utils';
 import { prisma } from '@/lib/prisma';
 import { formatDateForTable } from '@/lib/shared/date-utils'; // Import date utility functions
 import { cn } from '@/lib/utils'; // Import cn utility for className concatenation
+import { PackingSlipBatchControls } from '@/components/orders/packing-slip-batch-controls';
+import { RowPrintPackingSlipButton } from '@/components/orders/row-print-packing-slip-button';
 
 // Force dynamic rendering to ensure searchParams are handled correctly
 export const dynamic = 'force-dynamic';
@@ -489,6 +491,10 @@ export default async function OrdersPage({
           statuses={statuses}
           marketplaces={marketplaces}
         />
+        {/* Batch controls */}
+        <div className="flex justify-between items-center mb-4">
+          <PackingSlipBatchControls />
+        </div>
         {/* Orders Table (Existing) */}
         <Table>
           <TableHeader>
@@ -504,7 +510,7 @@ export default async function OrdersPage({
               <TableHead>Ship By</TableHead>
               <TableHead>Shipped Date</TableHead>
               <TableHead>Tracking #</TableHead>
-              <TableHead className="w-[100px] text-center">Actions</TableHead>
+              <TableHead className="w-[140px] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -688,11 +694,17 @@ export default async function OrdersPage({
                     <TrackingNumberCell trackingNumber={order.tracking_number} />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Link href={`/orders/${order.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <div className="flex justify-center gap-2">
+                      <RowPrintPackingSlipButton
+                        orderId={order.id}
+                        orderNumber={order.shipstation_order_number}
+                      />
+                      <Link href={`/orders/${order.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
