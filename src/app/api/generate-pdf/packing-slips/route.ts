@@ -105,7 +105,7 @@ async function fetchSlipData(id: number): Promise<SlipData> {
         const buf = await bwipjs.toBuffer({
             bcid: 'code128',
             text: order.shipstation_order_number ?? `Order-${order.id}`,
-            scale: 3,
+            scale: 2,
             height: 10,
             includetext: false,
         })
@@ -271,7 +271,7 @@ const baseCSS = `
   .slip { page-break-after: always; }
   .amazon-order .header{border-bottom-color:var(--amazon);} .etsy-order .header{border-bottom-color:var(--etsy);} .ebay-order .header{border-bottom-color:var(--ebay);} .website-order .header{border-bottom-color:var(--accent);}
   .barcode-area{ display:flex;align-items:center;gap:16px;padding:8px 0;margin-bottom:12px;justify-content:center;flex-wrap:nowrap; }
-  .slip-logo{height:60px;width:auto;object-fit:contain;}
+  .slip-logo{height:80px;width:auto;object-fit:contain;}
   .barcode-block{display:flex;flex-direction:column;align-items:center;}
   .barcode-graphic{ display:inline-block;padding:2px;background:#fff;height:40px;line-height:0; max-width:450px;overflow:hidden; }
   .barcode-text{margin-top:4px;font-family:'Courier New',monospace;font-size:0.8rem;letter-spacing:1px;}
