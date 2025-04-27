@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       };
     }>;
 
-    const printTasks: PrintTaskWithRelations[] = await prisma.printOrderTask.findMany(findArgs);
+    const printTasks = (await prisma.printOrderTask.findMany(findArgs)) as PrintTaskWithRelations[];
 
     // Transform into the format needed for the planner
     const transformedTasks = printTasks.map(task => ({
@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       color1: task.color_1,
       color2: task.color_2,
       status: task.status,
-      productName: task.shorthandProductName || task.product?.name || 'Unknown Product',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      productName: task.shorthandProductName || (task as any).product?.name || 'Unknown Product',
       shipByDate: task.ship_by_date,
       needsReview: task.needs_review,
       marketplace: task.order?.marketplace || 'Unknown',
