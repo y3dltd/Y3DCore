@@ -34,8 +34,17 @@ export async function GET(request: NextRequest) {
       findArgs.take = limit;
     }
 
-    // Fetch print tasks with related data
-    const printTasks = await prisma.printOrderTask.findMany(findArgs);
+    // Fetch print tasks with related data.  By specifying the include shape in the generic
+    // we ensure the resulting type reflects the related records (product, order, orderItem)
+    type PrintTaskWithRelations = Prisma.PrintOrderTaskGetPayload<{
+      include: {
+        product: true;
+        order: true;
+        orderItem: true;
+      };
+    }>;
+
+    const printTasks: PrintTaskWithRelations[] = await prisma.printOrderTask.findMany(findArgs);
 
     // Transform into the format needed for the planner
     const transformedTasks = printTasks.map(task => ({
@@ -54,8 +63,8 @@ export async function GET(request: NextRequest) {
       marketplace: task.order?.marketplace || 'Unknown',
     }));
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       tasks: transformedTasks,
       count: transformedTasks.length,
       timestamp: new Date().toISOString(),
