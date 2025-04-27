@@ -32,6 +32,7 @@
     "test": "echo 'Skipping tests' && exit 0",
     "worker:stl": "tsx src/workers/stl-render-worker.ts",
     "worker:stlrefresh": "tsx src/workers/stl-render-worker.ts --refresh",
+    "worker:ai-monitor": "tsx src/scripts/ai-processor.ts",
     "type-check": "tsc --noEmit",
     "git:reset-staging": "bash scripts/git/reset-to-staging.sh",
     "git:merge-to-main": "bash scripts/git/merge-staging-to-main.sh",

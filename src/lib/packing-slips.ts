@@ -2,7 +2,7 @@ export { }
 
 // Utilities for selecting and updating orders for batch packing-slip generation
 import { prisma } from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { startOfToday, endOfToday, startOfTomorrow, endOfTomorrow } from 'date-fns'
 
 export async function getCandidateOrderIds({

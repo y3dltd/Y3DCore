@@ -28,6 +28,8 @@ import {
   markSyncCompleted,
   updateSyncProgress,
 } from '../shipstation/sync-progress'; // Import progress functions
+import { sendNewOrderNotification } from '../email/order-notifications';
+import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
 
 // Removed unused import: format from 'date-fns-tz'
 
@@ -635,7 +637,34 @@ async function upsertOrderWithItems(
           itemsFailed: itemsFailed.toString(),
         },
       });
+
+      // Send notifications for the newly processed order
+      try {
+        // Get admin emails from environment for notification
+        const adminEmails = process.env.NEW_ORDER_NOTIFICATION_EMAILS?.split(',').map(email => email.trim());
+        if (adminEmails && adminEmails.length > 0) {
+          await sendNewOrderNotification(orderData, {
+            adminEmails,
+            // Optional filter for premium orders only
+            onlyPremiumOrders: process.env.NOTIFY_PREMIUM_ORDERS_ONLY === 'true',
+          });
+        }
+      } catch (notificationError) {
+        // Log but don't fail the sync process if notifications fail
+        logger.warn(`Notification error for order ${orderData.orderNumber}: ${notificationError instanceof Error ? notificationError.message : 'Unknown error'}`);
+      }
     }
+
+    // Send system notification for order processing failure
+    await sendSystemNotification(
+      `Order Processing Failed: #${orderData.orderNumber}`,
+      `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      ErrorSeverity.ERROR,
+      ErrorCategory.ORDER_PROCESSING,
+      error
+    ).catch(notifyError => {
+      logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
+    });
 
     return { success, itemsProcessed, itemsFailed, errors };
   } catch (error: unknown) {
@@ -674,6 +703,17 @@ async function upsertOrderWithItems(
         itemsProcessed: itemsProcessed.toString(),
         itemsFailed: itemsFailed.toString(),
       },
+    });
+
+    // Send system notification for order processing failure
+    await sendSystemNotification(
+      `Order Processing Failed: #${orderData.orderNumber}`,
+      `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      ErrorSeverity.ERROR,
+      ErrorCategory.ORDER_PROCESSING,
+      error
+    ).catch(notifyError => {
+      logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
     });
 
     return { success, itemsProcessed, itemsFailed, errors };
@@ -1126,6 +1166,17 @@ export async function syncSingleOrder(
       throw new Error(errorMsg);
     }
 
+    // Send system notification for single order sync failure
+    await sendSystemNotification(
+      `Single Order Sync Failed: ${orderIdentifier}`,
+      `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`,
+      ErrorSeverity.ERROR,
+      ErrorCategory.SYNC,
+      error
+    ).catch(notifyError => {
+      logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
+    });
+
     await markSyncCompleted(progressId, overallSuccess, errorMsg);
     return { success: overallSuccess, error: errorMsg };
   } catch (error: unknown) {
@@ -1141,6 +1192,16 @@ export async function syncSingleOrder(
         /* ignore progress update errors */
       }
     }
+    // Send system notification for single order sync failure
+    await sendSystemNotification(
+      `Single Order Sync Failed: ${orderIdentifier}`,
+      `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`,
+      ErrorSeverity.ERROR,
+      ErrorCategory.SYNC,
+      error
+    ).catch(notifyError => {
+      logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
+    });
     return { success: overallSuccess, error: errorMsg };
   }
 }
