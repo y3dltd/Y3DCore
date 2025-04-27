@@ -80,6 +80,7 @@ function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDet
     ship_by_date: order.ship_by_date?.toISOString() ?? null,
     shipped_date: order.shipped_date?.toISOString() ?? null,
     last_sync_date: order.last_sync_date?.toISOString() ?? null,
+    lastPackingSlipAt: order.lastPackingSlipAt?.toISOString() ?? null,
     void_date: order.void_date?.toISOString() ?? null,
     items: order.items.map(item => ({
       ...item,
@@ -162,6 +163,7 @@ async function getOrderDetails(
         insurance_insured_value: true,
         tag_ids: true,
         last_sync_date: true,
+        lastPackingSlipAt: true,
         marketplace: true,
         shipping_price: true,
         confirmation: true,

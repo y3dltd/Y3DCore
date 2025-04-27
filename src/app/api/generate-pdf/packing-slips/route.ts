@@ -6,6 +6,7 @@ import path from 'path'
 import { NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
+import { markOrdersPrinted } from '@/lib/packing-slips'
 
 // -----------------------------------------------------------------------------
 //  Data Models
@@ -322,11 +323,12 @@ export async function GET(req: Request) {
     const ids = idsParam
         .split(',')
         .map((s) => parseInt(s.trim(), 10))
-        .filter(Boolean)
+        .filter((id) => !isNaN(id) && id > 0)
     if (ids.length === 0) {
         return new NextResponse('No valid order IDs provided', { status: 400 })
     }
 
+    let browser = null;
     try {
         // Fetch all slips in parallel
         const slips = await Promise.all(ids.map((id) => fetchSlipData(id)))
@@ -337,11 +339,21 @@ export async function GET(req: Request) {
             .join('')}</body></html>`
 
         // Render PDF via Puppeteer
-        const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+        console.log(`Launching browser for ${ids.length} packing slips...`);
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
         const page = await browser.newPage()
         await page.setContent(html, { waitUntil: 'networkidle0' })
+        console.log(`Generating PDF for orders: ${ids.join(', ')}...`);
         const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true })
-        await browser.close()
+        console.log(`PDF generated successfully (${pdfBuffer.length} bytes). Closing browser...`);
+        await browser.close();
+        console.log("Browser closed.");
+
+        // ---- Mark orders as printed ----
+        console.log(`Marking orders ${ids.join(', ')} as printed...`);
+        await markOrdersPrinted(ids);
+        console.log(`Orders marked as printed.`);
+        // -------------------------------
 
         const filename = `packing-slips_${new Date().toISOString().split('T')[0]}.pdf`
         return new NextResponse(pdfBuffer, {
@@ -353,6 +365,14 @@ export async function GET(req: Request) {
         })
     } catch (e) {
         console.error('Packing-slip PDF error:', e)
+        if (browser) {
+            try { await browser.close(); } catch { /* Ignore closing error */ }
+        }
         return new NextResponse('Failed to generate packing slips', { status: 500 })
+    } finally {
+        // Ensure browser is closed even if marking fails, though it should be closed above
+        if (browser) {
+            try { await browser.close(); } catch { /* Ignore */ }
+        }
     }
 } 

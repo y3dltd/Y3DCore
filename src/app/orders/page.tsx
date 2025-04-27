@@ -32,6 +32,7 @@ import { formatDateForTable } from '@/lib/shared/date-utils'; // Import date uti
 import { cn } from '@/lib/utils'; // Import cn utility for className concatenation
 import { PackingSlipBatchControls } from '@/components/orders/packing-slip-batch-controls';
 import { RowPrintPackingSlipButton } from '@/components/orders/row-print-packing-slip-button';
+import { CheckCircle } from 'lucide-react'; // Import CheckCircle icon
 
 // Force dynamic rendering to ensure searchParams are handled correctly
 export const dynamic = 'force-dynamic';
@@ -162,7 +163,8 @@ async function getOrders(
   statusFilter?: string,
   marketplaceFilter?: string,
   orderDateStart?: string,
-  orderDateEnd?: string
+  orderDateEnd?: string,
+  onlyReadyToPrint?: boolean
 ): Promise<{
   orders: Prisma.OrderGetPayload<{ select: (typeof orderSelectClause)['select'] }>[];
   total: number;
@@ -179,8 +181,9 @@ async function getOrders(
       total_price: true,
       order_date: true,
       shipped_date: true,
-      ship_by_date: true, // Add ship_by_date
+      ship_by_date: true,
       tracking_number: true,
+      lastPackingSlipAt: true,
       _count: {
         select: { items: true },
       },
@@ -191,6 +194,12 @@ async function getOrders(
 
   // Build the where clause dynamically
   const where: Prisma.OrderWhereInput = {};
+
+  // Apply "Only Ready to Print" filter if active (default)
+  if (onlyReadyToPrint) {
+    where.order_status = 'awaiting_shipment';
+    where.printTasks = { every: { status: 'completed' } };
+  }
 
   if (searchQuery) {
     // Trim spaces from search query
@@ -302,8 +311,9 @@ type SelectedOrderData = Prisma.OrderGetPayload<{
     total_price: true;
     order_date: true;
     shipped_date: true;
-    ship_by_date: true; // Add ship_by_date
+    ship_by_date: true;
     tracking_number: true;
+    lastPackingSlipAt: true;
     _count: { select: { items: true } };
   };
 }>;
@@ -384,8 +394,9 @@ export default async function OrdersPage({
     search?: string | string[];
     status?: string | string[];
     marketplace?: string | string[];
-    orderDateStart?: string | string[]; // Add date params
-    orderDateEnd?: string | string[]; // Add date params
+    orderDateStart?: string | string[];
+    orderDateEnd?: string | string[];
+    readyToPrint?: string | string[];
   };
 }) {
   // Await searchParams before accessing properties
@@ -398,8 +409,9 @@ export default async function OrdersPage({
     search: searchParam,
     status: statusParam,
     marketplace: marketplaceParam,
-    orderDateStart: orderDateStartParam, // Destructure date params
-    orderDateEnd: orderDateEndParam, // Destructure date params
+    orderDateStart: orderDateStartParam,
+    orderDateEnd: orderDateEndParam,
+    readyToPrint: readyToPrintParam = 'true',
   } = awaitedSearchParams || {};
 
   // Parse pagination params
@@ -420,18 +432,21 @@ export default async function OrdersPage({
   const currentOrderDateEnd = Array.isArray(orderDateEndParam)
     ? orderDateEndParam[0]
     : orderDateEndParam;
+  const onlyReadyToPrint =
+    (Array.isArray(readyToPrintParam) ? readyToPrintParam[0] : readyToPrintParam) !== 'false';
 
   // Fetch data and filter options concurrently
   const [{ orders, total }, stats, { statuses, marketplaces }, allTags] = await Promise.all([
-    // Pass date filters to getOrders
+    // Pass date filters AND readyToPrint filter to getOrders
     getOrders(
       validatedPage,
       validatedLimit,
       currentSearch,
       currentStatus,
       currentMarketplace,
-      currentOrderDateStart, // Pass start date
-      currentOrderDateEnd // Pass end date
+      currentOrderDateStart,
+      currentOrderDateEnd,
+      onlyReadyToPrint
     ),
     getDashboardStats(),
     getFilterOptions(),
@@ -488,6 +503,7 @@ export default async function OrdersPage({
           currentMarketplace={currentMarketplace}
           currentOrderDateStart={currentOrderDateStart}
           currentOrderDateEnd={currentOrderDateEnd}
+          currentReadyToPrint={onlyReadyToPrint}
           statuses={statuses}
           marketplaces={marketplaces}
         />
@@ -511,6 +527,7 @@ export default async function OrdersPage({
               <TableHead>Shipped Date</TableHead>
               <TableHead>Tracking #</TableHead>
               <TableHead className="w-[140px] text-center">Actions</TableHead>
+              <TableHead className="w-[160px] text-left">Printed At</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -705,6 +722,16 @@ export default async function OrdersPage({
                         </Button>
                       </Link>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {order.lastPackingSlipAt ? (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                        {formatDateTime(new Date(order.lastPackingSlipAt))}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
                   </TableCell>
                 </TableRow>
               );

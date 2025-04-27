@@ -1,5 +1,6 @@
 import { sendEmail } from './send-email'
 import { logger } from '../shared/logging'
+import { prisma } from '../shared/database'
 
 // Define types based on ShipStation API structure
 interface ShipToAddress {
@@ -45,16 +46,17 @@ const DEFAULT_OPTIONS: OrderNotificationOptions = {
 }
 
 /**
- * Check if an order is considered a premium or prime order.
- * This is a placeholder implementation - modify with your actual business logic.
+ * Check if an order has the 'Prime Order' tag in the database.
  */
-export function isPremiumOrder(order: OrderData): boolean {
-    // Placeholder implementation - adjust based on your business criteria
-    // For example, you might check for specific tags, order value, shipping method, etc.
-    const hasPremiumTags = order.tagIds?.some((tagId: number) => [1, 2, 3].includes(tagId)) || false
-    const isHighValue = Boolean(order.amountPaid && order.amountPaid > 100) // Orders over $100
-
-    return hasPremiumTags || isHighValue
+export async function isPremiumOrder(order: OrderData): Promise<boolean> {
+    if (!order.tagIds || order.tagIds.length === 0) return false
+    const tag = await prisma.tag.findFirst({
+        where: {
+            shipstation_tag_id: { in: order.tagIds },
+            name: 'Prime Order'
+        }
+    })
+    return tag !== null
 }
 
 /**
@@ -71,10 +73,11 @@ export async function sendNewOrderNotification(
     try {
         const options = { ...DEFAULT_OPTIONS, ...customOptions }
 
-        // Check if order meets filtering criteria
-        if (options.onlyPremiumOrders && !isPremiumOrder(order)) {
-            logger.info(`Order ${order.orderNumber} skipped - not a premium order`)
-            return true // Skip but return success
+        // Only send notifications for Prime Orders
+        const isPrime = await isPremiumOrder(order)
+        if (!isPrime) {
+            logger.info(`Order ${order.orderNumber} skipped - not a Prime Order`)
+            return true
         }
 
         // Prepare order details for the notification
