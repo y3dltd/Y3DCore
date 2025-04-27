@@ -104,6 +104,84 @@ interface AiSuggestionsResponse {
   suggestedGroups: AiSuggestionGroup[];
 }
 
+// --- Helper: Merge AI Suggestions with same SKU when allowed ---
+function mergeAiSuggestions(
+  suggestions: AiSuggestionGroup[] | null,
+  jobMap: Map<string, z.infer<typeof InputSchema>["jobList"][number]>,
+  constraints: z.infer<typeof InputSchema>["constraints"]
+): AiSuggestionGroup[] | null {
+  if (!suggestions || suggestions.length === 0) return suggestions;
+
+  const maxColors = constraints?.maxColorsPerTask ?? 4;
+  const capacitySingle = 15;
+  const capacityDual = 6;
+  const maxCombos = 6;
+
+  function canMerge(a: AiSuggestionGroup, b: AiSuggestionGroup): boolean {
+    const mergedJobIds = Array.from(new Set([...a.jobIds, ...b.jobIds]));
+    const mergedJobs = mergedJobIds.map(id => jobMap.get(id)).filter(Boolean) as z.infer<typeof InputSchema>["jobList"];
+    const colors = new Set<string>();
+    let dualColor = false;
+    const combos = new Set<string>();
+    let totalQty = 0;
+    for (const job of mergedJobs) {
+      totalQty += job.quantity ?? 1;
+      if (job.color1) colors.add(job.color1);
+      if (job.color2) colors.add(job.color2);
+      if (job.color2) dualColor = true;
+      combos.add(`${job.color1 ?? "null"} > ${job.color2 ?? "null"}`);
+    }
+    if (colors.has("null" as unknown as string)) colors.delete("null" as unknown as string);
+    if (colors.size > maxColors) return false;
+    if (dualColor) {
+      if (totalQty > capacityDual) return false;
+      if (combos.size > maxCombos) return false;
+    } else if (totalQty > capacitySingle) return false;
+    return true;
+  }
+
+  const grouped: Record<string, AiSuggestionGroup[]> = {};
+  for (const sg of suggestions) {
+    const key = sg.sku ?? "UNKNOWN";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({ ...sg });
+  }
+
+  const output: AiSuggestionGroup[] = [];
+  for (const sku in grouped) {
+    const list = grouped[sku];
+    let merged: AiSuggestionGroup | null = null;
+    for (const item of list) {
+      // Deduplicate jobIds inside item
+      item.jobIds = Array.from(new Set(item.jobIds));
+      if (!merged) {
+        merged = { ...item };
+      } else {
+        if (canMerge(merged, item)) {
+          merged.jobIds = Array.from(new Set([...merged.jobIds, ...item.jobIds]));
+          merged.colors = Array.from(new Set([...merged.colors, ...item.colors])).sort();
+        } else {
+          output.push(merged);
+          merged = { ...item };
+        }
+      }
+    }
+    if (merged) output.push(merged);
+  }
+
+  // Ensure no duplicate jobIds across groups
+  const seen = new Set<string>();
+  for (const g of output) {
+    g.jobIds = g.jobIds.filter(id => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  return output;
+}
+
 // Function to determine if a list of jobs contains any dual-color items
 function hasDualColorJobs(jobs: z.infer<typeof InputSchema>['jobList']): boolean {
   return jobs.some(job => job.color2 !== null && job.color2 !== undefined && job.color2 !== '');
@@ -420,9 +498,9 @@ export async function POST(req: NextRequest) {
     };
     // --- End Prepare Data for AI ---
 
-    // --- Load Prompt --- 
+    // --- Load Prompt ---
+    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/grouping-prompt-v21.txt');
     let systemMessageContent: string;
-    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/planner-prompt-v10.txt');
     try {
       // Read the prompt file directly
       const rawPromptContent = await fs.readFile(promptFilePath, 'utf-8');
@@ -495,6 +573,11 @@ export async function POST(req: NextRequest) {
         const potentialResponse = parsedData as Partial<AiSuggestionsResponse>;
         if (potentialResponse && Array.isArray(potentialResponse.suggestedGroups)) {
           aiSuggestions = potentialResponse.suggestedGroups;
+          // Merge duplicate SKU groups using helper if suggestions exist
+          if (aiSuggestions.length > 0) {
+            const jobMapForMerge = new Map(inputData.jobList.map(j => [j.id, j]));
+            aiSuggestions = mergeAiSuggestions(aiSuggestions, jobMapForMerge, inputData.constraints) ?? aiSuggestions;
+          }
           console.log(`[API Optimize] Successfully parsed ${aiSuggestions.length} suggested groups from AI.`);
           // Use the suggestions themselves for DB logging when available
           outputJsonForDb = aiSuggestions as unknown as Prisma.InputJsonValue;
