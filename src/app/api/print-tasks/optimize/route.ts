@@ -525,7 +525,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
     const openai = new OpenAI({ apiKey });
     console.log('[API Optimize] Sending request to OpenAI for grouping suggestions...');
-    const modelToUse = "o4-mini"; // Or your preferred model
+    const modelToUse = "o3"; // Switched to larger model for better reasoning
     console.log(`[API Optimize] Using model: ${modelToUse}`);
 
     try {
