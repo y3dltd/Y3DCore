@@ -26,6 +26,7 @@ interface TaskPageProps {
   error: string | null;
   onRefresh: () => void;
   onGeneratePlan: () => void;
+  onGenerateTodayTomorrowPlan: () => void;
   setTasks: React.Dispatch<React.SetStateAction<PrintTaskCardProps[]>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
 }
@@ -39,6 +40,7 @@ const TaskPage: React.FC<TaskPageProps> = ({
   error,
   onRefresh,
   onGeneratePlan,
+  onGenerateTodayTomorrowPlan,
   setTasks,
   setError,
 }) => {
@@ -205,7 +207,19 @@ const TaskPage: React.FC<TaskPageProps> = ({
                   <ArrowPathIcon className="h-5 w-5" />
                 </Button>
               </Tooltip>
-              <Tooltip content="Generate New Optimized Plan">
+              <Tooltip content="Generate Plan for Today & Tomorrow Orders Only">
+                <Button
+                  color="warning"
+                  variant="solid"
+                  onPress={onGenerateTodayTomorrowPlan}
+                  isLoading={isOptimizing}
+                  disabled={isLoading || isOptimizing}
+                  size="sm"
+                >
+                  Today & Tomorrow
+                </Button>
+              </Tooltip>
+              <Tooltip content="Generate New Optimized Plan for All Pending Orders">
                 <Button
                   color="primary"
                   variant="solid"

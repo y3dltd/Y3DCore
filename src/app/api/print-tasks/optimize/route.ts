@@ -54,6 +54,11 @@ const InputSchema = z.object({
     maxColorsPerTask: z.number().int(),
   }).optional(),
 });
+
+// Define the request schema to include optional filterDays
+const RequestSchema = z.object({
+  filterDays: z.number().optional(), // Optional parameter to filter tasks by ship_by_date
+});
 // --- End Input Schema ---
 
 // Explicit types for task sequence validation
@@ -303,7 +308,7 @@ function createTaskObject(taskNumber: number, jobs: z.infer<typeof InputSchema>[
  * API endpoint to optimize print tasks
  * POST /api/print-tasks/optimize
  */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   let inputData: z.infer<typeof InputSchema> | null = null;
   let dbRunRecord: AiReportRun | null = null;
   let openaiResponse: OpenAI.Chat.Completions.ChatCompletion | null = null;
@@ -311,12 +316,45 @@ export async function POST(_req: NextRequest) {
   let rawResponseText: string | null = null;
 
   try {
-    // Fetch pending tasks (as before)
+    // Parse request body if it exists to get filterDays
+    let filterDays: number | undefined = undefined;
+    try {
+      if (req.body) {
+        const body = await req.json();
+        const parsed = RequestSchema.parse(body);
+        filterDays = parsed.filterDays;
+      }
+    } catch (error) {
+      console.warn("[API Optimize] Error parsing request body, proceeding without filters:", error);
+    }
+
+    // Build the where clause for the query
+    const whereClause: Prisma.PrintOrderTaskWhereInput = {
+      status: PrintTaskStatus.pending,
+      needs_review: false,
+    };
+
+    // Add date filter if filterDays is specified
+    if (filterDays !== undefined) {
+      const today = new Date();
+      const endDate = new Date();
+      endDate.setDate(today.getDate() + filterDays - 1); // -1 because we want to include today
+      endDate.setHours(23, 59, 59, 999); // End of the last day
+
+      // Set the time to the start of today
+      today.setHours(0, 0, 0, 0);
+
+      whereClause.ship_by_date = {
+        gte: today,
+        lte: endDate,
+      };
+
+      console.log(`[API Optimize] Filtering tasks with ship_by_date between ${today.toISOString()} and ${endDate.toISOString()}`);
+    }
+
+    // Fetch pending tasks with the constructed where clause
     const pendingTasks = await prisma.printOrderTask.findMany({
-      where: {
-        status: PrintTaskStatus.pending,
-        needs_review: false,
-      },
+      where: whereClause,
       include: {
         product: true,
         order: { select: { marketplace: true } },
@@ -326,7 +364,7 @@ export async function POST(_req: NextRequest) {
       },
     });
 
-    console.log(`[API Optimize] Found ${pendingTasks.length} pending tasks to optimize.`);
+    console.log(`[API Optimize] Found ${pendingTasks.length} pending tasks to optimize.${filterDays ? ` (Filtered to ${filterDays} days)` : ''}`);
 
     if (pendingTasks.length === 0) {
       return NextResponse.json({ success: true, message: 'No pending tasks found', tasks: [] });

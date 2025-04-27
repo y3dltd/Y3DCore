@@ -523,6 +523,65 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  const runTodayTomorrowOptimization = async () => {
+    if (optimizing || polling) return;
+
+    setOptimizing(true);
+    setPolling(false);
+    setError(null);
+    startTimer();
+    setOptimizingRunId(null);
+
+    try {
+      // Use POST with a filter parameter for shipping dates
+      const response = await fetch('/api/print-tasks/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filterDays: 2 }), // Filter to today + tomorrow (2 days)
+      });
+
+      if (!response.ok) {
+        let errorBody = 'Failed to start optimization';
+        try {
+          const errorData = await response.json();
+          errorBody = errorData.error || response.statusText;
+        } catch {}
+        throw new Error(`${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      console.log('[PlannerPage] Start Today/Tomorrow Optimization Response:', data);
+
+      if (data.success && data.runId) {
+        console.log(
+          `[PlannerPage] Today/Tomorrow optimization started. Run ID: ${data.runId}. Starting polling.`
+        );
+        setOptimizingRunId(data.runId);
+        setPolling(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollOptimizationStatus(data.runId);
+        pollRef.current = setInterval(() => pollOptimizationStatus(data.runId), 5000);
+      } else if (data.success && data.taskSequence) {
+        console.log('[PlannerPage] Today/Tomorrow optimization finished immediately.');
+        stopTimer();
+        setOptimizing(false);
+        await loadLatestPlan(false);
+      } else {
+        throw new Error(
+          data.error || 'Today/Tomorrow optimization returned success but no run ID or result.'
+        );
+      }
+    } catch (err) {
+      setError(`Error starting today/tomorrow optimization: ${(err as Error).message}`);
+      console.error('Error starting today/tomorrow optimization:', err);
+      stopTimer();
+      setOptimizing(false);
+      setPolling(false);
+      setOptimizingRunId(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  };
+
   return (
     <TaskPage
       tasks={optimizedTasks}
@@ -533,6 +592,7 @@ export default function PlannerPage(): React.ReactNode {
       error={error}
       onRefresh={() => loadLatestPlan(false)} // Refresh without initial loading indicator
       onGeneratePlan={runNewOptimization}
+      onGenerateTodayTomorrowPlan={runTodayTomorrowOptimization}
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
     />
