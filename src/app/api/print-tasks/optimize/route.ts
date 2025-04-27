@@ -422,7 +422,7 @@ export async function POST(req: NextRequest) {
 
     // --- Load Prompt --- 
     let systemMessageContent: string;
-    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/prompt-system-optimized.txt');
+    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/planner-prompt-v10.txt');
     try {
       // Read the prompt file directly
       const rawPromptContent = await fs.readFile(promptFilePath, 'utf-8');

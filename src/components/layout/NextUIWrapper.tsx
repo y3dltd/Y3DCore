@@ -3,7 +3,6 @@
 import { NextUIProvider } from '@nextui-org/react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
-import '@nextui-org/react/styles.css';
 
 interface Props {
   children: React.ReactNode;
