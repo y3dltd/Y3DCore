@@ -1,5 +1,5 @@
-import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { withAuth } from 'next-auth/middleware';
 
 // Export the middleware with potential customizations
 export default withAuth(
@@ -32,10 +32,11 @@ export const config = {
   // - API routes
   // - _next/static & _next/image
   // - /login page
+  // - /favicon.ico
   // - Paths ending with common static file extensions
   matcher: [
-    // Exclude API routes, Next.js internals, login page, and paths with file extensions
-    '/((?!api|_next/static|_next/image|login|.*\.(?:png|jpg|jpeg|gif|svg|ico|xml|json)$).*)',
-    // Note: Removed explicit fav/, logo.png, manifest.json exclusions as the extension pattern should cover them.
+    // Exclude API routes, Next.js internals, login page, favicon.ico, and paths with file extensions
+    '/((?!api|_next/static|_next/image|login|favicon\.ico|.*\.(?:png|jpg|jpeg|gif|svg|xml|json)$).*)',
+    // Note: Explicitly excluded favicon.ico and removed .ico from the general extension pattern.
   ],
 };

@@ -1,7 +1,16 @@
 'use client';
 
 import { PrintTaskStatus } from '@prisma/client';
-import { format, startOfToday, endOfToday, startOfYesterday, endOfYesterday, addDays, startOfWeek, endOfWeek } from 'date-fns';
+import {
+  addDays,
+  endOfToday,
+  endOfWeek,
+  endOfYesterday,
+  format,
+  startOfToday,
+  startOfWeek,
+  startOfYesterday,
+} from 'date-fns';
 import debounce from 'lodash.debounce';
 import { CalendarIcon, RotateCcw, X } from 'lucide-react'; // Import icons
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -101,8 +110,7 @@ export function PrintQueueFilters({
 }: PrintQueueFiltersProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const productNames = availableProductNames; // Will be used in future implementation
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const shippingMethods = availableShippingMethods; // Available shipping methods
+  const shippingMethods = availableShippingMethods; // Use the passed prop
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -440,7 +448,7 @@ export function PrintQueueFilters({
   ];
 
   return (
-    <div className="flex flex-wrap items-end gap-3 mb-4 p-3 border rounded-md bg-muted/40 relative">
+    <div className="flex flex-wrap items-start gap-3 mb-4 p-3 border rounded-md bg-muted/40 relative">
       {/* Clear All Button - positioned top-right */}
       {isAnyFilterActive && (
         <Button
@@ -456,7 +464,7 @@ export function PrintQueueFilters({
       )}
 
       {/* Search Input */}
-      <div className="flex-grow min-w-[200px] relative">
+      <div className="flex-grow min-w-[200px] max-w-xs relative">
         <Label htmlFor="search-query" className="mb-1 block text-xs font-medium">
           Search (Product, SKU, Order#)
         </Label>
@@ -475,7 +483,7 @@ export function PrintQueueFilters({
               }
             }}
           />
-          <p className="text-[10px] text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">
             Search by ID, text, color, or marketplace order number
           </p>
         </div>
@@ -562,9 +570,15 @@ export function PrintQueueFilters({
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <div className="p-2 flex space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('today')}>Today</Button>
-                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('yesterday')}>Yesterday</Button>
-                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('nextWeek')}>Next Week</Button>
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('today')}>
+                  Today
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('yesterday')}>
+                  Yesterday
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handlePresetClick('nextWeek')}>
+                  Next Week
+                </Button>
               </div>
               <Calendar
                 initialFocus
@@ -655,16 +669,13 @@ export function PrintQueueFilters({
         <Label htmlFor="shipping-method-filter" className="mb-1 block text-xs font-medium">
           Shipping Method
         </Label>
-        <Select
-          value={shippingMethod || 'all'}
-          onValueChange={value => handleShippingMethodChange(value === 'all' ? '' : value)}
-        >
-          <SelectTrigger id="shipping-method-filter" className="w-[160px] h-9">
+        <Select value={shippingMethod} onValueChange={handleShippingMethodChange}>
+          <SelectTrigger className="w-[180px] h-9 text-xs">
             <SelectValue placeholder="All Shipping Methods" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Shipping Methods</SelectItem>
-            {availableShippingMethods.map(method => (
+            {shippingMethods.map(method => (
               <SelectItem key={method} value={method}>
                 {method}
               </SelectItem>
@@ -674,7 +685,11 @@ export function PrintQueueFilters({
       </div>
 
       {/* Loading Indicator */}
-      {isPending && <div className="text-sm text-muted-foreground">Loading...</div>}
+      {isPending && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+          <p>Loading...</p>
+        </div>
+      )}
     </div>
   );
 }

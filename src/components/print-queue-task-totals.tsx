@@ -1,7 +1,7 @@
 'use client';
 
 import { PrintTaskStatus } from '@prisma/client';
-import { Package, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Package } from 'lucide-react';
 
 import { ClientPrintTaskData } from '@/types/print-tasks'; // Import client-safe type
 
@@ -13,48 +13,58 @@ interface PrintQueueTaskTotalsProps {
 }
 
 export function PrintQueueTaskTotals({ tasks }: PrintQueueTaskTotalsProps) {
-  // Calculate totals
-  const totalTasks = tasks.length;
-  const pendingTasks = tasks.filter(task => task.status === PrintTaskStatus.pending).length;
-  const inProgressTasks = tasks.filter(task => task.status === PrintTaskStatus.in_progress).length;
-  const completedTasks = tasks.filter(task => task.status === PrintTaskStatus.completed).length;
+  // Helper function to sum quantities
+  const sumQuantity = (filteredTasks: ClientPrintTaskData[]) =>
+    filteredTasks.reduce((sum, task) => sum + (task.quantity || 0), 0);
+
+  // Calculate totals based on item quantity
+  const totalItems = sumQuantity(tasks);
+  const pendingItems = sumQuantity(tasks.filter(task => task.status === PrintTaskStatus.pending));
+  const inProgressItems = sumQuantity(
+    tasks.filter(task => task.status === PrintTaskStatus.in_progress)
+  );
+  const completedItems = sumQuantity(
+    tasks.filter(task => task.status === PrintTaskStatus.completed)
+  );
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const cancelledTasks = tasks.filter(task => task.status === PrintTaskStatus.cancelled).length;
-  const needsReviewTasks = tasks.filter(task => task.needs_review).length;
+  const cancelledItems = sumQuantity(
+    tasks.filter(task => task.status === PrintTaskStatus.cancelled)
+  );
+  const needsReviewItems = sumQuantity(tasks.filter(task => task.needs_review));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-6 w-full col-span-full mb-4 px-2">
       <StatsCard
-        title="Total Tasks"
-        value={totalTasks}
+        title="Total Items"
+        value={totalItems}
         icon={Package}
         color="blue"
         className="p-3" /* Reduce padding and stretch */
       />
       <StatsCard
-        title="Pending"
-        value={pendingTasks}
+        title="Pending Items"
+        value={pendingItems}
         icon={Clock}
         color="yellow"
         className="p-3" /* Reduce padding and stretch */
       />
       <StatsCard
-        title="In Progress"
-        value={inProgressTasks}
+        title="In Progress Items"
+        value={inProgressItems}
         icon={Clock}
         color="indigo"
         className="p-3" /* Reduce padding and stretch */
       />
       <StatsCard
-        title="Completed"
-        value={completedTasks}
+        title="Completed Items"
+        value={completedItems}
         icon={CheckCircle2}
         color="green"
         className="p-3" /* Reduce padding and stretch */
       />
       <StatsCard
-        title="Needs Review"
-        value={needsReviewTasks}
+        title="Needs Review Items"
+        value={needsReviewItems}
         icon={AlertCircle}
         color="red"
         className="p-3" /* Reduce padding and stretch */

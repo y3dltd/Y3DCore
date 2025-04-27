@@ -1,9 +1,10 @@
+import readline from 'readline/promises';
+
 import { PrintTaskStatus, PrismaClient } from '@prisma/client'; 
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'; 
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pino from 'pino';
-import readline from 'readline/promises';
 
 // Load environment variables
 dotenv.config()

@@ -1,0 +1,48 @@
+**In plain English, here’s what that JSON is telling you.**
+
+---
+
+### 1  How the assistant has grouped things
+
+| Observation | What it means in practice |
+|-------------|---------------------------|
+| **Grouped first by SKU** | Every entry that shares the `sku` field belongs to the same physical product line. |
+| **Then split by colour set** (no group has more than 4 colours) | The assistant respected your “≤ 4 colours” rule. Where one SKU needed more than four colours overall, it produced several sub-groups. |
+| **Variable group sizes** | `jobIds` per group run from 1 job (e.g. *wi_395107128418_15*) up to 6 jobs (e.g. *wi_395107128418_10* second group). That’s the assistant trying to keep colour counts down while still batching jobs. |
+| **No “notes” fields present** | Because every group stayed within the four-colour limit, the assistant felt no note was necessary. |
+| **One colourless group** (`sku` = 1815157861) | Either those jobs genuinely need no coloured filament/ink, or their colour data was missing. That merits a manual check. |
+
+---
+
+### 2  The headline numbers
+
+| Item | Count |
+|------|-------|
+| Total suggested groups | **≈ 50** |
+| Distinct SKUs covered | **11** |
+| Largest SKU pool | **PER-KEY3D-STY3-Y3D** with ~34 separate groups (very colour-diverse) |
+| Colour limit breaches | **0** (all groups at or below four colours) |
+| Empty-colour groups | **1** (see above) |
+
+---
+
+### 3  Where you might tweak the plan
+
+1. **Capacity vs. effort** – Several two-job groups still involve four different colours; if your machines can cope with four spools, that’s fine, but you may choose to re-merge such tiny groups into slightly larger runs of the *same* four-colour set to save setup time.
+
+2. **Verify the empty-colour SKU (1815157861)** – Confirm whether those jobs really need no colour changes or if the data feed dropped the colour list.
+
+3. **Spot duplicate colour sets** – For *PER-KEY3D-STY3-Y3D* some groups have identical colour quads in a different order (e.g. {Purple, Pink, Magenta, Silver} appears more than once). Merging them could cut tool-changes.
+
+4. **Name normalisation** – Colour names look consistently Title-cased, but you’ll want to be sure, for instance, that “Peak Green” and “Pine Green” are indeed different materials and not two spellings of the same one.
+
+---
+
+### 4  Bottom line
+
+The assistant has followed your rules faithfully:
+- Same-SKU first,
+- ≤ four unique colours per suggested batch,
+- plenty of extra splits for colour-heavy SKUs.
+
+Treat it as a draft plate plan: check missing-colour entries, decide whether very small four-colour batches are worth the time, and feel free to coalesce identical colour sets before you commit jobs to the printers.

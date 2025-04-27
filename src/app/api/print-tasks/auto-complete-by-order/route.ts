@@ -1,9 +1,9 @@
-import { authOptions } from '@/lib/auth';
 import { PrintTaskStatus } from '@prisma/client';
-import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
 import { z } from 'zod';
 
+import { authOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 

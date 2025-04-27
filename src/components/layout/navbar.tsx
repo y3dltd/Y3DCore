@@ -1,8 +1,9 @@
 'use client';
 
-import { useSession } from 'next-auth/react'; // Import useSession
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@nextui-org/react'; // Import NextUI Dropdown
 import Image from 'next/image'; // Import the Image component
 import Link from 'next/link';
+import { useSession } from 'next-auth/react'; // Import useSession
 // Remove unused imports
 // import { useRouter } from 'next/navigation';
 // import { useEffect, useState } from 'react';
@@ -10,8 +11,8 @@ import Link from 'next/link';
 // Remove unused auth-client import
 // import { checkAuthStatus, hasSessionCookie } from '@/lib/auth-client';
 
-import { Button } from '../ui/button';
 import LogoutButton from './logout-button'; // Import the client component
+import { Button } from '../ui/button';
 
 // Mocked Navbar - Assumes user is always logged in
 export default function Navbar() {
@@ -61,6 +62,48 @@ export default function Navbar() {
             >
               Print Queue
             </Link>
+            <Dropdown>
+              <DropdownTrigger>
+                {/* Use a standard Button variant instead of invalid props */}
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
+                  AI Tools
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="AI Tools"
+                disallowEmptySelection
+                selectionMode="single"
+                className="bg-popover text-popover-foreground shadow-md rounded-md border border-border"
+              >
+                {[
+                  {
+                    href: '/ai/playground',
+                    label: 'AI Playground',
+                  },
+                  {
+                    href: '/ai/reports',
+                    label: 'AI Reports',
+                  },
+                  {
+                    href: '/ai/history',
+                    label: 'AI History',
+                  },
+                  {
+                    href: '/ai/planner',
+                    label: 'Planner',
+                  },
+                ].map((item) => (
+                  <DropdownItem
+                    key={item.href}
+                    textValue={item.label} // Important for accessibility and server-side rendering
+                  >
+                    <Link href={item.href} className="w-full h-full block">
+                      {item.label}
+                    </Link>
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
             {/* Add other links as needed */}
           </div>
 

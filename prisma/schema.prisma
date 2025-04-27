@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  output        = "./node_modules/@prisma/client"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "linux-musl"]
 }
 
@@ -392,4 +391,32 @@ enum StlRenderStatus {
   running
   completed
   failed
+}
+
+/// AI Reports System
+model AiReportDefinition {
+  id           String          @id @default(uuid())
+  slug         String          @unique
+  name         String
+  description  String
+  systemPrompt String          @db.LongText
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  runs         AiReportRun[]
+}
+
+model AiReportRun {
+  id          String   @id @default(uuid())
+  reportId    String
+  inputJson   Json
+  outputJson  Json?
+  rawResponse String?  @db.LongText
+  status      String   @default("running")
+  errorMsg    String?  @db.Text
+  createdAt   DateTime @default(now())
+  finishedAt  DateTime?
+
+  report      AiReportDefinition @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
 }

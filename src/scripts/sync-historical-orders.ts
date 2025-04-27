@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import * as dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
+
+import * as dotenv from 'dotenv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 

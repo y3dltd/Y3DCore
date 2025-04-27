@@ -1,8 +1,9 @@
+import { PrismaClient } from '@prisma/client';
+import { Command } from 'commander';
+
 import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
 import { logger } from '@/lib/shared/logging';
 import { getShipstationOrders } from '@/lib/shipstation/api';
-import { PrismaClient } from '@prisma/client';
-import { Command } from 'commander';
 
 const prisma = new PrismaClient();
 

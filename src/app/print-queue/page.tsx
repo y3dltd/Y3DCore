@@ -8,12 +8,12 @@ import { PrintTaskStatus, Prisma } from '@prisma/client'; // Import enum and Pri
 // import { OrdersPagination } from '@/components/orders-pagination';
 // import { PrintQueueFilters } from '@/components/print-queue-filters';
 // import { PrintQueueHeader } from '@/components/print-queue-header';
-import { ClientPrintTaskData } from '@/types/print-tasks'; // Import the new client-safe type
 // import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals';
 // import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
 import { fixInvalidStlRenderStatus } from '@/lib/order-processing'; // Import the fix function
 import { detectMarketplaceOrderNumber } from '@/lib/order-utils'; // Import order number detection
 import { prisma } from '@/lib/prisma';
+import { ClientPrintTaskData } from '@/types/print-tasks'; // Import the new client-safe type
 
 // import PrintQueueSummaryServer from './PrintQueueSummaryServer';
 import PrintQueueClient from './PrintQueueClient'; // Import the new client component
@@ -47,6 +47,36 @@ async function getDistinctProductNamesForTasks(): Promise<string[]> {
     return products.map(p => p.name).filter(Boolean) as string[];
   } catch (error) {
     console.error('Error fetching distinct product names:', error);
+    return []; // Return empty array on error
+  }
+}
+
+// Function to get distinct shipping methods linked to tasks
+async function getDistinctShippingMethodsForTasks(): Promise<string[]> {
+  try {
+    const orders = await prisma.order.findMany({
+      where: {
+        // Only include orders that have print tasks
+        printTasks: {
+          some: {},
+        },
+        // Ensure requested_shipping_service is not null or empty
+        requested_shipping_service: {
+          not: null,
+        },
+      },
+      select: {
+        requested_shipping_service: true,
+      },
+      distinct: ['requested_shipping_service'],
+      orderBy: {
+        requested_shipping_service: 'asc',
+      },
+    });
+    // Extract names, filter out nulls/empties
+    return orders.map(o => o.requested_shipping_service).filter(Boolean) as string[];
+  } catch (error) {
+    console.error('Error fetching distinct shipping methods:', error);
     return []; // Return empty array on error
   }
 }
@@ -253,8 +283,8 @@ async function getPrintTasks({
       take: validatedLimit,
       orderBy: [
         { needs_review: 'desc' },
-        { ship_by_date: 'asc' },
-        { created_at: 'desc' }, // Changed to desc to show most recent tasks first
+        { color_1: { sort: 'asc', nulls: 'last' } },
+        { color_2: { sort: 'asc', nulls: 'last' } },
       ],
       include: {
         order: {
@@ -445,7 +475,7 @@ export default async function PrintQueuePage({
     });
 
     // --- Call getPrintTasks & getDistinctProductNames --- Fetch in parallel
-    const [{ tasks, total }, productNames] = await Promise.all([
+    const [{ tasks, total }, productNames, shippingMethods] = await Promise.all([
       getPrintTasks({
         validatedPage,
         validatedLimit,
@@ -460,6 +490,7 @@ export default async function PrintQueuePage({
         validatedShippingMethod: validatedShippingMethod,
       }),
       getDistinctProductNamesForTasks(), // Fetch distinct product names
+      getDistinctShippingMethodsForTasks(), // Fetch distinct shipping methods
     ]);
 
     // Prepare initial filters object based on validated params for the client component
@@ -484,6 +515,7 @@ export default async function PrintQueuePage({
         page={validatedPage}
         limit={validatedLimit}
         productNames={productNames}
+        availableShippingMethods={shippingMethods} // Pass shipping methods
         initialFilters={initialFilters}
         formattedNow={formattedNow}
       />

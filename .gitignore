@@ -150,3 +150,7 @@ dev.log
 .aider.input.history
 .aider.tags.cache.v4/
 .aider*
+
+# Playwright
+node_modules/
+/blob-report/

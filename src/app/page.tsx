@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   ArrowUpRight,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
 import { StatsCard } from '@/components/dashboard/stats-card';
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/table'; // Import Table components
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 import { prisma } from '@/lib/prisma';
-import dynamic from 'next/dynamic';
 const OrdersByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/OrdersByMarketplaceChart'), { ssr: false });
 const RevenueByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/RevenueByMarketplaceChart'), { ssr: false });
 const PrintTasksByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/PrintTasksByMarketplaceChart'), { ssr: false });

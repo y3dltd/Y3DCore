@@ -1,7 +1,7 @@
 'use client';
 
-import { RefreshCcw, CheckCheck, Wrench } from 'lucide-react';
-import React, { useEffect } from 'react';
+import { CheckCheck, RefreshCcw, Wrench } from 'lucide-react';
+import { useEffect } from 'react';
 import { useFormState } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
@@ -70,7 +70,9 @@ export function PrintQueueHeader({ formattedNow, cleanupAction }: PrintQueueHead
 
   return (
     <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-      <h1 className="text-3xl font-bold">Print Queue</h1>
+      <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+        Print Queue
+      </h1>
       <div className="flex items-center space-x-2 text-sm text-muted-foreground ml-auto">
         <span>Last updated: {formattedNow}</span>
         <PrintQueueToolsModal>

@@ -74,7 +74,7 @@ export async function getPrintPlan(tasks: PrintTaskData[]): Promise<PrintPlan | 
 
     // Split into plates of max 10 items
     const tasksPerPlate = 10;
-    let remainingTasks = [...colorTasks];
+    const remainingTasks = [...colorTasks];
 
     while (remainingTasks.length > 0) {
       const plateTasks = remainingTasks.splice(0, tasksPerPlate);

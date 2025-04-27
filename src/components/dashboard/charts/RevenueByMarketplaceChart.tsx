@@ -1,7 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { formatMarketplaceName, MARKETPLACE_DISPLAY } from '@/lib/marketplace-utils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,8 +9,11 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 import type { ChartOptions, Tick, ScriptableContext } from 'chart.js';
+import { useState, useEffect } from 'react';
+import { Bar } from 'react-chartjs-2';
+
+import { formatMarketplaceName, MARKETPLACE_DISPLAY } from '@/lib/marketplace-utils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 

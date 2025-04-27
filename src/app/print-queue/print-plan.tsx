@@ -1,5 +1,5 @@
-import { PrintTaskData } from '@/types/print-tasks'; // Correct import path
 import { getPrintPlan } from '@/lib/ai/print-plan';
+import { PrintTaskData } from '@/types/print-tasks'; // Correct import path
 
 export default async function PrintPlanPage() {
   // Fetch tasks as in main print queue page (pseudo-code, adapt as needed)

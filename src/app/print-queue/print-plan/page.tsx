@@ -1,7 +1,8 @@
-import { PrintTaskData } from '@/types/print-tasks';
-import { prisma } from '@/lib/prisma';
 import { PrintTaskStatus, Prisma } from '@prisma/client';
+
 import { getPrintPlan } from '@/lib/ai/print-plan';
+import { prisma } from '@/lib/prisma';
+import { PrintTaskData } from '@/types/print-tasks';
 
 // Define the type returned by the specific prisma query
 type FetchedTask = Prisma.PrintOrderTaskGetPayload<{
