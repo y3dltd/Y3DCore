@@ -4,7 +4,7 @@
 import { Card, CardBody, Button, Spinner, Tooltip, Alert, Progress } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import { ArrowPathIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline';
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
 import { PrintTaskCardProps } from '@/types/print-tasks';
 
@@ -226,6 +226,22 @@ const TaskPage: React.FC<TaskPageProps> = ({
   );
   const allItemsCompletedGlobal = totalItemsGlobal > 0 && completedItemsGlobal === totalItemsGlobal;
 
+  // --- Dynamic Task Completion Stats ---
+  const derivedTotalTasks = tasks.length;
+  const derivedCompletedTasks = useMemo(
+    () =>
+      tasks.filter(task => task.items.every(item => item.status === PrintTaskStatus.completed))
+        .length,
+    [tasks]
+  );
+  // Count tasks with any items currently in progress
+  const derivedInProgressTasks = useMemo(
+    () =>
+      tasks.filter(task => task.items.some(item => item.status === PrintTaskStatus.in_progress))
+        .length,
+    [tasks]
+  );
+
   // Set up scroll listener to update active task
   useEffect(() => {
     const handleScroll = () => {
@@ -265,7 +281,7 @@ const TaskPage: React.FC<TaskPageProps> = ({
       <div ref={headerRef} className="border-b border-gray-700 z-10">
         <div className="container mx-auto p-4">
           <div className="flex justify-between items-center mb-2">
-            <h1 className="text-2xl font-bold text-gray-100">3D Print Task Sequence</h1>
+            <h1 className="text-2xl font-bold text-gray-100">Print Tasks</h1>
             <div className="flex items-center gap-2">
               <Tooltip content="Refresh Plan">
                 <Button
@@ -308,13 +324,22 @@ const TaskPage: React.FC<TaskPageProps> = ({
               <span className="font-medium">{stats.totalTasks} Tasks</span> ·
               <span className="ml-2">{stats.totalItems} Items</span>
             </p>
-            <div className="text-sm">
+            <div className="text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <span className="font-medium text-gray-300">
-                {stats.completedTasks} of {stats.totalTasks} tasks completed
+                {derivedCompletedTasks} of {derivedTotalTasks} tasks completed
               </span>
-              <span className="ml-2 px-2 py-0.5 text-green-400 rounded-full">
-                {stats.totalTasks > 0
-                  ? Math.round((stats.completedTasks / stats.totalTasks) * 100)
+              <span className="px-2 py-0.5 text-green-400 rounded-full">
+                {derivedTotalTasks > 0
+                  ? Math.round((derivedCompletedTasks / derivedTotalTasks) * 100)
+                  : 0}
+                %
+              </span>
+              <span className="font-medium text-gray-300">
+                {derivedInProgressTasks} of {derivedTotalTasks} tasks in progress
+              </span>
+              <span className="px-2 py-0.5 text-yellow-400 rounded-full">
+                {derivedTotalTasks > 0
+                  ? Math.round((derivedInProgressTasks / derivedTotalTasks) * 100)
                   : 0}
                 %
               </span>

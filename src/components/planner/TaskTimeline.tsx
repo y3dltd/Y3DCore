@@ -35,16 +35,25 @@ export const TaskTimeline = ({ tasks, activeTaskId, onTaskSelect }: TaskTimeline
           <h2 className="text-xl font-semibold mb-4 px-2 text-gray-100">Print Tasks</h2>
           <div className="space-y-2 relative">
             <div className="absolute left-3 top-1 bottom-1 w-0.5 bg-gray-700"></div>
-            {tasks.map(task => {
+            {tasks.map((task, idx) => {
               const isSelected = task.taskId === activeTaskId;
+              // Alternate background colours for each task block to improve readability
+              const palette = [
+                'bg-purple-800/40',
+                'bg-pink-800/40',
+                'bg-blue-800/40',
+                'bg-green-800/40',
+                'bg-yellow-800/40',
+              ];
+              const bgColorClass = palette[idx % palette.length];
               return (
                 <div
                   key={task.taskId}
                   onClick={() => onTaskSelect?.(task.taskId)}
-                  className={`
-                    relative flex items-start py-2 pl-8 pr-2 rounded-md transition-all cursor-pointer
-                    ${isSelected ? 'shadow-sm' : 'hover:bg-gray-700'}
-                  `}
+                  className={
+                    `relative flex items-start py-2 pl-8 pr-2 rounded-md transition-all cursor-pointer ${bgColorClass} ` +
+                    (isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:bg-opacity-60')
+                  }
                 >
                   <div
                     className={`absolute left-1.5 top-3 w-3 h-3 rounded-full ${getStatusColor(task.status)}`}
