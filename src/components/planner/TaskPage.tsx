@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { Card, CardBody, Button, Spinner, Tooltip, Alert } from '@nextui-org/react';
+import { Card, CardBody, Button, Spinner, Tooltip, Alert, Progress } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
-import { ArrowPathIcon, PlayIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 import { PrintTaskCardProps } from '@/types/print-tasks';
@@ -137,13 +137,26 @@ const TaskPage: React.FC<TaskPageProps> = ({
       });
       setTasks(updatedTasks); // Use prop setter
 
+      // Convert string IDs to numbers for API validation and filter out any NaNs
+      const itemIds = task.items
+        .map(item => parseInt(item.name, 10))
+        .filter(id => !Number.isNaN(id));
+
+      // If no valid numeric IDs, abort API call to avoid validation errors
+      if (itemIds.length === 0) {
+        console.warn(
+          '[TaskPage] handleBulkStatusChange: No valid numeric item IDs found for task',
+          taskId
+        );
+        return;
+      }
+
       // API Call for bulk update
       try {
-        const itemIds = task.items.map(item => item.name); // Get all original item IDs
         await fetch(`/api/print-tasks/bulk-status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ taskIds: itemIds, status: newStatus }), // Use correct payload for bulk update
+          body: JSON.stringify({ taskIds: itemIds, status: newStatus }), // Use numeric IDs for bulk update
         });
         // TODO: Add success feedback/logging
       } catch (error) {
@@ -155,6 +168,63 @@ const TaskPage: React.FC<TaskPageProps> = ({
     },
     [tasks, setTasks, setError] // Use prop setters in dependency array
   );
+
+  // --- Global Bulk Status Handler (Set All In Progress / Set All Complete) ---
+  const handleGlobalStatusChange = useCallback(
+    async (newStatus: PrintTaskStatus) => {
+      if (tasks.length === 0) return;
+
+      const previousTasks = JSON.parse(JSON.stringify(tasks));
+
+      // Optimistic update – set every item's status
+      const updatedTasks = tasks.map(task => ({
+        ...task,
+        items: task.items.map(item => ({ ...item, status: newStatus })),
+      }));
+      setTasks(updatedTasks);
+
+      // Collect all unique, valid numeric item IDs
+      const allItemIds = tasks
+        .flatMap(task => task.items.map(item => parseInt(item.name, 10)))
+        .filter(id => !Number.isNaN(id));
+
+      if (allItemIds.length === 0) {
+        console.warn('[TaskPage] handleGlobalStatusChange: no valid numeric item IDs found');
+        return;
+      }
+
+      try {
+        await fetch(`/api/print-tasks/bulk-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskIds: allItemIds, status: newStatus }),
+        });
+      } catch (error) {
+        console.error('Failed to globally update task statuses via API:', error);
+        setTasks(previousTasks);
+        setError(`Failed to update all tasks: ${(error as Error).message}`);
+      }
+    },
+    [tasks, setTasks, setError]
+  );
+
+  // --- Derived Global Progress Metrics ---
+  const totalItemsGlobal = tasks.reduce(
+    (sum, task) => sum + task.items.reduce((q, item) => q + (item.quantity ?? 1), 0),
+    0
+  );
+  const completedItemsGlobal = tasks.reduce(
+    (sum, task) =>
+      sum +
+      task.items
+        .filter(item => item.status === PrintTaskStatus.completed)
+        .reduce((q, item) => q + (item.quantity ?? 1), 0),
+    0
+  );
+  const anyItemInProgressGlobal = tasks.some(task =>
+    task.items.some(item => item.status === PrintTaskStatus.in_progress)
+  );
+  const allItemsCompletedGlobal = totalItemsGlobal > 0 && completedItemsGlobal === totalItemsGlobal;
 
   // Set up scroll listener to update active task
   useEffect(() => {
@@ -250,6 +320,51 @@ const TaskPage: React.FC<TaskPageProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Global progress & bulk buttons */}
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Progress
+                aria-label="Overall progress"
+                value={totalItemsGlobal === 0 ? 0 : (completedItemsGlobal / totalItemsGlobal) * 100}
+                size="sm"
+                color={
+                  allItemsCompletedGlobal
+                    ? 'success'
+                    : anyItemInProgressGlobal
+                      ? 'primary'
+                      : 'warning'
+                }
+                className="flex-1"
+              />
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                {completedItemsGlobal} of {totalItemsGlobal} items completed
+              </span>
+            </div>
+            <div className="flex gap-2 self-end">
+              <Button
+                color="warning"
+                variant="flat"
+                size="sm"
+                startContent={<PlayIcon className="h-4 w-4" />}
+                onPress={() => handleGlobalStatusChange(PrintTaskStatus.in_progress)}
+                isDisabled={allItemsCompletedGlobal || anyItemInProgressGlobal}
+              >
+                Set All In Progress
+              </Button>
+              <Button
+                color="success"
+                variant="flat"
+                size="sm"
+                startContent={<CheckIcon className="h-4 w-4" />}
+                onPress={() => handleGlobalStatusChange(PrintTaskStatus.completed)}
+                isDisabled={allItemsCompletedGlobal}
+              >
+                Set All Complete
+              </Button>
+            </div>
+          </div>
+
           {error && (
             <Alert color="danger" className="mt-2">
               {error}

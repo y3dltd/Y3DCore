@@ -2,7 +2,7 @@
 'use client';
 import { Button, Progress, Tooltip } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
-import { Check, ClipboardCopy, Play } from 'lucide-react';
+import { Check, ClipboardCopy, Play, RotateCcw } from 'lucide-react';
 import React from 'react';
 
 import { cn } from '@/lib/utils';
@@ -124,6 +124,20 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
       </div>
     );
   }
+
+  // Helper to confirm bulk status change per plate
+  const confirmAndBulkUpdate = (taskId: string, newStatus: PrintTaskStatus) => {
+    let actionLabel = 'update';
+    if (newStatus === PrintTaskStatus.in_progress) actionLabel = 'mark as In Progress';
+    else if (newStatus === PrintTaskStatus.completed) actionLabel = 'mark as Complete';
+    else if (newStatus === PrintTaskStatus.pending) actionLabel = 'reset to Pending';
+    if (
+      // eslint-disable-next-line no-alert
+      window.confirm(`Are you sure you want to ${actionLabel} for all items on this plate?`)
+    ) {
+      onBulkTaskStatusChange(taskId, newStatus);
+    }
+  };
 
   return (
     <div className={className}>
@@ -277,6 +291,25 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
                                 <Play className="h-3 w-3" />
                               </Button>
                             </Tooltip>
+                            <Tooltip content="Reset to Pending">
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="flat"
+                                className="h-6 w-6 min-w-0 text-gray-400"
+                                onPress={() =>
+                                  onTaskStatusChange(
+                                    task.taskId,
+                                    item.name,
+                                    PrintTaskStatus.pending
+                                  )
+                                }
+                                isDisabled={itemStatus === 'pending'}
+                                aria-label="Reset Pending"
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                              </Button>
+                            </Tooltip>
                             <Tooltip content="Mark Complete">
                               <Button
                                 isIconOnly
@@ -323,19 +356,27 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
                       color="warning"
                       variant="flat"
                       size="sm"
-                      onPress={() =>
-                        onBulkTaskStatusChange(task.taskId, PrintTaskStatus.in_progress)
-                      }
-                      isDisabled={allItemsCompleted || anyItemInProgress}
+                      onPress={() => confirmAndBulkUpdate(task.taskId, PrintTaskStatus.in_progress)}
+                      isDisabled={allItemsCompleted}
                       startContent={<Play className="h-4 w-4" />}
                     >
                       Set All In Progress
                     </Button>
                     <Button
+                      color="default"
+                      variant="flat"
+                      size="sm"
+                      onPress={() => confirmAndBulkUpdate(task.taskId, PrintTaskStatus.pending)}
+                      isDisabled={task.items.every(item => item.status === PrintTaskStatus.pending)}
+                      startContent={<RotateCcw className="h-4 w-4" />}
+                    >
+                      Reset All Pending
+                    </Button>
+                    <Button
                       color="success"
                       variant="flat"
                       size="sm"
-                      onPress={() => onBulkTaskStatusChange(task.taskId, PrintTaskStatus.completed)}
+                      onPress={() => confirmAndBulkUpdate(task.taskId, PrintTaskStatus.completed)}
                       isDisabled={allItemsCompleted}
                       startContent={<Check className="h-4 w-4" />}
                     >
