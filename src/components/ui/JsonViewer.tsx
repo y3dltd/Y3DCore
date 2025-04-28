@@ -22,7 +22,7 @@ export interface JsonViewerProps {
 /**
  * A wrapper component for react-json-view-lite that works well with Next.js
  */
-export const JsonViewer: React.FC<JsonViewerProps> = ({ src, collapsed = false, style }) => {
+const JsonViewer: React.FC<JsonViewerProps> = ({ src, collapsed = false, style }) => {
   // Convert any value to a proper object for the viewer
   const safeData = src === null || src === undefined ? {} : src;
 
