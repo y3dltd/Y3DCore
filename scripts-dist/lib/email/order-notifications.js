@@ -1,94 +1,48 @@
-import { sendEmail } from './send-email'
-import { logger } from '../shared/logging'
-import { prisma } from '../shared/database'
-
-// Define types based on ShipStation API structure
-interface ShipToAddress {
-    name: string | null
-}
-
-interface OrderItem {
-    quantity: number
-    name: string
-}
-
-interface AdvancedOptions {
-    storeId?: string | number
-}
-
-export interface OrderData {
-    orderId: string | number
-    orderNumber: string
-    orderDate: string
-    orderStatus: string
-    orderTotal?: number
-    amountPaid?: number
-    tagIds?: number[] | null
-    items?: OrderItem[]
-    shipTo?: ShipToAddress | null
-    customerUsername?: string | null
-    advancedOptions?: AdvancedOptions | null
-}
-
-interface OrderNotificationOptions {
-    // Admin notification recipients
-    adminEmails?: string[]
-    // Whether to filter for just premium/prime orders
-    onlyPremiumOrders?: boolean
-    // Format currency values
-    formatCurrency?: (value: number) => string
-}
-
-const DEFAULT_OPTIONS: OrderNotificationOptions = {
+import { sendEmail } from './send-email';
+import { logger } from '../shared/logging';
+import { prisma } from '../shared/database';
+const DEFAULT_OPTIONS = {
     adminEmails: [],
     onlyPremiumOrders: false,
-    formatCurrency: (value: number) => `$${value.toFixed(2)}`
-}
-
+    formatCurrency: (value) => `$${value.toFixed(2)}`
+};
 /**
  * Check if an order has the 'Prime Order' tag in the database.
  */
-export async function isPremiumOrder(order: OrderData): Promise<boolean> {
-    if (!order.tagIds || order.tagIds.length === 0) return false
+export async function isPremiumOrder(order) {
+    if (!order.tagIds || order.tagIds.length === 0)
+        return false;
     const tag = await prisma.tag.findFirst({
         where: {
             shipstation_tag_id: { in: order.tagIds },
             name: 'Prime Order'
         }
-    })
-    return tag !== null
+    });
+    return tag !== null;
 }
-
 /**
  * Send notification emails for new orders.
- * 
+ *
  * @param order The ShipStation order data
  * @param options Configuration options
  * @returns Success status
  */
-export async function sendNewOrderNotification(
-    order: OrderData,
-    customOptions?: Partial<OrderNotificationOptions>
-): Promise<boolean> {
+export async function sendNewOrderNotification(order, customOptions) {
     try {
-        const options = { ...DEFAULT_OPTIONS, ...customOptions }
-
+        const options = { ...DEFAULT_OPTIONS, ...customOptions };
         // Only send notifications for Prime Orders
-        const isPrime = await isPremiumOrder(order)
+        const isPrime = await isPremiumOrder(order);
         if (!isPrime) {
-            logger.info(`Order ${order.orderNumber} skipped - not a Prime Order`)
-            return true
+            logger.info(`Order ${order.orderNumber} skipped - not a Prime Order`);
+            return true;
         }
-
         // Prepare order details for the notification
-        const orderDate = new Date(order.orderDate).toLocaleDateString()
-        const formatCurrency = options.formatCurrency || ((value: number) => `$${value.toFixed(2)}`)
-        const formattedTotal = formatCurrency(order.orderTotal || 0)
-        const items = order.items?.map((item: OrderItem) => `${item.quantity}x ${item.name}`).join('\n') || 'No items found'
-
+        const orderDate = new Date(order.orderDate).toLocaleDateString();
+        const formatCurrency = options.formatCurrency || ((value) => `$${value.toFixed(2)}`);
+        const formattedTotal = formatCurrency(order.orderTotal || 0);
+        const items = order.items?.map((item) => `${item.quantity}x ${item.name}`).join('\n') || 'No items found';
         // Customer information
-        const customerName = order.shipTo?.name || order.customerUsername || 'Unknown Customer'
-
+        const customerName = order.shipTo?.name || order.customerUsername || 'Unknown Customer';
         // 1. Send notification to admin(s)
         if (options.adminEmails && options.adminEmails.length > 0) {
             await sendEmail({
@@ -135,7 +89,7 @@ View order: [Your admin URL]/orders/${order.orderId}
 
 <h3>Items:</h3>
 <ul>
-  ${order.items?.map((item: OrderItem) => `<li>${item.quantity}x ${item.name}</li>`).join('') || '<li>No items found</li>'}
+  ${order.items?.map((item) => `<li>${item.quantity}x ${item.name}</li>`).join('') || '<li>No items found</li>'}
 </ul>
 
 <p>
@@ -145,14 +99,13 @@ View order: [Your admin URL]/orders/${order.orderId}
   </a>
 </p>
         `.trim()
-            })
-
-            logger.info(`Admin notification sent for order #${order.orderNumber}`)
+            });
+            logger.info(`Admin notification sent for order #${order.orderNumber}`);
         }
-
-        return true
-    } catch (error: unknown) {
-        logger.error(`Failed to send order notification for #${order.orderNumber}:`, { error })
-        return false
+        return true;
     }
-} 
+    catch (error) {
+        logger.error(`Failed to send order notification for #${order.orderNumber}:`, { error });
+        return false;
+    }
+}

@@ -41,12 +41,20 @@ export async function sendEmail({
         throw new Error('Either text or html content must be provided')
     }
 
-    const msg = {
+    // Construct message conforming to SendGrid's MailDataRequired type
+    // Provide a minimal 'content' field to satisfy TypeScript, using html or text preference.
+    const contentValue = html ?? text ?? ''
+    const msg: sgMail.MailDataRequired = {
         to,
         from,
         subject,
-        text,
-        html,
+        ...(html ? { html } : { text }),
+        content: [
+            {
+                type: html ? 'text/html' : 'text/plain',
+                value: contentValue,
+            },
+        ],
     }
 
     const [response] = await sgMail.send(msg)

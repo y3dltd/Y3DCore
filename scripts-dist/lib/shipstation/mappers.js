@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { toDate } from 'date-fns-tz';
 // --- Mapping Functions ---
 export const mapAddressToCustomerFields = (addr) => ({
-    name: addr.name || null,
+    name: addr.name || null, // Use null instead of undefined for consistency?
     company: addr.company || null,
     street1: addr.street1 || null,
     street2: addr.street2 || null,
@@ -95,7 +95,7 @@ export const mapOrderToPrisma = (ssOrder, dbCustomerId) => ({
     shipped_date: convertShipStationDateToUTC(ssOrder.shipDate),
     tracking_number: ssOrder.trackingNumber,
     warehouse_id: ssOrder.advancedOptions?.warehouseId?.toString(),
-    last_sync_date: new Date(),
+    last_sync_date: new Date(), // Always update sync date on update/create
     shipstation_store_id: ssOrder.advancedOptions?.storeId,
     payment_method: ssOrder.paymentMethod,
     amount_paid: ssOrder.amountPaid,

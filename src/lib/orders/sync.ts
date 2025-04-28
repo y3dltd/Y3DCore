@@ -655,17 +655,7 @@ async function upsertOrderWithItems(
       }
     }
 
-    // Send system notification for order processing failure
-    await sendSystemNotification(
-      `Order Processing Failed: #${orderData.orderNumber}`,
-      `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      ErrorSeverity.ERROR,
-      ErrorCategory.ORDER_PROCESSING,
-      error
-    ).catch(notifyError => {
-      logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
-    });
-
+    // Return results from successful transaction
     return { success, itemsProcessed, itemsFailed, errors };
   } catch (error: unknown) {
     // Changed any to unknown
@@ -705,16 +695,12 @@ async function upsertOrderWithItems(
       },
     });
 
-    // Send system notification for order processing failure
-    await sendSystemNotification(
-      `Order Processing Failed: #${orderData.orderNumber}`,
-      `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      ErrorSeverity.ERROR,
-      ErrorCategory.ORDER_PROCESSING,
-      error
-    ).catch(notifyError => {
-      logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
-    });
+    // Successful sync; consider sending success notification (optional) or simply continue
+    await markSyncCompleted(
+      progressId,
+      success,
+      success ? undefined : 'Sync completed with errors'
+    );
 
     return { success, itemsProcessed, itemsFailed, errors };
   }
@@ -1166,43 +1152,21 @@ export async function syncSingleOrder(
       throw new Error(errorMsg);
     }
 
-    // Send system notification for single order sync failure
-    await sendSystemNotification(
-      `Single Order Sync Failed: ${orderIdentifier}`,
-      `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`,
-      ErrorSeverity.ERROR,
-      ErrorCategory.SYNC,
-      error
-    ).catch(notifyError => {
-      logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
-    });
-
+    // Mark progress as completed for single order sync
     await markSyncCompleted(progressId, overallSuccess, errorMsg);
+
     return { success: overallSuccess, error: errorMsg };
-  } catch (error: unknown) {
-    // Changed any to unknown
-    logger.error(`[Single Order Sync] Error syncing order ${orderIdentifier}:`, {
-      error: error instanceof Error ? error.message : error,
-    });
-    errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    if (progressId) {
-      try {
-        await markSyncCompleted(progressId, false, errorMsg);
-      } catch {
-        /* ignore progress update errors */
-      }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`[Single Order Sync] Fatal error during sync process: ${errorMsg}`, { error });
+    try {
+      await markSyncCompleted(progressId, false, `Fatal error: ${errorMsg}`);
+    } catch (markError) {
+      logger.warn('[Single Order Sync] Failed to mark progress during error handling', {
+        error: markError,
+      });
     }
-    // Send system notification for single order sync failure
-    await sendSystemNotification(
-      `Single Order Sync Failed: ${orderIdentifier}`,
-      `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`,
-      ErrorSeverity.ERROR,
-      ErrorCategory.SYNC,
-      error
-    ).catch(notifyError => {
-      logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
-    });
-    return { success: overallSuccess, error: errorMsg };
+    return { success: false, error: errorMsg }; // Return failure state
   }
 }
 
@@ -1221,7 +1185,7 @@ export async function syncShipStationTags(options?: SyncOptions): Promise<void> 
     await updateSyncProgress(progressId, {
       status: 'running',
       totalOrders: ssTags.length,
-    }); // Use correct field name
+    });
 
     let processedCount = 0;
     for (const ssTag of ssTags) {
@@ -1245,30 +1209,25 @@ export async function syncShipStationTags(options?: SyncOptions): Promise<void> 
       }
       processedCount++;
       // Still increment progress in dry run to simulate
-      await incrementProcessedOrders(progressId); // Correct function name
+      await incrementProcessedOrders(progressId);
     }
 
     logger.info(
       `[Sync Tags] Finished. Processed ${processedCount} tags from ShipStation.${options?.dryRun ? ' (DRY RUN)' : ''}`
     );
   } catch (error: unknown) {
-    // Changed any to unknown
     success = false;
     errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error('[Sync Tags] Error synchronizing ShipStation tags:', {
-      error,
-    });
-    // Only increment if progressId is valid
+    logger.error('[Sync Tags] Error synchronizing ShipStation tags:', { error });
     if (progressId) {
       try {
-        await incrementFailedOrders(progressId, 1); // Correct function name
+        await incrementFailedOrders(progressId, 1);
       } catch (incError: unknown) {
         logger.warn('[Sync Tags] Failed to increment failed items count during error handling', {
           error: incError,
         });
       }
     }
-    // Do not re-throw, just mark progress as failed
   } finally {
     if (progressId) {
       try {

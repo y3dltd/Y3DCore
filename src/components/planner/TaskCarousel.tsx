@@ -249,8 +249,8 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
                             )}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            <span>SKU: {item.sku || 'N/A'}</span>
-                            <span className="ml-2">({item.productName || 'Unknown Product'})</span>
+                            <span>{item.productName || 'Unknown Product'}</span>
+                            <span className="ml-2">SKU: {item.sku || 'N/A'}</span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
                             (Item Ref: {item.name || 'N/A'})

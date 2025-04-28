@@ -440,6 +440,7 @@ export async function POST(req: NextRequest) {
       orderBy: {
         ship_by_date: 'asc',
       },
+      take: 200,
     });
 
     console.log(`[API Optimize] Found ${pendingTasks.length} pending tasks to optimize.${filterDays ? ` (Filtered to ${filterDays} days)` : ''}`);
@@ -525,7 +526,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
     const openai = new OpenAI({ apiKey });
     console.log('[API Optimize] Sending request to OpenAI for grouping suggestions...');
-    const modelToUse = "o3"; // Switched to larger model for better reasoning
+    const modelToUse = "o3"; // Changed back from o4-mini
     console.log(`[API Optimize] Using model: ${modelToUse}`);
 
     try {

@@ -76,82 +76,90 @@ function calculatePercentageChange(current: number, previous: number): string {
 
 // Replace mock data with actual database queries
 async function getDashboardStats() {
-  const startOfToday = getStartOfTodayUTC();
-  const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-  const startOfYesterday = getStartOfYesterdayUTC();
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfToday);
+  const day = startOfWeek.getDay();
+  const diff = day === 0 ? 6 : day - 1; // Monday = start of week
+  startOfWeek.setDate(startOfWeek.getDate() - diff);
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-  const startOfWeek = getStartOfWeekUTC();
-  const startOfNextWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const startOfLastWeek = getStartOfLastWeekUTC();
+  // Define same window yesterday for more accurate comparisons (same duration as today so far)
+  const windowDuration = now.getTime() - startOfToday.getTime();
+  const prevWindowEnd = new Date(startOfYesterday.getTime() + windowDuration);
 
-  // Fetch stats concurrently
+  // Fetch the required aggregates in a single transaction for efficiency
   const [
-    todayOrderStats,
-    yesterdayOrderStats,
-    thisWeekRevenueStats,
-    lastWeekRevenueStats,
-    todayItemStats,
-    yesterdayItemStats,
-  ] = await Promise.all([
-    // Orders & Revenue: Today
-    prisma.order.aggregate({
-      _count: { id: true },
-      _sum: { total_price: true },
-      where: { created_at: { gte: startOfToday, lt: startOfTomorrow } },
-    }),
-    // Orders & Revenue: Yesterday
-    prisma.order.aggregate({
-      _count: { id: true },
-      _sum: { total_price: true },
-      where: { created_at: { gte: startOfYesterday, lt: startOfToday } },
-    }),
-    // Revenue: This Week
+    ordersTodayCount,
+    ordersYesterdayCount,
+    revenueTodayAgg,
+    revenueYesterdayAgg,
+    itemsSoldTodayAgg,
+    itemsSoldYesterdayAgg,
+    revenueThisWeekAgg,
+    revenueLastWeekAgg,
+  ] = await prisma.$transaction([
+    prisma.order.count({ where: { order_date: { gte: startOfToday, lt: now } } }),
+    prisma.order.count({ where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } }),
     prisma.order.aggregate({
       _sum: { total_price: true },
-      where: { created_at: { gte: startOfWeek, lt: startOfNextWeek } },
+      where: { order_date: { gte: startOfToday, lt: now } },
     }),
-    // Revenue: Last Week
     prisma.order.aggregate({
       _sum: { total_price: true },
-      where: { created_at: { gte: startOfLastWeek, lt: startOfWeek } },
+      where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } },
     }),
-    // Items: Today (Summing OrderItem quantity)
     prisma.orderItem.aggregate({
       _sum: { quantity: true },
-      where: { order: { created_at: { gte: startOfToday, lt: startOfTomorrow } } },
+      where: { order: { order_date: { gte: startOfToday, lt: now } } },
     }),
-    // Items: Yesterday
     prisma.orderItem.aggregate({
       _sum: { quantity: true },
-      where: { order: { created_at: { gte: startOfYesterday, lt: startOfToday } } },
+      where: { order: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } },
+    }),
+    prisma.order.aggregate({
+      _sum: { total_price: true },
+      where: { order_date: { gte: startOfWeek, lt: startOfTomorrow } },
+    }),
+    prisma.order.aggregate({
+      _sum: { total_price: true },
+      where: { order_date: { gte: startOfLastWeek, lt: startOfWeek } },
     }),
   ]);
 
-  // Extract values (handle potential null sums)
-  const ordersToday = todayOrderStats._count.id;
-  const revenueToday = todayOrderStats._sum.total_price?.toNumber() ?? 0;
-  const ordersYesterday = yesterdayOrderStats._count.id;
-  const revenueYesterday = yesterdayOrderStats._sum.total_price?.toNumber() ?? 0;
-  const revenueThisWeek = thisWeekRevenueStats._sum.total_price?.toNumber() ?? 0;
-  const revenueLastWeek = lastWeekRevenueStats._sum.total_price?.toNumber() ?? 0;
-  const totalItemsToday = todayItemStats._sum.quantity ?? 0;
-  const totalItemsYesterday = yesterdayItemStats._sum.quantity ?? 0;
+  // Convert Decimal values to numbers & provide fallbacks
+  const revenueToday = Number((revenueTodayAgg._sum.total_price ?? 0).toString());
+  const revenueYesterday = Number((revenueYesterdayAgg._sum.total_price ?? 0).toString());
+  const totalItemsSoldToday = Number((itemsSoldTodayAgg._sum.quantity ?? 0).toString());
+  const itemsSoldYesterday = Number((itemsSoldYesterdayAgg._sum.quantity ?? 0).toString());
+  const revenueThisWeek = Number((revenueThisWeekAgg._sum.total_price ?? 0).toString());
+  const revenueLastWeek = Number((revenueLastWeekAgg._sum.total_price ?? 0).toString());
 
-  // Calculate percentage changes
-  const ordersTodayPrev = `${calculatePercentageChange(ordersToday, ordersYesterday)} vs yesterday`;
-  const revenueTodayPrev = `${calculatePercentageChange(revenueToday, revenueYesterday)} vs yesterday`;
-  const totalItemsPrev = `${calculatePercentageChange(totalItemsToday, totalItemsYesterday)} vs yesterday`;
-  const revenueWeekPrev = `${calculatePercentageChange(revenueThisWeek, revenueLastWeek)} vs last week`;
+  // Helper to format percentage changes (matches dashboard logic)
+  const formatChange = (current: number, previous: number, label: string) => {
+    if (previous > 0) {
+      const change = ((current - previous) / previous) * 100;
+      const sign = change > 0 ? '+' : '';
+      return `${sign}${change.toFixed(1)}% vs ${label}`;
+    }
+    return 'N/A';
+  };
 
   return {
-    ordersToday,
+    ordersToday: ordersTodayCount,
     revenueToday,
-    totalItems: totalItemsToday, // Use today's item count
+    totalItems: totalItemsSoldToday,
     revenueThisWeek,
-    ordersTodayPrev,
-    revenueTodayPrev,
-    totalItemsPrev,
-    revenueWeekPrev,
+    ordersTodayPrev: formatChange(ordersTodayCount, ordersYesterdayCount, 'yesterday'),
+    revenueTodayPrev: formatChange(revenueToday, revenueYesterday, 'yesterday'),
+    totalItemsPrev: formatChange(totalItemsSoldToday, itemsSoldYesterday, 'yesterday'),
+    revenueWeekPrev: formatChange(revenueThisWeek, revenueLastWeek, 'last week'),
   };
 }
 

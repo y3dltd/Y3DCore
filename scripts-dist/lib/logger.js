@@ -12,7 +12,7 @@ const logFilePath = path.join(logDirectory, logFileName);
 //   fs.mkdirSync(logDirectory);
 // }
 const logger = winston.createLogger({
-    level: 'info',
+    level: 'info', // Log info level and above (info, warn, error)
     format: winston.format.combine(winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston.format.errors({ stack: true }), // Log stack traces
     winston.format.splat(), winston.format.json() // Log in JSON format
     ),
@@ -22,9 +22,9 @@ const logger = winston.createLogger({
         // Transport 1: Log errors to a file
         new winston.transports.File({
             filename: logFilePath,
-            level: 'error',
-            maxsize: 5242880,
-            maxFiles: 5,
+            level: 'error', // Only log errors and above to this file
+            maxsize: 5242880, // 5MB max file size
+            maxFiles: 5, // Keep up to 5 rotated log files
             tailable: true,
         }),
         // Transport 2: Log everything (info and above) to the console
