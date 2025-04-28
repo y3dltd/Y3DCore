@@ -82,7 +82,7 @@ export const upsertCustomerFromOrder = async (ssOrder, options // Add options pa
                 // Return a mock customer object in dry run to allow order sync to proceed
                 // Ensure mock object matches Customer schema exactly, adding potentially expected null fields
                 customer = {
-                    id: existingCustomer.id,
+                    id: existingCustomer.id, // Use existing ID if found
                     email: email,
                     name: customerName,
                     shipstation_customer_id: shipstationCustomerIdStr ?? null,
@@ -97,10 +97,10 @@ export const upsertCustomerFromOrder = async (ssOrder, options // Add options pa
                     phone: customerUpdateData.phone,
                     is_residential: customerUpdateData.is_residential,
                     address_verified_status: customerUpdateData.address_verified_status,
-                    created_at: new Date(),
-                    updated_at: new Date(),
-                    customer_notes: null,
-                    address: null,
+                    created_at: new Date(), // Mock creation date
+                    updated_at: new Date(), // Mock update date
+                    customer_notes: null, // Required field
+                    address: null, // Add potentially expected field as null
                     country: null, // Add potentially expected field as null
                 };
             }
@@ -151,7 +151,7 @@ export const upsertCustomerFromOrder = async (ssOrder, options // Add options pa
                 const mockId = generateSecureMockId();
                 // Ensure mock object matches Customer schema exactly, adding potentially expected null fields
                 customer = {
-                    id: mockId,
+                    id: mockId, // Use numeric mock ID
                     email: email,
                     name: customerName,
                     shipstation_customer_id: shipstationCustomerIdStr ?? null,
@@ -168,8 +168,8 @@ export const upsertCustomerFromOrder = async (ssOrder, options // Add options pa
                     address_verified_status: customerCreateData.address_verified_status ?? null,
                     created_at: new Date(),
                     updated_at: new Date(),
-                    customer_notes: null,
-                    address: null,
+                    customer_notes: null, // Required field
+                    address: null, // Add potentially expected field as null
                     country: null, // Add potentially expected field as null
                 };
             }
@@ -239,14 +239,14 @@ ssItem, options // Add options parameter
                     // Return mock updated product, merging existing data with update data
                     // Ensure mock object matches Product schema exactly
                     return {
-                        id: existingBySku.id,
+                        id: existingBySku.id, // Use existing ID (number)
                         // Use simple string/null types from updateData
                         // Ensure name is always a string since it's required in the schema
                         name: extractStringValue(updateData.name, existingBySku.name) || '',
                         sku: extractStringValue(updateData.sku, existingBySku.sku),
                         shipstation_product_id: existingBySku.shipstation_product_id,
                         imageUrl: extractStringValue(updateData.imageUrl, existingBySku.imageUrl),
-                        createdAt: existingBySku.createdAt,
+                        createdAt: existingBySku.createdAt, // Keep original creation date
                         updatedAt: updateData.updatedAt,
                         // Add required fields with null or default values
                         notes: null,
@@ -301,7 +301,7 @@ ssItem, options // Add options parameter
                 const mockId = existingProductById?.id ?? -Math.floor(Math.random() * 1000000);
                 // Ensure mock object matches Product schema exactly
                 return {
-                    id: mockId,
+                    id: mockId, // Use mock number ID
                     // Use simple string/null types from createInput/updateInput and ensure we extract actual values
                     name: extractStringValue(createInput.name) ||
                         extractStringValue(updateInput.name) ||
@@ -314,7 +314,7 @@ ssItem, options // Add options parameter
                         : shipstationProductId,
                     imageUrl: extractStringValue(createInput.imageUrl) ||
                         extractStringValue(updateInput.imageUrl),
-                    createdAt: existingProductById?.createdAt ?? new Date(),
+                    createdAt: existingProductById?.createdAt ?? new Date(), // Use existing or new date
                     updatedAt: new Date(),
                     // Add required fields with null or default values
                     notes: null,
@@ -344,11 +344,11 @@ ssItem, options // Add options parameter
                 const mockId = generateSecureMockId(); // Use numeric mock ID
                 // Return a mock product object
                 return {
-                    id: mockId,
+                    id: mockId, // Use numeric mock ID
                     // Use simple string/null types from createInput
                     name: createInput.name ?? 'Unknown Product',
                     sku: trimmedSku,
-                    shipstation_product_id: null,
+                    shipstation_product_id: null, // Explicitly null as it's missing
                     imageUrl: createInput.imageUrl ?? null,
                     createdAt: new Date(),
                     updatedAt: new Date(),
@@ -464,7 +464,7 @@ export const upsertOrderWithItems = async (ssOrder, options // Add options param
                     const createData = {
                         ...dataForUpsert,
                         shipstationLineItemKey: lineItemKey,
-                        orderId: mockOrderId,
+                        orderId: mockOrderId, // Use mock order ID
                         productId: dbProduct.id, // Use mock product ID
                     };
                     const updateData = {
@@ -535,8 +535,8 @@ export const upsertOrderWithItems = async (ssOrder, options // Add options param
             // Return success with simulated counts
             return {
                 // Cannot return a real order object in dry run without creating it
-                order: null,
-                success: true,
+                order: null, // Or potentially a mock object if needed downstream
+                success: true, // Indicate simulation was successful
                 itemsProcessed,
                 itemsFailed,
                 errors,
@@ -679,8 +679,8 @@ export const upsertOrderWithItems = async (ssOrder, options // Add options param
         return {
             order: null,
             success: false,
-            itemsProcessed: 0,
-            itemsFailed: ssOrder.items?.length || 0,
+            itemsProcessed: 0, // Assume 0 if transaction failed before item processing completed
+            itemsFailed: ssOrder.items?.length || 0, // Assume all items failed if order processing failed
             errors: [...errors, { itemId: 'order', error: errorMsg }],
         };
     }

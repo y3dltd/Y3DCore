@@ -37,12 +37,12 @@ export default async function PrintPlanPage() {
   );
 }
 
-// Fetch tasks for the print plan (e.g., pending and in_progress)
+// Fetch tasks for the print plan (pending only)
 async function getPrintPlanTasks(): Promise<FetchedTask[]> {
   const tasks = await prisma.printOrderTask.findMany({
     where: {
       status: {
-        in: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
+        in: [PrintTaskStatus.pending],
       },
     },
     include: {

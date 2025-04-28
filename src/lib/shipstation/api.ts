@@ -386,7 +386,7 @@ export async function updateOrderItemsOptionsBatch(
     const key = item.lineItemKey;
     // Only attempt patch if lineItemKey exists (is not null/undefined)
     // and is actually a key present in itemsToPatch
-    if (key != null && itemsToPatch.hasOwnProperty(key)) {
+    if (key != null && Object.prototype.hasOwnProperty.call(itemsToPatch, key)) {
       // Ensure itemsToPatch[key] is an array before calling filter
       const optionsToPatch = Array.isArray(itemsToPatch[key]) ? itemsToPatch[key] : [];
 

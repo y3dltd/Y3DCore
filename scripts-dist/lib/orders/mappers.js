@@ -110,7 +110,7 @@ export const mapOrderToPrisma = (ssOrder, dbCustomerId) => ({
     shipped_date: convertShipStationDateToUTC(ssOrder.shipDate),
     tracking_number: ssOrder.trackingNumber,
     warehouse_id: ssOrder.advancedOptions?.warehouseId?.toString(),
-    last_sync_date: new Date(),
+    last_sync_date: new Date(), // Always update sync date on update/create
     shipstation_store_id: ssOrder.advancedOptions?.storeId,
     payment_method: ssOrder.paymentMethod,
     amount_paid: ssOrder.amountPaid,

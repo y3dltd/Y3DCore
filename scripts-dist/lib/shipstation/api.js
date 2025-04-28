@@ -116,10 +116,10 @@ export const syncShipstationData = async (syncParams = {}) => {
         // Default to OrderDate sort for historical sync, ModifyDate otherwise
         sortBy: syncParams.orderDateStart || syncParams.orderDateEnd ? 'OrderDate' : 'ModifyDate',
         sortDir: 'ASC',
-        pageSize: 100,
+        pageSize: 100, // Max efficient page size
         ...(syncParams.modifyDateStart && { modifyDateStart: syncParams.modifyDateStart }),
-        ...(syncParams.orderDateStart && { orderDateStart: syncParams.orderDateStart }),
-        ...(syncParams.orderDateEnd && { orderDateEnd: syncParams.orderDateEnd }),
+        ...(syncParams.orderDateStart && { orderDateStart: syncParams.orderDateStart }), // Add date filters
+        ...(syncParams.orderDateEnd && { orderDateEnd: syncParams.orderDateEnd }), // Add date filters
         ...(!syncParams.syncAllStatuses && { orderStatus: 'awaiting_shipment' }),
     };
     // NOTE: The default modifyDateStart logic remains commented out for now
@@ -171,7 +171,7 @@ export const syncShipstationData = async (syncParams = {}) => {
             ordersProcessed: ordersSuccessfullyProcessed,
             ordersFailed: ordersFailedToProcess,
             totalOrdersFetched: totalOrdersFetched,
-            pagesSynced: currentPage - 1,
+            pagesSynced: currentPage - 1, // Number of pages actually fetched
             totalPagesAvailable: totalPages === Infinity ? 'Unknown' : totalPages, // Total reported by API
         });
         return {
@@ -242,7 +242,7 @@ export async function updateOrderItemOptions(lineItemKey, newOptions, fetchedOrd
     });
     // Construct payload by spreading the fetched order and overriding items
     const payload = {
-        ...fetchedOrder,
+        ...fetchedOrder, // Spread all properties from the fetched order
         items: updatedOrderItems, // Override with the modified items array
     };
     // Only override units from inches to centimeters; numeric values remain unchanged
