@@ -8,7 +8,7 @@
 import { randomBytes } from 'crypto';
 
 
-function generateSecureRandomNumber(min: number, max: number): number {
+export function generateSecureRandomNumber(min: number, max: number): number {
   // Get a random value between 0 and 1
   const secureRandomValue = randomBytes(4).readUInt32LE() / 0x100000000;
   // Scale to the range
