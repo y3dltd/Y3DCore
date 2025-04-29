@@ -574,6 +574,65 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  const runTodayOptimization = async () => {
+    if (optimizing || polling) return;
+
+    setOptimizing(true);
+    setPolling(false);
+    setError(null);
+    startTimer();
+    setOptimizingRunId(null);
+
+    try {
+      // Use POST with a filter parameter for shipping date (today only)
+      const response = await fetch('/api/print-tasks/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filterDays: 1 }), // Only today
+      });
+
+      if (!response.ok) {
+        let errorBody = 'Failed to start optimization';
+        try {
+          const errorData = await response.json();
+          errorBody = errorData.error || response.statusText;
+        } catch {}
+        throw new Error(`${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      console.log('[PlannerPage] Start Today Optimization Response:', data);
+
+      if (data.success && data.runId) {
+        console.log(
+          `[PlannerPage] Today optimization started. Run ID: ${data.runId}. Starting polling.`
+        );
+        setOptimizingRunId(data.runId);
+        setPolling(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollOptimizationStatus(data.runId);
+        pollRef.current = setInterval(() => pollOptimizationStatus(data.runId), 5000);
+      } else if (data.success && data.taskSequence) {
+        console.log('[PlannerPage] Today optimization finished immediately.');
+        stopTimer();
+        setOptimizing(false);
+        await loadLatestPlan(false);
+      } else {
+        throw new Error(
+          data.error || 'Today optimization returned success but no run ID or result.'
+        );
+      }
+    } catch (err) {
+      setError(`Error starting today optimization: ${(err as Error).message}`);
+      console.error('Error starting today optimization:', err);
+      stopTimer();
+      setOptimizing(false);
+      setPolling(false);
+      setOptimizingRunId(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  };
+
   const runTodayTomorrowOptimization = async () => {
     if (optimizing || polling) return;
 
@@ -584,11 +643,11 @@ export default function PlannerPage(): React.ReactNode {
     setOptimizingRunId(null);
 
     try {
-      // Use POST with a filter parameter for shipping dates
+      // Use POST with a filter parameter for shipping dates (today + tomorrow)
       const response = await fetch('/api/print-tasks/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filterDays: 2 }), // Filter to today + tomorrow (2 days)
+        body: JSON.stringify({ filterDays: 2 }), // Today & tomorrow
       });
 
       if (!response.ok) {
@@ -643,6 +702,7 @@ export default function PlannerPage(): React.ReactNode {
       error={error}
       onRefresh={() => loadLatestPlan(false)} // Refresh without initial loading indicator
       onGeneratePlan={runNewOptimization}
+      onGenerateTodayPlan={runTodayOptimization}
       onGenerateTodayTomorrowPlan={runTodayTomorrowOptimization}
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
