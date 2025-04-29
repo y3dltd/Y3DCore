@@ -747,6 +747,7 @@ export default function PlannerPage(): React.ReactNode {
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
       recentRuns={savedRuns}
+      selectedRunId={selectedRunId}
       onSelectRun={setSelectedRunId}
     />
   );
