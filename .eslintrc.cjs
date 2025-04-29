@@ -50,6 +50,7 @@ module.exports = {
             position: 'before',
           },
         ],
+        pathGroupsExcludedImportTypes: ['builtin'],
       },
     ],
     'no-unused-vars': 'warn',
@@ -57,22 +58,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     'prefer-const': 'warn',
     eqeqeq: ['warn', 'smart'],
-    'import/order': [
-      'error',
-      {
-        groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
-        pathGroups: [
-          {
-            pattern: '@/**',
-            group: 'internal',
-            position: 'after',
-          },
-        ],
-        pathGroupsExcludedImportTypes: ['builtin'],
-        'newlines-between': 'always',
-        alphabetize: { order: 'asc', caseInsensitive: true },
-      },
-    ],
     'import/no-duplicates': 'error',
     'import/no-named-as-default': 'warn',
     'import/no-named-as-default-member': 'warn',

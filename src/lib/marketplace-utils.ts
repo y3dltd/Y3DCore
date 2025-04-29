@@ -67,34 +67,3 @@ export function formatMarketplaceName(marketplace: string | null | undefined, in
   const info = MARKETPLACE_DISPLAY[marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
   return includePrefix ? `via ${info.displayName}` : info.displayName;
 }
-
-/**
- * Creates a styled marketplace badge element
- * 
- * @param marketplace - The marketplace identifier
- * @returns className string for badge styling
- */
-export function getMarketplaceBadgeClass(marketplace: string | null | undefined): string {
-  if (!marketplace) return cn(MARKETPLACE_DISPLAY.unknown.badgeColor, MARKETPLACE_DISPLAY.unknown.textColor);
-  
-  const info = MARKETPLACE_DISPLAY[marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
-  return cn(info.badgeColor, info.textColor, 'px-2 py-1 rounded text-xs font-medium');
-}
-
-/**
- * Get background color class for marketplace
- */
-export function getMarketplaceBackgroundClass(marketplace: string | null | undefined): string {
-  if (!marketplace) return MARKETPLACE_DISPLAY.unknown.bgColor;
-  
-  const info = MARKETPLACE_DISPLAY[marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
-  return info.bgColor;
-}
-
-/**
- * Returns the full marketplace info object for styling
- */
-export function getMarketplaceInfo(marketplace: string | null | undefined): MarketplaceInfo {
-  if (!marketplace) return MARKETPLACE_DISPLAY.unknown;
-  return MARKETPLACE_DISPLAY[marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
-}

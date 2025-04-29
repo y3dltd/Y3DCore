@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { JsonViewer } from '@/components/ui/JsonViewer';
+import JsonViewer from '@/components/ui/JsonViewer';
 import { Textarea } from '@/components/ui/textarea';
 
 interface ReportDef {
