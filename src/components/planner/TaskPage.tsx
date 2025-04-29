@@ -2,7 +2,17 @@
 'use client';
 
 import { ArrowPathIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { Card, CardBody, Button, Spinner, Tooltip, Alert, Progress } from '@nextui-org/react';
+import {
+  Card,
+  CardBody,
+  Button,
+  Spinner,
+  Tooltip,
+  Alert,
+  Progress,
+  Select,
+  SelectItem,
+} from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
@@ -30,6 +40,9 @@ interface TaskPageProps {
   onGenerateTodayTomorrowPlan: () => void;
   setTasks: React.Dispatch<React.SetStateAction<PrintTaskCardProps[]>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  recentRuns?: { id: string; finishedAt: string }[];
+  selectedRunId?: string | null;
+  onSelectRun?: (id: string | null) => void;
 }
 
 const TaskPage: React.FC<TaskPageProps> = ({
@@ -45,6 +58,9 @@ const TaskPage: React.FC<TaskPageProps> = ({
   onGenerateTodayTomorrowPlan,
   setTasks,
   setError,
+  recentRuns = [],
+  selectedRunId = null,
+  onSelectRun,
 }) => {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(
     tasks.length > 0 ? tasks[0].taskId : null

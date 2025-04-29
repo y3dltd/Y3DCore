@@ -3,6 +3,7 @@
 
 import { PrintTaskStatus } from '@prisma/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Select } from '@nextui-org/react';
 
 // import { TaskTimeline } from './TaskTimeline'; // Temporarily commented out
 import TaskPage from '@/components/planner/TaskPage';
@@ -109,6 +110,8 @@ export default function PlannerPage(): React.ReactNode {
   });
   const [optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [savedRuns, setSavedRuns] = useState<{ id: string; finishedAt: string }[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
@@ -692,6 +695,43 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  // fetch recent runs once
+  useEffect(() => {
+    fetch('/api/ai/reports/runs?reportId=planner')
+      .then(r => r.json())
+      .then(json => {
+        setSavedRuns((json.runs || []).slice(0, 10));
+      })
+      .catch(console.error);
+  }, []);
+
+  // when dropdown changes load that plan
+  useEffect(() => {
+    if (!selectedRunId) return;
+    (async () => {
+      try {
+        setInitialLoading(true);
+        const res = await fetch(`/api/ai/reports/runs/${selectedRunId}`);
+        const data = await res.json();
+        if (data.success && data.run.outputJson) {
+          const parsed = JSON.parse(data.run.outputJson);
+          // reuse transform logic
+          if (Array.isArray(parsed.taskSequence)) {
+            const transformed = transformOptimizedTasks(
+              parsed.taskSequence,
+              parsed.inputJson?.jobList ?? [],
+              {},
+              new Map()
+            );
+            setOptimizedTasks(transformed);
+          }
+        }
+      } finally {
+        setInitialLoading(false);
+      }
+    })();
+  }, [selectedRunId, transformOptimizedTasks]);
+
   return (
     <TaskPage
       tasks={optimizedTasks}
@@ -706,6 +746,8 @@ export default function PlannerPage(): React.ReactNode {
       onGenerateTodayTomorrowPlan={runTodayTomorrowOptimization}
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
+      recentRuns={savedRuns}
+      onSelectRun={setSelectedRunId}
     />
   );
 }
