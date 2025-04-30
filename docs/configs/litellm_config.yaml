@@ -1,0 +1,85 @@
+# LiteLLM Proxy configuration for local development
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+
+# NOTE: All sensitive values are pulled from environment variables so that no
+#       credentials are committed to source control.
+
+model_list:
+  # --- Direct OpenAI Access with your API key -----------------------------------
+  # Most frequently used models in your codebase
+  - model_name: gpt-4o-mini           # Used in AI reports route
+    litellm_params:
+      model: openai/gpt-4o-mini        # Direct OpenAI access
+      api_key: os.environ/OPENAI_API_KEY
+    # Pricing override so LiteLLM can calculate spend logs
+    model_info:
+      input_cost_per_token: 0.000005   # $0.0005 per 100K tokens ≈ $0.000005 per 1K
+      output_cost_per_token: 0.000015
+
+  - model_name: gpt-4.1-mini          # Used in multiple scripts
+    litellm_params:
+      model: openai/gpt-4.1-mini       # Direct OpenAI access
+      api_key: os.environ/OPENAI_API_KEY
+    # Map pricing to the same tier as 4o-mini (until official pricing released)
+    model_info:
+      input_cost_per_token: 0.000005
+      output_cost_per_token: 0.000015
+
+  - model_name: o3                    # Used in print-tasks optimize route
+    litellm_params:
+      model: openai/gpt-4o             # Direct OpenAI access (o3 is alias for gpt-4o)
+      api_key: os.environ/OPENAI_API_KEY
+    # Pricing override – uses gpt-4o pricing
+    model_info:
+      input_cost_per_token: 0.00001   # $0.01 /1K
+      output_cost_per_token: 0.00003
+
+  # Standard models for compatibility
+  - model_name: gpt-3.5-turbo           # Commonly used model
+    litellm_params:
+      model: openai/gpt-3.5-turbo       # Direct OpenAI access
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: gpt-4                   # Commonly used model
+    litellm_params:
+      model: openai/gpt-4                # Direct OpenAI access
+      api_key: os.environ/OPENAI_API_KEY
+
+  # --- OpenRouter (example: Mistral 7B instruct) ----------------------------
+  - model_name: openrouter-mistral
+    litellm_params:
+      model: openrouter/mistralai/mistral-7b-instruct
+      api_key: os.environ/OPEN_ROUTER_API_KEY
+
+# ---------------------------------------------------------------------------
+# Optional: tweak proxy server settings (defaults shown)
+# ---------------------------------------------------------------------------
+server_settings:
+  host: 0.0.0.0
+  port: 4000
+
+# ---------------------------------------------------------------------------
+# Additional proxy behaviour
+# ---------------------------------------------------------------------------
+general_settings:
+  # Prevent LiteLLM from re-loading the .env (we already sourced it in the
+  # run-litellm-proxy.sh script) – this stops it from seeing DATABASE_URL.
+  load_dotenv: False
+  # Continue serving requests even if a DB is configured but unreachable.
+  allow_requests_on_db_unavailable: True
+
+# ---------------------------------------------------------------------------
+# Logging and tracking settings
+# ---------------------------------------------------------------------------
+litellm_settings:
+  # Enable verbose logging
+  verbose: True
+  # Built-in logging to PostgreSQL is already active by default
+  # Enable fallbacks for model reliability
+  fallbacks: ["openai-gpt35"]
+
+# ---------------------------------------------------------------------------
+# Optional: add additional env vars directly in the YAML. Empty by default –
+#           we rely on the developer's shell environment instead.
+# ---------------------------------------------------------------------------
+environment_variables: {}

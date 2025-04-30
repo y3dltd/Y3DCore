@@ -528,7 +528,11 @@ export async function POST(req: NextRequest) {
     // --- Call OpenAI API --- (Restored)
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
-    const openai = new OpenAI({ apiKey });
+    // Support for OpenAI API proxy (like LiteLLM) via environment variable
+    const openai = new OpenAI({ 
+      apiKey,
+      baseURL: process.env.OPENAI_API_BASE_URL 
+    });
     console.log('[API Optimize] Sending request to OpenAI for grouping suggestions...');
     const modelToUse = "o3"; // Changed back from o4-mini
     console.log(`[API Optimize] Using model: ${modelToUse}`);

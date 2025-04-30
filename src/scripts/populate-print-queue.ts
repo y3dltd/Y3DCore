@@ -335,7 +335,9 @@ async function extractOrderPersonalization(
 
   let rawResponse: string | null = null;
   const modelUsed = options.openaiModel;
-  const apiUrl = 'https://api.openai.com/v1/chat/completions';
+  // Support for OpenAI API proxy (like LiteLLM) via environment variable
+  const baseUrl = process.env.OPENAI_API_BASE_URL ?? 'https://api.openai.com/v1';
+  const apiUrl = `${baseUrl}/chat/completions`;
   const apiKey = options.openaiApiKey;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
