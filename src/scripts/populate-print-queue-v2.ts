@@ -3,6 +3,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
+
 import { closeLogStream, getLogger, initializeLogger } from '../lib/order-processing-v2/logger';
 import { runOrderProcessingV2 } from '../lib/order-processing-v2/orchestrator';
 import type { ProcessingOptionsV2 } from '../lib/order-processing-v2/types';

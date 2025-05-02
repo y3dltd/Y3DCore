@@ -79,10 +79,19 @@ __pycache__/
 *$py.class
 *.so
 /path/to/ven/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
+/pytest_cache/
+/.ruff_cache/
+/.mypy_cache/
 /myenv/
+
+# Python virtual envs (added)
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging artefacts (added)
+*.egg-info/
 
 # Logs and temporary files
 /logs/
@@ -150,3 +159,7 @@ dev.log
 .aider.input.history
 .aider.tags.cache.v4/
 .aider*
+
+# Playwright
+node_modules/
+/blob-report/

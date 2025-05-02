@@ -1,9 +1,10 @@
 // src/lib/order-processing-v2/amazonExtractor.ts
 
 import { OrderItem, Prisma, Product } from '@prisma/client';
-import { fetchAndProcessAmazonCustomization } from '../orders/amazon/customization'; // Assuming this path is correct
+
 import { getLogger } from './logger';
 import type { AmazonExtractionResult } from './types';
+import { fetchAndProcessAmazonCustomization } from '../orders/amazon/customization'; // Assuming this path is correct
 
 // Helper function to find the CustomizedURL (adapted from original script)
 function extractCustomizationUrl(item: OrderItem): string | null {

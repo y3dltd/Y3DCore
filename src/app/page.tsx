@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   ArrowUpRight,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
 import { StatsCard } from '@/components/dashboard/stats-card';
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/table'; // Import Table components
 import { CURRENCY_SYMBOL } from '@/lib/constants';
 import { prisma } from '@/lib/prisma';
-import dynamic from 'next/dynamic';
 const OrdersByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/OrdersByMarketplaceChart'), { ssr: false });
 const RevenueByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/RevenueByMarketplaceChart'), { ssr: false });
 const PrintTasksByMarketplaceChart = dynamic(() => import('@/components/dashboard/charts/PrintTasksByMarketplaceChart'), { ssr: false });
@@ -66,18 +66,18 @@ async function getDashboardData() {
     tasksNeedReviewCount,
     recentOrders,
   ] = await prisma.$transaction([
-    prisma.order.count({ where: { created_at: { gte: startOfToday, lt: now } } }),
-    prisma.order.count({ where: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } }),
-    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfToday, lt: now } } }),
-    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } }),
-    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { created_at: { gte: startOfToday, lt: now } } } }),
-    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { created_at: { gte: startOfYesterday, lt: prevWindowEnd } } } }),
-    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfWeek, lt: startOfTomorrow } } }),
-    prisma.order.aggregate({ _sum: { total_price: true }, where: { created_at: { gte: startOfLastWeek, lt: startOfWeek } } }),
+    prisma.order.count({ where: { order_date: { gte: startOfToday, lt: now } } }),
+    prisma.order.count({ where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { order_date: { gte: startOfToday, lt: now } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } }),
+    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { order_date: { gte: startOfToday, lt: now } } } }),
+    prisma.orderItem.aggregate({ _sum: { quantity: true }, where: { order: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { order_date: { gte: startOfWeek, lt: startOfTomorrow } } }),
+    prisma.order.aggregate({ _sum: { total_price: true }, where: { order_date: { gte: startOfLastWeek, lt: startOfWeek } } }),
     prisma.printOrderTask.count({ where: { status: 'pending' } }),
     prisma.printOrderTask.count({ where: { needs_review: true } }),
     prisma.order.findMany({
-      orderBy: { created_at: 'desc' },
+      orderBy: { order_date: 'desc' },
       take: 10,
       select: { id: true, shipstation_order_number: true, customer_name: true, marketplace: true, total_price: true, order_status: true },
     }),
@@ -94,7 +94,8 @@ async function getDashboardData() {
   function formatChange(current: number, previous: number, label: string) {
     if (previous > 0) {
       const change = ((current - previous) / previous) * 100;
-      return `${change.toFixed(1)}% vs ${label}`;
+      const sign = change > 0 ? '+' : ''; // prepend + for positive change
+      return `${sign}${change.toFixed(1)}% vs ${label}`;
     }
     return 'N/A';
   }

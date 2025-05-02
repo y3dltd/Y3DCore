@@ -1,6 +1,8 @@
-import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespace
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+import { Prisma, PrismaClient } from '@prisma/client'; // Import Prisma namespace
+
 // Import new functions
 import { renderCableClip, renderDualColourFromConfig, renderDualColourTagNew, renderRegKey } from '../lib/openscad';
 

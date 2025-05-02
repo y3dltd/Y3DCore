@@ -1,12 +1,14 @@
+import { Customer, Order, OrderItem, Product } from '@prisma/client';
 import bwipjs from 'bwip-js';
+
 // import fs from 'fs/promises'; // No longer needed
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
 
+import { prisma } from "@/lib/prisma";
+
 // Type definitions to match your database schema
 
-import { Customer, Order, OrderItem, Product } from '@prisma/client';
 
 // Type aliases for database records with optional fields
 type OrderRecord = Order & {

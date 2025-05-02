@@ -4,16 +4,26 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode", // Use Prettier as default formatter
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit", // Run ESLint fixes on save (explicitly triggered)
-    "source.organizeImports": "explicit" // Organize imports on save
+    "source.organiseImports": "explicit" // Organise imports on save
   },
+
   // ESLint settings
   "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+
   // Files settings
   "files.eol": "\n", // Ensure consistent line endings (Linux/macOS style)
   "files.insertFinalNewline": true, // Ensure files end with a newline
+  "files.watcherExclude": {
+    // Don’t watch these folders
+    "**/node_modules/**": true,
+    "**/.git/objects/**": true,
+    "**/.next/**": true
+  },
+
   // Prettier settings
-  "prettier.requireConfig": true, // Only use prettier when config is present
+  "prettier.requireConfig": true, // Only use Prettier when config is present
   "prettier.useEditorConfig": true, // Respect .editorconfig settings
+
   // Language-specific formatter settings
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -41,7 +51,8 @@
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  // Tailwind CSS IntelliSense settings (optional, but helpful)
+
+  // Tailwind CSS IntelliSense settings
   "tailwindCSS.includeLanguages": {
     "typescript": "javascript",
     "typescriptreact": "javascript"
@@ -50,11 +61,12 @@
     ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
     ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
   ],
-  // Removed from here - consolidated with other settings
+
   // TypeScript settings
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "typescript.preferences.importModuleSpecifier": "non-relative",
+
   // AI-assisted development settings
   "editor.inlineSuggest.enabled": true,
   "editor.acceptSuggestionOnCommitCharacter": false,
@@ -63,6 +75,7 @@
   "editor.suggest.preview": true,
   "editor.suggest.showWords": false,
   "editor.snippetSuggestions": "bottom",
+
   // Gemini Code Assist settings
   "geminicodeassist.experimental.promptFormatting": true,
   "geminicodeassist.codeRewrite.colorize": true,
@@ -71,11 +84,13 @@
   "geminicodeassist.codeGenerationPaneViewEnabled": true,
   "geminicodeassist.updateChannel": "Insiders",
   "geminicodeassist.project": "yorkshire3d",
+
   // GitLens AI settings
   "gitlens.ai.experimental.provider": "anthropic",
   "gitlens.ai.experimental.openai.model": "gpt-4o",
   "gitlens.codeLens.enabled": true,
   "gitlens.ai.largePromptWarningThreshold": 100000,
+
   // Improved autocompletion settings
   "editor.quickSuggestions": {
     "strings": true,
@@ -91,6 +106,7 @@
     "javascript": "javascriptreact",
     "typescript": "typescriptreact"
   },
+
   // Project-specific settings for Y3DHub
   "search.exclude": {
     "**/node_modules": true,
@@ -104,7 +120,49 @@
   "editor.linkedEditing": true,
   "terminal.integrated.defaultProfile.linux": "bash",
 
-  // Performance optimizations
+  // Cap Node’s heap in every Linux terminal
+  "terminal.integrated.env.linux": {
+    "NODE_OPTIONS": "--max_old_space_size=2048"
+  },
+
+  // WSL restart helper tasks as terminal profiles (Windows)
+  "terminal.integrated.profiles.windows": {
+    "WSL: Shutdown": {
+      "path": "wsl",
+      "args": ["--shutdown"]
+    },
+    "WSL: Terminate Ubuntu-22.04": {
+      "path": "wsl",
+      "args": ["--terminate", "Ubuntu-22.04"]
+    }
+  },
+  // (You can pick one as your default if you like)
+  "terminal.integrated.defaultProfile.windows": "WSL: Shutdown",
+
+  // Run these extensions locally (UI) instead of in the container
+  "remote.extensionKind": {
+    "dbaeumer.vscode-eslint": ["ui"],
+    "esbenp.prettier-vscode": ["ui"],
+    "Prisma.prisma": ["ui"],
+    "bradlc.vscode-tailwindcss": ["ui"],
+    "dsznajder.es7-react-js-snippets": ["ui"],
+    "christian-kohler.path-intellisense": ["ui"],
+    "ms-vscode.vscode-typescript-next": ["ui"],
+    "ms-playwright.playwright": ["ui"],
+    "github.vscode-github-actions": ["ui"],
+    "github.copilot": ["ui"],
+    "github.copilot-chat": ["ui"],
+    "codeium.codeium": ["ui"],
+    "Google.gemini-code-assist": ["ui"],
+    "eamodio.gitlens": ["ui"],
+    "usernamehw.errorlens": ["ui"],
+    "yoavbls.pretty-ts-errors": ["ui"],
+    "wix.vscode-import-cost": ["ui"],
+    "naumovs.color-highlight": ["ui"],
+    "streetsidesoftware.code-spell-checker": ["ui"]
+  },
+
+  // Performance optimisations
   "js/ts.implicitProjectConfig.checkJs": false,
   "typescript.tsserver.maxTsServerMemory": 4096,
   "typescript.tsserver.watchOptions": {
@@ -200,12 +258,17 @@
     "vshift",
     "vuepress"
   ],
+
   "[html]": {
     "editor.defaultFormatter": "vscode.html-language-features"
   },
+
+  // GitHub Pull Requests
   "githubPullRequests.experimental.chat": true,
   "githubPullRequests.experimental.notificationsView": true,
   "githubPullRequests.experimental.useQuickChat": true,
+
+  // GitHub Copilot Chat
   "github.copilot.chat.languageContext.typescript.enabled": true,
   "github.copilot.chat.scopeSelection": true,
   "github.copilot.nextEditSuggestions.enabled": true,
@@ -214,5 +277,23 @@
   "github.copilot.chat.completionContext.typescript.mode": "on",
   "github.copilot.chat.languageContext.inline.typescript.enabled": true,
   "github.copilot.chat.languageContext.fix.typescript.enabled": true,
-  "github.copilot.chat.generateTests.codeLens": true
+  "github.copilot.chat.generateTests.codeLens": true,
+
+  // Performance & UI tweaks
+  "editor.minimap.enabled": false, // Disable minimap for clarity
+  "editor.bracketPairColorisation.enabled": true, // Enable bracket-pair colourisation
+  "typescript.inlayHints.parameterNames.enabled": "all", // Show all parameter hints
+  "typescript.inlayHints.parameterNames.suppressWhenArgumentMatchesName": false,
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "telemetry.enableTelemetry": false, // Turn off telemetry
+  "telemetry.enableCrashReporter": false, // Turn off crash reporter
+  "git.autofetch": true, // Auto-fetch Git
+  "git.autofetchPeriod": 180, // Every 3 minutes
+  "workbench.startupEditor": "none", // Skip welcome screen
+  "explorer.confirmDragAndDrop": false, // Fewer dialogs
+  "explorer.confirmDelete": false,
+  "breadcrumbs.enabled": true, // Show breadcrumbs
+  "terminal.integrated.rendererType": "canvas", // Better terminal rendering
+  "editor.codeLens": true // Enable CodeLens
 }

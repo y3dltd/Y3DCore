@@ -114,9 +114,15 @@ export function convertToString(value: unknown): string {
     return value.toString();
   }
   
-  if (typeof value === 'object') {
-    if ('set' in value && value.set !== undefined) {
-      return convertToString(value.set);
+  if (typeof value === 'object' && value !== null) {
+    // Define a type for objects that might have a 'set' property
+    type MaybeHasSet = {
+      set?: unknown;
+    };
+    // Use the specific type guard
+    const potentialSet = value as MaybeHasSet;
+    if ('set' in potentialSet && potentialSet.set !== undefined) {
+      return convertToString(potentialSet.set);
     }
   }
   

@@ -1,8 +1,9 @@
 import type {
+  PrintTaskStatus,
+  Customer as PrismaCustomer,
+  Order as PrismaOrder,
   PrintOrderTask as PrismaPrintOrderTask,
   Product as PrismaProduct,
-  Order as PrismaOrder,
-  Customer as PrismaCustomer,
 } from '@prisma/client';
 
 // --- Client-Safe Serializable Types --- START ---
@@ -67,3 +68,36 @@ export interface PrintTaskData extends Omit<PrismaPrintOrderTask, 'order'> {
 }
 
 // --- Original Types (Potentially for Server-Side / Internal Use) --- END ---
+
+// --- UI Specific Types --- START ---
+
+// Represents a color associated with a task item or task itself
+export interface ColorItem {
+  color: string; // The actual color value/name used for styling
+  displayName: string; // User-friendly display name for the color
+}
+
+// Represents an individual item within a print task for UI display
+export interface PrintItem {
+  name: string; // Represents the Item Ref ID (e.g., PrintOrderTask ID)
+  quantity: number;
+  sku?: string; // Added SKU
+  productName?: string; // Added Product Name
+  customText: string | null;
+  color1: string | null;
+  color2: string | null;
+  status?: PrintTaskStatus; // Added status for individual items
+}
+
+// Props specifically for the PrintTaskCard UI component
+export interface PrintTaskCardProps {
+  taskId: string;
+  orderId: string;
+  status: PrintTaskStatus;
+  items: PrintItem[]; // List of items included in the task (now with item-specific details)
+  onStatusChange?: (taskId: string, newStatus: PrintTaskStatus) => void;
+  // New: colours explicitly loaded for this plate (from AI optimiser)
+  colorsLoaded?: string[];
+}
+
+// --- UI Specific Types --- END ---

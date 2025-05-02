@@ -7,7 +7,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:import/errors',
     'plugin:import/warnings',
-    'plugin:import/typescript'
+    'plugin:import/typescript',
   ],
   plugins: ['@typescript-eslint', 'import'],
   settings: {
@@ -15,55 +15,64 @@ module.exports = {
       typescript: {},
     },
   },
+  parserOptions: {
+    project: './tsconfig.json',
+  },
   rules: {
-    'import/order': ['error', {
-      groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
-      'newlines-between': 'always',
-      alphabetize: {
-        order: 'asc',
-        caseInsensitive: true
+    'import/order': [
+      'error',
+      {
+        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
+        'newlines-between': 'always',
+        alphabetize: {
+          order: 'asc',
+          caseInsensitive: true,
+        },
+        pathGroups: [
+          {
+            pattern: '@/**',
+            group: 'internal',
+            position: 'before',
+          },
+          {
+            pattern: '@components/**',
+            group: 'internal',
+            position: 'before',
+          },
+          {
+            pattern: '@lib/**',
+            group: 'internal',
+            position: 'before',
+          },
+          {
+            pattern: '@hooks/**',
+            group: 'internal',
+            position: 'before',
+          },
+        ],
       },
-      pathGroups: [
-        {
-          pattern: '@/**',
-          group: 'internal',
-          position: 'before'
-        },
-        {
-          pattern: '@components/**',
-          group: 'internal',
-          position: 'before'
-        },
-        {
-          pattern: '@lib/**',
-          group: 'internal',
-          position: 'before'
-        },
-        {
-          pattern: '@hooks/**',
-          group: 'internal',
-          position: 'before'
-        }
-      ]
-    }],
+    ],
     'no-unused-vars': 'warn',
-    '@typescript-eslint/explicit-function-return-type': 'warn', 
+    '@typescript-eslint/explicit-function-return-type': 'warn',
     '@typescript-eslint/no-explicit-any': 'warn',
     'prefer-const': 'warn',
-    'eqeqeq': ['warn', 'smart'],
-    'import/order': ['error', {
-      groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
-      pathGroups: [
-        {
-          pattern: '@/**',
-          group: 'internal',
-          position: 'after',
-        },
-      ],
-      pathGroupsExcludedImportTypes: ['builtin'],
-      'newlines-between': 'always',
-      alphabetize: { order: 'asc', caseInsensitive: true },
-    }],
+    eqeqeq: ['warn', 'smart'],
+    'import/order': [
+      'error',
+      {
+        groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
+        pathGroups: [
+          {
+            pattern: '@/**',
+            group: 'internal',
+            position: 'after',
+          },
+        ],
+        pathGroupsExcludedImportTypes: ['builtin'],
+        'newlines-between': 'always',
+        alphabetize: { order: 'asc', caseInsensitive: true },
+      },
+    ],
     'import/no-duplicates': 'error',
     'import/no-named-as-default': 'warn',
     'import/no-named-as-default-member': 'warn',
@@ -72,5 +81,6 @@ module.exports = {
     'no-useless-escape': 'warn',
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
+    '@typescript-eslint/no-unnecessary-type-constraint': 'off',
   },
 };

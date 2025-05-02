@@ -6,12 +6,13 @@ import { OrdersPagination } from '@/components/orders-pagination';
 import { PrintQueueFilters } from '@/components/print-queue-filters';
 import { PrintQueueHeader } from '@/components/print-queue-header';
 import { PrintQueueTable } from '@/components/print-queue-table';
-import { ClientPrintTaskData } from '@/types/print-tasks';
 import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals';
-import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions'; 
-import { PrintQueuePageSearchParams } from './page'; 
-import { PrintQueueModalProvider } from '@/contexts/PrintQueueModalContext'; 
-import { PrintTaskDetailModal } from '@/components/print-task-detail-modal'; 
+import { PrintTaskDetailModal } from '@/components/print-task-detail-modal';
+import { PrintQueueModalProvider } from '@/contexts/PrintQueueModalContext';
+import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
+import { ClientPrintTaskData } from '@/types/print-tasks';
+
+import { PrintQueuePageSearchParams } from './page';
 
 interface PrintQueueClientProps {
   tasks: ClientPrintTaskData[];
@@ -19,8 +20,9 @@ interface PrintQueueClientProps {
   page: number;
   limit: number;
   productNames: string[];
-  initialFilters: PrintQueuePageSearchParams; 
-  formattedNow: string; 
+  availableShippingMethods?: string[];
+  initialFilters: PrintQueuePageSearchParams;
+  formattedNow: string;
 }
 
 export default function PrintQueueClient({
@@ -29,6 +31,7 @@ export default function PrintQueueClient({
   page,
   limit,
   productNames,
+  availableShippingMethods,
   initialFilters,
   formattedNow,
 }: PrintQueueClientProps) {
@@ -51,13 +54,13 @@ export default function PrintQueueClient({
         <PrintQueueFilters
           currentFilters={initialFilters} // Pass validated params as current filters
           availableProductNames={productNames} // Pass available product names
-        // availableShippingMethods might be needed if PrintQueueFilters expects it
+          availableShippingMethods={availableShippingMethods}
         />
         {/* Wrap Table and Modal with Provider */}
         <PrintQueueModalProvider>
-          <PrintQueueTable 
-            data={tasks} 
-            onSelectTask={(task) => {
+          <PrintQueueTable
+            data={tasks}
+            onSelectTask={task => {
               // Use the context directly from here
               const modal = document.querySelector('[data-modal-component="print-task-modal"]');
               if (modal && 'setSelectedTask' in modal && 'setIsModalOpen' in modal) {
@@ -65,7 +68,7 @@ export default function PrintQueueClient({
                 (modal as any).setSelectedTask(task);
                 (modal as any).setIsModalOpen(true);
               }
-            }} 
+            }}
           />
           <PrintTaskDetailModal />
         </PrintQueueModalProvider>

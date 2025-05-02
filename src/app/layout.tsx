@@ -7,6 +7,7 @@ import Navbar from '@/components/layout/navbar';
 import { cn } from '@/lib/utils'; // Import cn utility
 import '../styles/color-badges.css';
 import './globals.css';
+import NextUIWrapper from '@/components/layout/NextUIWrapper';
 
 // Initialize Inter font
 const inter = Inter({
@@ -48,9 +49,11 @@ export default function RootLayout({
       >
         {/* Wrap content with SessionProvider */}
         <SessionProviderWrapper>
-          <Navbar />
-          <main className="flex-grow px-4 py-4">{children}</main>
-          <Footer /> {/* Add Footer here */}
+          <NextUIWrapper>
+            <Navbar />
+            <main className="flex-grow px-4 py-4">{children}</main>
+            <Footer />
+          </NextUIWrapper>
         </SessionProviderWrapper>
       </body>
     </html>

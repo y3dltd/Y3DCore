@@ -20,6 +20,7 @@ interface OrdersSearchFormProps {
   currentMarketplace?: string;
   currentOrderDateStart?: string;
   currentOrderDateEnd?: string;
+  currentReadyToPrint?: boolean;
   statuses: string[];
   marketplaces: string[];
 }
@@ -30,6 +31,7 @@ export function OrdersSearchForm({
   currentMarketplace,
   currentOrderDateStart,
   currentOrderDateEnd,
+  currentReadyToPrint,
   statuses,
   marketplaces,
 }: OrdersSearchFormProps) {
@@ -118,6 +120,21 @@ export function OrdersSearchForm({
             Order Date To
           </Label>
           <DatePicker name="orderDateEnd" value={currentOrderDateEnd} />
+        </div>
+
+        {/* Ready to Print Checkbox */}
+        <div className="lg:col-start-3 flex items-center h-9">
+          <input
+            id="readyToPrint"
+            name="readyToPrint"
+            type="checkbox"
+            value="true"
+            defaultChecked={currentReadyToPrint}
+            className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring mr-2"
+          />
+          <Label htmlFor="readyToPrint" className="text-sm font-medium">
+            Only Ready to Print
+          </Label>
         </div>
 
         {/* Submit Button */}

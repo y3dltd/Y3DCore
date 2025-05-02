@@ -1,10 +1,14 @@
 # ---
+
 # title: Code Structure
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
-# Code Structure
+# Code Structure Guide
 
 This document provides a detailed explanation of the Y3DHub codebase structure, focusing on the organization of modules, scripts, and their interactions.
 
@@ -12,7 +16,7 @@ This document provides a detailed explanation of the Y3DHub codebase structure, 
 
 The codebase follows a clear directory structure that separates concerns and promotes maintainability:
 
-```
+```text
 src/
 ├── lib/               # Core library modules
 │   ├── orders/        # Order-related functionality
@@ -60,22 +64,22 @@ src/
 
 The orders module handles order synchronization with ShipStation and related data mapping.
 
-#### Key Files:
+#### Key Files
 
 - **`sync.ts`**: Core order synchronization logic.
-  - `syncAllPaginatedOrders(options)`: Synchronizes all orders from ShipStation based on modification date, handling pagination and retries. Uses `upsertOrderWithItems`.
-  - `syncRecentOrders(options)`: Synchronizes recent orders based on a time window (handles timezone conversion for ShipStation). Uses `syncAllPaginatedOrders`.
-  - `syncSingleOrder(orderId, options)`: Synchronizes a specific order by ShipStation ID. Uses `upsertOrderWithItems`.
-  - `syncShipStationTags(options)`: Synchronizes ShipStation tags.
-  - `upsertOrderWithItems(orderData, progressId, options)`: Upserts a single order, its customer, products, and items into the database.
-  - `upsertCustomerFromOrder(ssOrder, options)`: Upserts customer based on email.
-  - `upsertProductFromItem(tx, ssItem, options)`: Upserts product based on SKU or ShipStation Product ID within a transaction.
+- `syncAllPaginatedOrders(options)`: Synchronizes all orders from ShipStation based on modification date, handling pagination and retries. Uses `upsertOrderWithItems`.
+- `syncRecentOrders(options)`: Synchronizes recent orders based on a time window (handles timezone conversion for ShipStation). Uses `syncAllPaginatedOrders`.
+- `syncSingleOrder(orderId, options)`: Synchronizes a specific order by ShipStation ID. Uses `upsertOrderWithItems`.
+- `syncShipStationTags(options)`: Synchronizes ShipStation tags.
+- `upsertOrderWithItems(orderData, progressId, options)`: Upserts a single order, its customer, products, and items into the database.
+- `upsertCustomerFromOrder(ssOrder, options)`: Upserts customer based on email.
+- `upsertProductFromItem(tx, ssItem, options)`: Upserts product based on SKU or ShipStation Product ID within a transaction.
 - **`mappers.ts`**: Functions for mapping data between ShipStation API format and Prisma schema.
-  - `mapAddressToCustomerFields(addr)`
-  - `mapSsItemToProductData(ssItem)`
-  - `mapSsItemToOrderItemData(ssItem, productId)`
-  - `mapOrderToPrisma(ssOrder, dbCustomerId?)`
-  - Includes timezone conversion for dates (`convertShipStationDateToUTC`).
+- `mapAddressToCustomerFields(addr)`
+- `mapSsItemToProductData(ssItem)`
+- `mapSsItemToOrderItemData(ssItem, productId)`
+- `mapOrderToPrisma(ssOrder, dbCustomerId?)`
+- Includes timezone conversion for dates (`convertShipStationDateToUTC`).
 - **`metrics.ts`**: (Placeholder) Intended for order metrics collection.
 - **`status.ts`**: (Placeholder) Intended for order status reporting.
 
@@ -83,12 +87,12 @@ The orders module handles order synchronization with ShipStation and related dat
 
 Handles fetching and processing Amazon-specific customization data.
 
-- **`customization.ts`**:
-  - `fetchAndProcessAmazonCustomization(url)`: Fetches the zip file from the `CustomizedURL`, extracts the JSON, and parses it (parsing logic might need refinement based on actual JSON structure).
+- **`customization.ts`**
+- `fetchAndProcessAmazonCustomization(url)`: Fetches the zip file from the `CustomizedURL`, extracts the JSON, and parses it (parsing logic might need refinement based on actual JSON structure).
 - **`sync.ts`**: Contains the library logic for finding Amazon orders needing customization sync and orchestrating the fetch/process/store flow (used by `populate-print-queue.ts` now, but intended for `order-sync.ts amazon sync` command).
-  - `syncCustomizationFiles(options)`: Finds items with URLs and calls `processOrderItem`.
-  - `findOrderItemsToProcess(options)`: Finds eligible Amazon order items.
-  - `processOrderItem(item, options)`: Handles fetching/processing for a single item and updates `AmazonCustomizationFile` table.
+- `syncCustomizationFiles(options)`: Finds items with URLs and calls `processOrderItem`.
+- `findOrderItemsToProcess(options)`: Finds eligible Amazon order items.
+- `processOrderItem(item, options)`: Handles fetching/processing for a single item and updates `AmazonCustomizationFile` table.
 - **`update.ts`**: (Placeholder) Intended for logic to update order items/tasks _after_ customization data is fetched.
 - **`fix.ts`**: (Placeholder) Intended for fixing orders with missing personalization.
 - **`workflow.ts`**: (Skeleton) Intended to orchestrate the full Amazon workflow (sync, update).
@@ -97,11 +101,11 @@ Handles fetching and processing Amazon-specific customization data.
 
 Handles print task creation and potentially other task-related logic.
 
-#### Key Files:
+#### Key Files
 
 - **`creation.ts`**: (To be created) Will contain the core logic moved from `populate-print-queue.ts` for creating tasks, including AI extraction and database interaction.
-  - `extractOrderPersonalization(...)`: (To be moved here) Handles AI call for personalization.
-  - `createOrUpdateTasksInTransaction(...)`: (To be moved here) Handles DB upsert logic for tasks.
+- `extractOrderPersonalization(...)`: (To be moved here) Handles AI call for personalization.
+- `createOrUpdateTasksInTransaction(...)`: (To be moved here) Handles DB upsert logic for tasks.
 - **`update.ts`**: (Placeholder) Intended for task update logic.
 - **`cleanup.ts`**: (Placeholder) Intended for task cleanup logic.
 - **`metrics.ts`**: (Placeholder) Intended for task metrics.
@@ -111,7 +115,7 @@ Handles print task creation and potentially other task-related logic.
 
 (Placeholder/TBD) Intended for general utility functions for system maintenance and diagnostics.
 
-#### Key Files (Examples):
+#### Key Files (Examples)
 
 - **`check.ts`**: System verification.
 - **`fix.ts`**: Issue remediation.
@@ -122,7 +126,7 @@ Handles print task creation and potentially other task-related logic.
 
 Provides utilities used across multiple modules.
 
-#### Key Files:
+#### Key Files
 
 - **`shipstation.ts`**: ShipStation API client (Axios instance, helper functions like `listTags`).
 - **`database.ts`**: Prisma client wrapper/instance.
@@ -156,12 +160,12 @@ Provides a command-line interface for generating print tasks.
 
 The modules interact with each other in a structured manner:
 
-1.  **Scripts** act as entry points, parse arguments, and call functions within **lib modules**.
-2.  **`lib/orders/sync.ts`** interacts with **ShipStation API** (via `lib/shared/shipstation.ts`) and the **database** (via `lib/shared/database.ts` and mappers) to sync order data.
-3.  **`scripts/populate-print-queue.ts`** uses **`lib/order-processing.ts`** to find orders, **`lib/orders/amazon/customization.ts`** to fetch Amazon data, its own internal AI logic (`extractOrderPersonalization`), and database logic (`createOrUpdateTasksInTransaction`) to manage print tasks.
-4.  **All modules** utilize **shared utilities** (`lib/shared/`) for common operations like logging, metrics, and date handling.
+- **Scripts** act as entry points, parse arguments, and call functions within **lib modules**.
+- **`lib/orders/sync.ts`** interacts with **ShipStation API** (via `lib/shared/shipstation.ts`) and the **database** (via `lib/shared/database.ts` and mappers) to sync order data.
+- **`scripts/populate-print-queue.ts`** uses **`lib/order-processing.ts`** to find orders, **`lib/orders/amazon/customization.ts`** to fetch Amazon data, its own internal AI logic (`extractOrderPersonalization`), and database logic (`createOrUpdateTasksInTransaction`) to manage print tasks.
+- **All modules** utilize **shared utilities** (`lib/shared/`) for common operations like logging, metrics, and date handling.
 
-```
+```text
 [scripts/order-sync.ts] ---> [lib/orders/sync.ts] ---> [lib/shared/*] ---> [ShipStation API]
                                      |                     |
                                      v                     v
@@ -180,11 +184,11 @@ The modules interact with each other in a structured manner:
 
 The codebase implements a consistent error handling strategy:
 
-1.  **Try-catch blocks** in key functions.
-2.  **Retries** for transient errors in ShipStation API calls (`getShipstationOrders`).
-3.  **Transaction rollbacks** for database operations using `prisma.$transaction`.
-4.  **Detailed error logging** using Pino, including context.
-5.  **Graceful degradation** (e.g., creating placeholder tasks on failure).
+- **Try-catch blocks** in key functions.
+- **Retries** for transient errors in ShipStation API calls (`getShipstationOrders`).
+- **Transaction rollbacks** for database operations using `prisma.$transaction`.
+- **Detailed error logging** using Pino, including context.
+- **Graceful degradation** (e.g., creating placeholder tasks on failure).
 
 ## Global Options
 
@@ -201,40 +205,44 @@ For more details on specific aspects of the system, see:
 - [API_REFERENCE.md](./API_REFERENCE.md) for documentation on API endpoints
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for help with common issues
 - [TESTING.md](./TESTING.md) for information on testing strategies and test coverage
-# Code Structure Guide
 
-This document provides an overview of the key directories and files in the Y3DHub project.
+## Alternate Overview (File Structure Focus)
 
-## Project Root
+This section provides an overview focused just on the key directories and files.
+
+### Project Root
 
 - `src/` – Main application source
-  - `app/` – Next.js App Router pages and API routes  
-    - `api/` – Backend API endpoints (orders, tasks, auth, etc.)  
-    - `orders/` – UI pages for order management  
-    - `print-queue/` – UI pages for print task workflows  
-  - `components/` – Shared React components  
-  - `lib/` – Reusable libraries  
-    - `db/` – Prisma database utilities  
-    - `shipstation/` – ShipStation API integration  
-    - `ai/` – OpenAI integration utilities  
-    - `openscad/` – OpenSCAD model generation scripts  
-  - `scripts/` – TypeScript scripts for backend jobs  
-    - `sync-orders.ts` – Sync orders from ShipStation  
-    - `populate-print-queue.ts` – Generate print tasks  
-    - `complete-shipped-print-tasks.ts` – Close completed tasks  
-  - `types/` – Custom TypeScript type definitions  
-  - `workers/` – Background worker processes  
-    - `stl-render-worker.ts` – STL rendering worker
+
+  - `app/` – Next.js App Router pages and API routes
+  - `api/` – Backend API endpoints (orders, tasks, auth, etc.)
+  - `orders/` – UI pages for order management
+  - `print-queue/` – UI pages for print task workflows
+  - `components/` – Shared React components
+  - `lib/` – Reusable libraries
+  - `db/` – Prisma database utilities
+  - `shipstation/` – ShipStation API integration
+  - `ai/` – OpenAI integration utilities
+  - `openscad/` – OpenSCAD model generation scripts
+  - `scripts/` – TypeScript scripts for backend jobs
+  - `sync-orders.ts` – Sync orders from ShipStation
+  - `populate-print-queue.ts` – Generate print tasks
+  - `complete-shipped-print-tasks.ts` – Close completed tasks
+  - `types/` – Custom TypeScript type definitions
+  - `workers/` – Background worker processes
+  - `stl-render-worker.ts` – STL rendering worker
 
 - `prisma/` – Prisma schema and migrations
 
-- `scripts/` – Shell automation scripts  
+- `scripts/` – Shell automation scripts
+
   - `workflow.sh` – Full end-to-end workflow runner
 
 - `openscad/` – Raw OpenSCAD model files and scripts
 
-- `docs/` – Project documentation  
-  - `guides/` – How-to and conceptual guides  
+- `docs/` – Project documentation
+
+  - `guides/` – How-to and conceptual guides
 
 - `public/` – Static assets and generated STL files
 

@@ -52,12 +52,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 import { cn } from '@/lib/utils';
-
 import { ClientPrintTaskData } from '@/types/print-tasks';
 
 import { PrintTaskDetailModal } from './print-task-detail-modal';
-import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 
 // Define a product type suitable for client components (Decimals as strings)
 interface SerializableProduct extends Omit<PrismaProduct, 'weight' | 'item_weight_value'> {

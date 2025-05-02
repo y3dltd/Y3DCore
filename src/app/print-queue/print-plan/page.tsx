@@ -1,7 +1,8 @@
-import { PrintTaskData } from '@/types/print-tasks';
-import { prisma } from '@/lib/prisma';
 import { PrintTaskStatus, Prisma } from '@prisma/client';
+
 import { getPrintPlan } from '@/lib/ai/print-plan';
+import { prisma } from '@/lib/prisma';
+import { PrintTaskData } from '@/types/print-tasks';
 
 // Define the type returned by the specific prisma query
 type FetchedTask = Prisma.PrintOrderTaskGetPayload<{
@@ -36,12 +37,12 @@ export default async function PrintPlanPage() {
   );
 }
 
-// Fetch tasks for the print plan (e.g., pending and in_progress)
+// Fetch tasks for the print plan (pending only)
 async function getPrintPlanTasks(): Promise<FetchedTask[]> {
   const tasks = await prisma.printOrderTask.findMany({
     where: {
       status: {
-        in: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
+        in: [PrintTaskStatus.pending],
       },
     },
     include: {

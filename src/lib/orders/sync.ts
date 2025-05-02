@@ -1,14 +1,14 @@
 import { Customer, Prisma, Product } from '@prisma/client';
 import axios from 'axios';
 
-import { prisma } from '../shared/database'; // Use relative path
-import { logger } from '../shared/logging'; // Import logger
 import {
   mapAddressToCustomerFields,
   mapOrderToPrisma,
   mapSsItemToOrderItemData,
   mapSsItemToProductData,
 } from './mappers';
+import { prisma } from '../shared/database'; // Use relative path
+import { logger } from '../shared/logging'; // Import logger
 // --- Imports ---
 import { recordMetric } from '../shared/metrics'; // Import the recordMetric helper
 import {
@@ -28,6 +28,8 @@ import {
   markSyncCompleted,
   updateSyncProgress,
 } from '../shipstation/sync-progress'; // Import progress functions
+import { sendNewOrderNotification } from '../email/order-notifications';
+import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
 
 // Removed unused import: format from 'date-fns-tz'
 
@@ -635,8 +637,25 @@ async function upsertOrderWithItems(
           itemsFailed: itemsFailed.toString(),
         },
       });
+
+      // Send notifications for the newly processed order
+      try {
+        // Get admin emails from environment for notification
+        const adminEmails = process.env.NEW_ORDER_NOTIFICATION_EMAILS?.split(',').map(email => email.trim());
+        if (adminEmails && adminEmails.length > 0) {
+          await sendNewOrderNotification(orderData, {
+            adminEmails,
+            // Optional filter for premium orders only
+            onlyPremiumOrders: process.env.NOTIFY_PREMIUM_ORDERS_ONLY === 'true',
+          });
+        }
+      } catch (notificationError) {
+        // Log but don't fail the sync process if notifications fail
+        logger.warn(`Notification error for order ${orderData.orderNumber}: ${notificationError instanceof Error ? notificationError.message : 'Unknown error'}`);
+      }
     }
 
+    // Return results from successful transaction
     return { success, itemsProcessed, itemsFailed, errors };
   } catch (error: unknown) {
     // Changed any to unknown
@@ -675,6 +694,13 @@ async function upsertOrderWithItems(
         itemsFailed: itemsFailed.toString(),
       },
     });
+
+    // Successful sync; consider sending success notification (optional) or simply continue
+    await markSyncCompleted(
+      progressId,
+      success,
+      success ? undefined : 'Sync completed with errors'
+    );
 
     return { success, itemsProcessed, itemsFailed, errors };
   }
@@ -1126,22 +1152,21 @@ export async function syncSingleOrder(
       throw new Error(errorMsg);
     }
 
+    // Mark progress as completed for single order sync
     await markSyncCompleted(progressId, overallSuccess, errorMsg);
+
     return { success: overallSuccess, error: errorMsg };
-  } catch (error: unknown) {
-    // Changed any to unknown
-    logger.error(`[Single Order Sync] Error syncing order ${orderIdentifier}:`, {
-      error: error instanceof Error ? error.message : error,
-    });
-    errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    if (progressId) {
-      try {
-        await markSyncCompleted(progressId, false, errorMsg);
-      } catch {
-        /* ignore progress update errors */
-      }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`[Single Order Sync] Fatal error during sync process: ${errorMsg}`, { error });
+    try {
+      await markSyncCompleted(progressId, false, `Fatal error: ${errorMsg}`);
+    } catch (markError) {
+      logger.warn('[Single Order Sync] Failed to mark progress during error handling', {
+        error: markError,
+      });
     }
-    return { success: overallSuccess, error: errorMsg };
+    return { success: false, error: errorMsg }; // Return failure state
   }
 }
 
@@ -1160,7 +1185,7 @@ export async function syncShipStationTags(options?: SyncOptions): Promise<void> 
     await updateSyncProgress(progressId, {
       status: 'running',
       totalOrders: ssTags.length,
-    }); // Use correct field name
+    });
 
     let processedCount = 0;
     for (const ssTag of ssTags) {
@@ -1184,30 +1209,25 @@ export async function syncShipStationTags(options?: SyncOptions): Promise<void> 
       }
       processedCount++;
       // Still increment progress in dry run to simulate
-      await incrementProcessedOrders(progressId); // Correct function name
+      await incrementProcessedOrders(progressId);
     }
 
     logger.info(
       `[Sync Tags] Finished. Processed ${processedCount} tags from ShipStation.${options?.dryRun ? ' (DRY RUN)' : ''}`
     );
   } catch (error: unknown) {
-    // Changed any to unknown
     success = false;
     errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error('[Sync Tags] Error synchronizing ShipStation tags:', {
-      error,
-    });
-    // Only increment if progressId is valid
+    logger.error('[Sync Tags] Error synchronizing ShipStation tags:', { error });
     if (progressId) {
       try {
-        await incrementFailedOrders(progressId, 1); // Correct function name
+        await incrementFailedOrders(progressId, 1);
       } catch (incError: unknown) {
         logger.warn('[Sync Tags] Failed to increment failed items count during error handling', {
           error: incError,
         });
       }
     }
-    // Do not re-throw, just mark progress as failed
   } finally {
     if (progressId) {
       try {

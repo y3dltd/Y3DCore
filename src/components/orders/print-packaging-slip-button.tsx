@@ -1,9 +1,10 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { SerializableOrderDetailsData } from '@/types/order-details';
 import { FileDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { SerializableOrderDetailsData } from '@/types/order-details';
 
 interface PrintPackagingSlipButtonProps {
   order: SerializableOrderDetailsData;
@@ -18,7 +19,7 @@ export function PrintPackagingSlipButton({ order }: PrintPackagingSlipButtonProp
     setError(null);
 
     try {
-      const response = await fetch(`/api/generate-pdf/${order.id}`);
+      const response = await fetch(`/api/generate-pdf/packing-slips?ids=${order.id}`);
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
@@ -19,13 +20,17 @@ export async function GET(request: Request) {
   }
 
   const orders = await prisma.order.findMany({
-    where: { created_at: { gte: start, lt: end } },
-    select: { created_at: true, total_price: true }
+    where: { order_date: { gte: start, lt: end } },
+    select: { order_date: true }
   });
 
   const countsMap: Record<string, number> = {};
   orders.forEach(order => {
-    const dt = order.created_at;
+    if (!order.order_date) {
+      console.warn(`Order found with null order_date, skipping in chart.`);
+      return;
+    }
+    const dt = order.order_date;
     const key = groupByHour
       ? dt.getHours().toString().padStart(2, '0') + ':00'
       : dt.toISOString().slice(0, 10);

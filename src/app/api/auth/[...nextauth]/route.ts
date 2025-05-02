@@ -1,5 +1,6 @@
-import { authOptions } from '@/lib/auth'; // Import from lib
 import NextAuth from 'next-auth';
+
+import { authOptions } from '@/lib/auth'; // Import from lib
 
 // Remove local definition and unused imports
 // import { PrismaAdapter } from '@auth/prisma-adapter';
