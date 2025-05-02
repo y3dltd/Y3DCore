@@ -19,5 +19,5 @@ jobs:
       - run: npm install
       # Temporarily skip audit checks due to known vulnerabilities
       # - run: npm audit --production
-      # Temporarily skip tests until all PRs are complete
+      # Temporarily skip tests until authentication middleware is fixed and all PRs are complete
       # - run: npm test
