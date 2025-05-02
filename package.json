@@ -163,6 +163,6 @@
     "tsx": "^4.19.3",
     "typescript": "^5",
     "vitest": "^3.1.2",
-    "vitest-fetch-mock": "^0.2.0"
+    "vitest-fetch-mock": "^0.4.5"
   }
 }
