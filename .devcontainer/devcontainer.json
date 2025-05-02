@@ -32,7 +32,8 @@
         },
         "[jsonc]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
-        }
+        },
+        "git.autofetch": true // Enable automatic git fetch
       }
     }
   },
@@ -41,7 +42,7 @@
   "forwardPorts": [3000, 3306],
 
   // /*  */Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "npm install && npx prisma migrate dev --name init",
+  "postCreateCommand": "npm install && npx prisma migrate dev --name init && git config --local pull.ff only && echo 'cd() { builtin cd \"$@\"; if [ -d .git ] && [[ \"$(pwd)\" == *\"y3dhub\"* ]]; then echo \"Auto-pulling y3dhub from remote...\"; git fetch && git pull --ff-only; fi; }' >> ~/.bashrc",
 
   // Use 'initializeCommand' to copy .env.example if .env doesn't exist
   "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
