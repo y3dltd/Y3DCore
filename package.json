@@ -61,6 +61,8 @@
     "@radix-ui/react-tooltip": "^1.1.8",
     "@scaleleap/selling-partner-api-sdk": "^8.4.0",
     "@sendgrid/mail": "^7.7.0",
+    "@smithy/protocol-http": "^5.1.0",
+    "@smithy/url-parser": "^4.0.2",
     "@tanstack/react-table": "^8.19.3",
     "@types/bwip-js": "^3.2.3",
     "@types/commander": "^2.12.0",
