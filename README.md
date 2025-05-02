@@ -199,6 +199,32 @@ For orders that don't appear to update correctly in ShipStation:
    NODE_ENV=development npx tsx src/scripts/populate-print-queue.ts --order-id <ORDER_ID> --force-recreate --verbose
    ```
 
+#### Handling Merged Orders
+
+If you've grouped/merged orders in ShipStation, you can use these commands to ensure your database stays in sync:
+
+```bash
+# Detect and process all merged orders
+npm run workflow handle-merged
+
+# Run with dry-run to see what would happen without making changes
+npx tsx src/scripts/handle-merged-orders.ts --dry-run
+
+# Process only the most recent orders (useful for regular updates)
+npx tsx src/scripts/handle-merged-orders.ts --sync-all
+
+# Run in verbose mode for more detailed output
+npx tsx src/scripts/handle-merged-orders.ts --verbose
+```
+
+When orders are merged in ShipStation:
+
+1. Source orders are marked with `is_merged=true` and a reference to the destination order
+2. Destination order contains a list of the merged order IDs
+3. Print tasks for source orders remain linked to their original orders
+
+For best results, merge orders in ShipStation _before_ running the full workflow script.
+
 ## Deployment
 
 The application is deployed to Netlify. Changes pushed to the main branch trigger automatic deployments.

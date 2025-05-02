@@ -42,7 +42,23 @@ while [[ $# -gt 0 ]]; do
     --days-back) DAYS_BACK=$2; shift 2 ;;
     --hours) HOURS=$2; shift 2 ;;
     --skip-tags) SKIP_TAGS=true; shift ;;
-    *) echo "Unknown option: $1"; exit 1 ;;
+    --help)
+      show_help
+      exit 0
+      ;;
+    handle-merged) # New command to handle merged orders
+      echo "Processing merged orders..."
+      npx tsx src/scripts/handle-merged-orders.ts
+      exit 0
+      ;;
+    *)
+      # Unknown option
+      if [ -n "$1" ]; then
+        echo "Unknown option: $1"
+        show_help
+        exit 1
+      fi
+      ;;
   esac
 done
 
