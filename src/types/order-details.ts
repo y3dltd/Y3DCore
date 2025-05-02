@@ -64,6 +64,7 @@ export interface SerializableOrderDetailsData
         | 'ship_by_date'
         | 'shipped_date'
         | 'last_sync_date'
+        | 'lastPackingSlipAt'
         | 'void_date'
         | 'items'
         | 'customer' // Omit relations that will be replaced
@@ -89,6 +90,7 @@ export interface SerializableOrderDetailsData
     ship_by_date: string | null;
     shipped_date: string | null;
     last_sync_date: string | null;
+    lastPackingSlipAt: string | null;
     void_date: string | null;
     // Re-define relations with their serializable types
     items: SerializableOrderItemForDetails[];

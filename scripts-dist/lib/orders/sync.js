@@ -1,14 +1,16 @@
 import { Prisma } from '@prisma/client';
 import axios from 'axios';
+import { mapAddressToCustomerFields, mapOrderToPrisma, mapSsItemToOrderItemData, mapSsItemToProductData, } from './mappers';
 import { prisma } from '../shared/database'; // Use relative path
 import { logger } from '../shared/logging'; // Import logger
-import { mapAddressToCustomerFields, mapOrderToPrisma, mapSsItemToOrderItemData, mapSsItemToProductData, } from './mappers';
 // --- Imports ---
 import { recordMetric } from '../shared/metrics'; // Import the recordMetric helper
 import { listTags, shipstationApi, // Ensure this is exported from shared
  } from '../shared/shipstation'; // Use relative path
 // import type { MetricsCollector } from "../shared/metrics"; // Import MetricsCollector type - removed unused import
 import { createSyncProgress, incrementFailedOrders, incrementProcessedOrders, markSyncCompleted, updateSyncProgress, } from '../shipstation/sync-progress'; // Import progress functions
+import { sendNewOrderNotification } from '../email/order-notifications';
+import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
 // Removed unused import: format from 'date-fns-tz'
 // --- Constants ---
 const PAGE_SIZE = 100; // Orders per API call (adjust as needed, max 500)
@@ -377,7 +379,7 @@ progressId, options // Pass sync options
                     shipstation_order_id: ssOrderIdValue, // Use the value for the where clause
                 };
                 const orderPayload = {
-                    ...mapOrderToPrisma(orderData, dbCustomer?.id),
+                    ...mapOrderToPrisma(orderData, dbCustomer?.id), // Use mapped data
                     // Ensure updatedAt is set on update
                     updated_at: new Date(),
                 };
@@ -422,14 +424,14 @@ progressId, options // Pass sync options
                                 where: { shipstationLineItemKey: ssLineItemKey },
                                 create: {
                                     ...dataForUpsert,
-                                    shipstationLineItemKey: ssLineItemKey,
-                                    order: { connect: { id: dbOrderId } },
+                                    shipstationLineItemKey: ssLineItemKey, // Use the actual key
+                                    order: { connect: { id: dbOrderId } }, // Use dbOrderId here
                                     product: { connect: { id: dbProduct.id } },
                                     created_at: new Date(),
                                     updated_at: new Date(),
                                 },
                                 update: {
-                                    ...dataForUpsert,
+                                    ...dataForUpsert, // Update data
                                     // Do not try to update connect fields like orderId/productId in update block
                                     updated_at: new Date(),
                                 },
@@ -444,8 +446,8 @@ progressId, options // Pass sync options
                             await tx.orderItem.create({
                                 data: {
                                     ...dataForUpsert,
-                                    shipstationLineItemKey: null,
-                                    order: { connect: { id: dbOrderId } },
+                                    shipstationLineItemKey: null, // Explicitly set to null
+                                    order: { connect: { id: dbOrderId } }, // Use dbOrderId here
                                     product: { connect: { id: dbProduct.id } },
                                     created_at: new Date(),
                                     updated_at: new Date(),
@@ -503,7 +505,27 @@ progressId, options // Pass sync options
                     itemsFailed: itemsFailed.toString(),
                 },
             });
+            // Send notifications for the newly processed order
+            try {
+                // Get admin emails from environment for notification
+                const adminEmails = process.env.NEW_ORDER_NOTIFICATION_EMAILS?.split(',').map(email => email.trim());
+                if (adminEmails && adminEmails.length > 0) {
+                    await sendNewOrderNotification(orderData, {
+                        adminEmails,
+                        // Optional filter for premium orders only
+                        onlyPremiumOrders: process.env.NOTIFY_PREMIUM_ORDERS_ONLY === 'true',
+                    });
+                }
+            }
+            catch (notificationError) {
+                // Log but don't fail the sync process if notifications fail
+                logger.warn(`Notification error for order ${orderData.orderNumber}: ${notificationError instanceof Error ? notificationError.message : 'Unknown error'}`);
+            }
         }
+        // Send system notification for order processing failure
+        await sendSystemNotification(`Order Processing Failed: #${orderData.orderNumber}`, `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`, ErrorSeverity.ERROR, ErrorCategory.ORDER_PROCESSING, error).catch(notifyError => {
+            logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
+        });
         return { success, itemsProcessed, itemsFailed, errors };
     }
     catch (error) {
@@ -541,6 +563,10 @@ progressId, options // Pass sync options
                 itemsProcessed: itemsProcessed.toString(),
                 itemsFailed: itemsFailed.toString(),
             },
+        });
+        // Send system notification for order processing failure
+        await sendSystemNotification(`Order Processing Failed: #${orderData.orderNumber}`, `Failed to process order #${orderData.orderNumber} from ShipStation.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`, ErrorSeverity.ERROR, ErrorCategory.ORDER_PROCESSING, error).catch(notifyError => {
+            logger.warn(`Failed to send system notification for order ${orderData.orderNumber}:`, { error: notifyError });
         });
         return { success, itemsProcessed, itemsFailed, errors };
     }
@@ -755,7 +781,7 @@ export async function syncRecentOrders(lookbackDays = 2, options) {
                     pageSize: PAGE_SIZE,
                     page: page,
                     modifyDateStart: dateStartFilter,
-                    sortBy: 'modifyDate',
+                    sortBy: 'modifyDate', // Keep sorting for potential API optimization
                     sortDir: 'ASC', // Fetch oldest first during pagination
                 });
                 const { orders, pages } = response;
@@ -896,6 +922,10 @@ export async function syncSingleOrder(orderIdentifier, options // Added options
             await incrementFailedOrders(progressId);
             throw new Error(errorMsg);
         }
+        // Send system notification for single order sync failure
+        await sendSystemNotification(`Single Order Sync Failed: ${orderIdentifier}`, `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`, ErrorSeverity.ERROR, ErrorCategory.SYNC, error).catch(notifyError => {
+            logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
+        });
         await markSyncCompleted(progressId, overallSuccess, errorMsg);
         return { success: overallSuccess, error: errorMsg };
     }
@@ -913,6 +943,10 @@ export async function syncSingleOrder(orderIdentifier, options // Added options
                 /* ignore progress update errors */
             }
         }
+        // Send system notification for single order sync failure
+        await sendSystemNotification(`Single Order Sync Failed: ${orderIdentifier}`, `Failed to sync single order ${orderIdentifier} from ShipStation.\n\nError: ${errorMsg}`, ErrorSeverity.ERROR, ErrorCategory.SYNC, error).catch(notifyError => {
+            logger.warn(`Failed to send system notification for order ${orderIdentifier}:`, { error: notifyError });
+        });
         return { success: overallSuccess, error: errorMsg };
     }
 }

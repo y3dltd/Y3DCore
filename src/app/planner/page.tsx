@@ -3,6 +3,7 @@
 
 import { PrintTaskStatus } from '@prisma/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Select } from '@nextui-org/react';
 
 // import { TaskTimeline } from './TaskTimeline'; // Temporarily commented out
 import TaskPage from '@/components/planner/TaskPage';
@@ -78,6 +79,12 @@ interface LatestRunData {
 // Type for the status map returned by the bulk-status API
 type StatusMap = Record<string, PrintTaskStatus>;
 
+// NEW: Define type for the details fetched from bulk-details endpoint
+interface BulkTaskDetail {
+  productName: string | null;
+  sku: string | null;
+}
+
 /**
  * PlannerPage - Automatically fetch and optimize print tasks from the database
  * for efficient printing
@@ -103,6 +110,8 @@ export default function PlannerPage(): React.ReactNode {
   });
   const [optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [savedRuns, setSavedRuns] = useState<{ id: string; finishedAt: string }[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,7 +152,8 @@ export default function PlannerPage(): React.ReactNode {
     (
       tasks: AiTask[],
       originalJobList: OriginalJobData[] = [],
-      currentStatusMap: StatusMap // New argument for current statuses
+      currentStatusMap: StatusMap, // New argument for current statuses
+      freshDetailsMap: Map<string, BulkTaskDetail> // Use defined type
     ): PrintTaskCardProps[] => {
       // console.log(
       //   '[transformOptimizedTasks] Received tasks array input:\n',
@@ -165,22 +175,25 @@ export default function PlannerPage(): React.ReactNode {
         return [];
       }
 
-      // Build a map from original job list for details other than status
+      // Build a map from original job list for fallback details
       const jobDetailsMap = new Map(originalJobList.map(job => [job.id, job]));
 
       const mappedTasks = tasks.map(task => {
         const items = (task.assignedJobs || []).map(aiJob => {
-          const originalJobDetails = aiJob.id ? jobDetailsMap.get(aiJob.id) : undefined;
-
           const id = aiJob.id || 'Unknown ID';
+          const originalJobDetails = jobDetailsMap.get(id);
+          const freshDetails = freshDetailsMap.get(id);
+
           // Get current status from the map, default to pending if somehow missing
           const currentStatus = currentStatusMap[id] || PrintTaskStatus.pending;
 
-          const sku = aiJob.sku || originalJobDetails?.sku || 'SKU Not Found';
-          const productName = originalJobDetails?.productName || aiJob.sku || 'Unknown Product';
+          // Prioritize fresh details, then fallback to original snapshot, then AI, then placeholder
+          const sku = freshDetails?.sku || originalJobDetails?.sku || aiJob.sku || 'SKU Not Found';
+          const productName =
+            freshDetails?.productName || originalJobDetails?.productName || 'Unknown Product'; // No fallback to SKU here
           const quantity = aiJob.quantity;
-          const color1 = aiJob.color1 || null;
-          const color2 = aiJob.color2 || null;
+          const color1 = aiJob.color1 || originalJobDetails?.color1 || null;
+          const color2 = aiJob.color2 || originalJobDetails?.color2 || null;
           const customText = aiJob.customText || originalJobDetails?.customText || null;
 
           const mappedItem = {
@@ -282,9 +295,17 @@ export default function PlannerPage(): React.ReactNode {
           return; // Exit early if no tasks
         }
 
-        // Step 3: Fetch current statuses for these Task IDs
-        console.log(`[PlannerPage] Fetching current statuses for ${taskIds.length} task IDs...`);
-        const statusResponse = await fetch(`/api/print-tasks/bulk-status?ids=${taskIds.join(',')}`);
+        // Step 3: Fetch current statuses AND fresh product details for these Task IDs
+        console.log(
+          `[PlannerPage] Fetching current statuses & details for ${taskIds.length} task IDs...`
+        );
+
+        const [statusResponse, freshDetailsResponse] = await Promise.all([
+          fetch(`/api/print-tasks/bulk-status?ids=${taskIds.join(',')}`),
+          fetch(`/api/print-tasks/bulk-details?ids=${taskIds.join(',')}`), // NEW API CALL
+        ]);
+
+        // Check status response
         if (!statusResponse.ok) {
           throw new Error(`Failed to fetch bulk statuses: ${statusResponse.statusText}`);
         }
@@ -295,9 +316,41 @@ export default function PlannerPage(): React.ReactNode {
           );
         }
         const currentStatusMap: StatusMap = statusData.statuses;
-        // console.log('[PlannerPage] Received currentStatusMap:', currentStatusMap);
 
-        // Step 4: Transform the tasks using the current statuses
+        // Check details response (NEW)
+        if (!freshDetailsResponse.ok) {
+          // Log warning but continue, we can fallback to snapshot data
+          console.warn(
+            `[PlannerPage] Failed to fetch bulk details: ${freshDetailsResponse.statusText}. Will use snapshot data.`
+          );
+        }
+        let freshDetailsMap = new Map<string, BulkTaskDetail>(); // Use defined type
+        try {
+          const detailsData = await freshDetailsResponse.json();
+          if (detailsData.success && detailsData.details) {
+            freshDetailsMap = new Map(
+              // Cast detail to BulkTaskDetail after getting entries
+              Object.entries(detailsData.details).map(([id, detail]) => {
+                const taskDetail = detail as BulkTaskDetail; // Explicit cast
+                return [
+                  id,
+                  { productName: taskDetail.productName ?? null, sku: taskDetail.sku ?? null },
+                ];
+              })
+            );
+          } else {
+            console.warn(
+              `[PlannerPage] Bulk details endpoint response invalid or empty. Will use snapshot data. Error: ${detailsData.error}`
+            );
+          }
+        } catch (detailsError) {
+          console.warn(
+            `[PlannerPage] Error parsing bulk details response. Will use snapshot data. Error: ${detailsError instanceof Error ? detailsError.message : String(detailsError)}`
+          );
+        }
+        // console.log('[PlannerPage] Received freshDetailsMap:', freshDetailsMap);
+
+        // Step 4: Transform the tasks using the current statuses and fresh details
         let tasksToTransform: AiTask[] | null = null;
         const sequenceData = taskSequenceSource as unknown;
         let taskMetadata: PlanMetadata = {}; // Initialize metadata object
@@ -326,8 +379,9 @@ export default function PlannerPage(): React.ReactNode {
         if (tasksToTransform) {
           const optimizedTasksData = transformOptimizedTasks(
             tasksToTransform,
-            originalJobListForRun, // Pass original details (sku, name etc)
-            currentStatusMap // Pass current statuses
+            originalJobListForRun, // Pass original details (snapshot)
+            currentStatusMap, // Pass current statuses
+            freshDetailsMap // Pass fresh details map
           );
           setOptimizedTasks(optimizedTasksData); // Update state
 
@@ -523,6 +577,65 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  const runTodayOptimization = async () => {
+    if (optimizing || polling) return;
+
+    setOptimizing(true);
+    setPolling(false);
+    setError(null);
+    startTimer();
+    setOptimizingRunId(null);
+
+    try {
+      // Use POST with a filter parameter for shipping date (today only)
+      const response = await fetch('/api/print-tasks/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filterDays: 1 }), // Only today
+      });
+
+      if (!response.ok) {
+        let errorBody = 'Failed to start optimization';
+        try {
+          const errorData = await response.json();
+          errorBody = errorData.error || response.statusText;
+        } catch {}
+        throw new Error(`${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      console.log('[PlannerPage] Start Today Optimization Response:', data);
+
+      if (data.success && data.runId) {
+        console.log(
+          `[PlannerPage] Today optimization started. Run ID: ${data.runId}. Starting polling.`
+        );
+        setOptimizingRunId(data.runId);
+        setPolling(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollOptimizationStatus(data.runId);
+        pollRef.current = setInterval(() => pollOptimizationStatus(data.runId), 5000);
+      } else if (data.success && data.taskSequence) {
+        console.log('[PlannerPage] Today optimization finished immediately.');
+        stopTimer();
+        setOptimizing(false);
+        await loadLatestPlan(false);
+      } else {
+        throw new Error(
+          data.error || 'Today optimization returned success but no run ID or result.'
+        );
+      }
+    } catch (err) {
+      setError(`Error starting today optimization: ${(err as Error).message}`);
+      console.error('Error starting today optimization:', err);
+      stopTimer();
+      setOptimizing(false);
+      setPolling(false);
+      setOptimizingRunId(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  };
+
   const runTodayTomorrowOptimization = async () => {
     if (optimizing || polling) return;
 
@@ -533,11 +646,11 @@ export default function PlannerPage(): React.ReactNode {
     setOptimizingRunId(null);
 
     try {
-      // Use POST with a filter parameter for shipping dates
+      // Use POST with a filter parameter for shipping dates (today + tomorrow)
       const response = await fetch('/api/print-tasks/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filterDays: 2 }), // Filter to today + tomorrow (2 days)
+        body: JSON.stringify({ filterDays: 2 }), // Today & tomorrow
       });
 
       if (!response.ok) {
@@ -582,6 +695,43 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  // fetch recent runs once
+  useEffect(() => {
+    fetch('/api/ai/reports/runs?reportId=planner')
+      .then(r => r.json())
+      .then(json => {
+        setSavedRuns((json.runs || []).slice(0, 10));
+      })
+      .catch(console.error);
+  }, []);
+
+  // when dropdown changes load that plan
+  useEffect(() => {
+    if (!selectedRunId) return;
+    (async () => {
+      try {
+        setInitialLoading(true);
+        const res = await fetch(`/api/ai/reports/runs/${selectedRunId}`);
+        const data = await res.json();
+        if (data.success && data.run.outputJson) {
+          const parsed = JSON.parse(data.run.outputJson);
+          // reuse transform logic
+          if (Array.isArray(parsed.taskSequence)) {
+            const transformed = transformOptimizedTasks(
+              parsed.taskSequence,
+              parsed.inputJson?.jobList ?? [],
+              {},
+              new Map()
+            );
+            setOptimizedTasks(transformed);
+          }
+        }
+      } finally {
+        setInitialLoading(false);
+      }
+    })();
+  }, [selectedRunId, transformOptimizedTasks]);
+
   return (
     <TaskPage
       tasks={optimizedTasks}
@@ -592,9 +742,13 @@ export default function PlannerPage(): React.ReactNode {
       error={error}
       onRefresh={() => loadLatestPlan(false)} // Refresh without initial loading indicator
       onGeneratePlan={runNewOptimization}
+      onGenerateTodayPlan={runTodayOptimization}
       onGenerateTodayTomorrowPlan={runTodayTomorrowOptimization}
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
+      recentRuns={savedRuns}
+      selectedRunId={selectedRunId}
+      onSelectRun={setSelectedRunId}
     />
   );
 }

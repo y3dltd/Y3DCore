@@ -16,7 +16,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // create run row first
   const run = await prisma.aiReportRun.create({ data: { reportId: id, inputJson: body } });
 
-  const openai = new OpenAI();
+  // Support for OpenAI API proxy (like LiteLLM) via environment variable
+  const openai = new OpenAI({
+    baseURL: process.env.OPENAI_API_BASE_URL
+  });
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
