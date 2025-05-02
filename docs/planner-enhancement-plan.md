@@ -1,6 +1,7 @@
 # Y3DHub Print Task Planner Enhancement Plan
 
 ## Overview
+
 This document outlines the plan for enhancing the Print Task Planner system to better optimize 3D printing workflows and improve the UI for displaying task information. The system will automatically fetch print tasks from the database without requiring manual input.
 
 ## Core Objectives
@@ -14,15 +15,18 @@ This document outlines the plan for enhancing the Print Task Planner system to b
 ## Implementation Plan
 
 ### 1. Fix Type Errors ✅
+
 - Fix Prisma type errors in the API routes
 
 ### 2. Enhance AI Prompt for Task Planning ✅
-- Update the system prompt in `/api/ai/reports/planner/route.ts` 
+
+- Update the system prompt in `/api/ai/reports/planner/route.ts`
 - Add detailed objectives for sorting and optimizing tasks
 - Include instructions for extracting and displaying personalization text
 - Make sure each task has explicit color requirements
 
 ### 3. Update Data Models ✅
+
 - Update `PrintItem` to include:
   - Custom text for personalization
   - Specific color1 and color2 fields
@@ -30,7 +34,9 @@ This document outlines the plan for enhancing the Print Task Planner system to b
   - Product name/description
 
 ### 4. Upgrade UI Components ✅
+
 - Modify `PrintTaskCard.tsx` to display tasks in the requested format:
+
   ```
   Task 1:
   
@@ -40,19 +46,23 @@ This document outlines the plan for enhancing the Print Task Planner system to b
   2 Yellow, White, Gracie
   1 Light Blue, Blue, Robbie
   ```
+
 - Improve the task timeline sidebar for easier navigation
 - Add summary statistics for the overall plan
 
 ### 5. Create Database Integration for Print Tasks
+
 - Create API endpoint to fetch print tasks directly from the database
 - Group tasks by color requirements automatically
 - Update the planner page to load tasks automatically without manual input
 - Add refresh button to re-fetch task data and re-optimize as needed
 
 ### 6. Create Redirect for `/ai/planner` ✅
+
 - Ensure `/ai/planner` redirects to the correct planner page
 
 ### 7. Test and Refine
+
 - Test with real database data
 - Validate optimization results
 - Get user feedback
@@ -68,6 +78,7 @@ This document outlines the plan for enhancing the Print Task Planner system to b
 ## Database Integration
 
 The planner will integrate directly with the PrintOrderTask database table to:
+
 - Fetch all pending print tasks
 - Extract personalization text, colors, and other details
 - Group related tasks together based on color requirements

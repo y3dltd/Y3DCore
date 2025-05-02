@@ -1,7 +1,11 @@
 # ---
+
 # title: ShipStation Synchronization
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # ShipStation Synchronization
@@ -89,19 +93,19 @@ The primary script for fetching order updates and tags from ShipStation and upda
 
 The `--order-id` flag for `single` mode is flexible:
 
-1.  If the provided ID is purely numeric, the script first checks if it matches an `id` in the local `Order` table.
-2.  If not found by DB ID, it checks if it matches a `shipstation_order_number`.
-3.  If still not found, it assumes the numeric ID is the internal `shipstation_order_id`.
-4.  If the provided ID is non-numeric, it assumes it's a `shipstation_order_number`.
-5.  The script uses the resolved `shipstation_order_id` to query the ShipStation API.
+1. If the provided ID is purely numeric, the script first checks if it matches an `id` in the local `Order` table.
+2. If not found by DB ID, it checks if it matches a `shipstation_order_number`.
+3. If still not found, it assumes the numeric ID is the internal `shipstation_order_id`.
+4. If the provided ID is non-numeric, it assumes it's a `shipstation_order_number`.
+5. The script uses the resolved `shipstation_order_id` to query the ShipStation API.
 
 ## Full Workflow Script (`workflow.sh`)
 
 The `scripts/workflow.sh` script orchestrates a common sequence of synchronization tasks:
 
-1.  **Sync Orders:** Runs `src/scripts/sync-orders.ts` (passes through mode, ID, date range, dry-run, verbose, and tag sync options).
-2.  **Populate Print Queue:** Runs `src/scripts/populate-print-queue.ts` to generate print tasks for newly synced or relevant orders.
-3.  **Cleanup Shipped Tasks:** Runs the dedicated `src/scripts/cleanup-shipped-tasks.ts` script to mark tasks as completed for orders that are now shipped/cancelled in the database.
+1. **Sync Orders:** Runs `src/scripts/sync-orders.ts` (passes through mode, ID, date range, dry-run, verbose, and tag sync options).
+2. **Populate Print Queue:** Runs `src/scripts/populate-print-queue.ts` to generate print tasks for newly synced or relevant orders.
+3. **Cleanup Shipped Tasks:** Runs the dedicated `src/scripts/cleanup-shipped-tasks.ts` script to mark tasks as completed for orders that are now shipped/cancelled in the database.
 
 This workflow script provides a convenient way to run the standard sync process. It accepts the same flags as `sync-orders.ts` (e.g., `--mode`, `--order-id`, `--dry-run`, `--sync-tags`).
 

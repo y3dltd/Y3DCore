@@ -74,12 +74,14 @@ npx prisma migrate deploy
 ```
 
 The migration should:
+
 - Set a default value for new records
 - Convert any existing empty strings to either `null` or a valid enum value like `'pending'`
 
 ### 3. Update Application Code
 
 Ensure all code that interacts with this field:
+
 - Never sets it to an empty string
 - Always uses valid enum values from the `StlRenderStatus` enum
 - Handles null values appropriately if you choose Option B

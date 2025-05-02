@@ -87,7 +87,7 @@ Additionally, for maximum context, I recommend including:
 - `src/app/login/page.tsx`
 
 Please provide the content of these files. Once I have them all, I will create the `/IDEDocs` directory and the `IDE.md`
-index as planned.
+index as planned
 =======
 
 # Y3DHub Project Context Files

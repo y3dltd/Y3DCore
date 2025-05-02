@@ -36,8 +36,8 @@
 
 ## 3. Refined Logic Flow
 
-1.  The `orchestrator` fetches orders eligible for processing.
-2.  For each order:
+1. The `orchestrator` fetches orders eligible for processing.
+2. For each order:
     a. Initialize `preProcessedDataForAI` (structure to build AI input).
     b. Initialize `shipstationUpdateData` (Map: `Map<lineItemKey, { name: string, value: string }[]>`).
     c. Loop through the order's items _in memory_:

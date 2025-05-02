@@ -7,7 +7,7 @@ The system supports sending automated email notifications for various events usi
 1. Make sure SendGrid is configured correctly (see main README)
 2. Set the following environment variables:
 
-```
+```bash
 # SendGrid Configuration
 SENDGRID_API_KEY="your-sendgrid-api-key"
 SENDGRID_FROM_EMAIL="noreply@example.com"
@@ -26,13 +26,13 @@ SYSTEM_NOTIFICATION_EMAILS="admin@example.com,sysadmin@example.com"
 
 When new orders are synchronized from ShipStation, automated notifications can be sent to administrators.
 
-#### Features:
+#### Features
 
 - **Admin Notifications**: Emails sent to addresses listed in `NEW_ORDER_NOTIFICATION_EMAILS`
 - **Premium Order Filtering**: When `NOTIFY_PREMIUM_ORDERS_ONLY` is set to `true`, only orders meeting premium criteria will trigger notifications
 - **Customizable Templates**: HTML and text templates with order summary information
 
-#### Email Content:
+#### Email Content
 
 The email includes:
 
@@ -42,7 +42,7 @@ The email includes:
 - List of items ordered
 - Link to view the order in the admin system
 
-#### Premium Order Criteria:
+#### Premium Order Criteria
 
 An order is considered "premium" when any of these conditions are met:
 
@@ -55,14 +55,14 @@ You can modify this logic in `src/lib/email/order-notifications.ts` in the `isPr
 
 Critical system errors and issues requiring admin attention are sent as system notifications.
 
-#### Features:
+#### Features
 
 - **Admin Notifications**: Emails sent to addresses listed in `SYSTEM_NOTIFICATION_EMAILS`
 - **Severity Levels**: Three levels of severity - WARNING, ERROR, and CRITICAL
 - **Error Categories**: Categorized by system area (ORDER_PROCESSING, AI_SERVICE, DATABASE, etc.)
 - **Detailed Information**: Includes stack traces and context to assist in troubleshooting
 
-#### Email Content:
+#### Email Content
 
 System notification emails include:
 
@@ -73,7 +73,7 @@ System notification emails include:
 - Stack trace (if available and enabled)
 - Additional context
 
-#### Notification Triggers:
+#### Notification Triggers
 
 The system automatically sends notifications for:
 
