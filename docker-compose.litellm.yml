@@ -1,0 +1,41 @@
+services:
+  litellm-postgres:
+    image: postgres:16-alpine
+    container_name: litellm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+    ports:
+      - "5432:5432"  # hostPort:containerPort
+    volumes:
+      - litellm_pg_data:/var/lib/postgresql/data
+
+  litellm-proxy:
+    image: litellm/litellm:stable  # Use the stable tag
+    container_name: litellm-proxy
+    restart: unless-stopped
+    depends_on:
+      - litellm-postgres
+    ports:
+      - "4000:4000" # hostPort:containerPort
+    environment:
+      # Map the host's LITELLM_DATABASE_URL to the container's DATABASE_URL
+      DATABASE_URL: ${LITELLM_DATABASE_URL}
+      # Pass other required keys from the host environment (loaded from .env)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      # Pass the LiteLLM key you created
+      DEFAULT_LLM_KEY: ${DEFAULT_LLM_KEY}
+      # Pass UI credentials
+      UI_USERNAME: ${UI_USERNAME}
+      UI_PASSWORD: ${UI_PASSWORD}
+    volumes:
+      - ./docs/configs/litellm_config.yaml:/app/config.yaml # Mount config
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+
+volumes:
+  litellm_pg_data:
+    name: litellm_pg_data

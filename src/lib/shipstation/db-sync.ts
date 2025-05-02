@@ -279,8 +279,8 @@ export const upsertProductFromItem = async (
         ) {
           logger.warn(
             `[Product Sync Conflict] SKU '${trimmedSku}' exists (DB ID: ${existingBySku.id}) but with different ShipStation Product ID. ` +
-              `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
-              `Attempting to update with incoming ID.`
+            `DB SS_ID: ${existingBySku.shipstation_product_id}, Incoming SS_ID: ${shipstationProductId}. ` +
+            `Attempting to update with incoming ID.`
           );
         }
 
@@ -335,8 +335,8 @@ export const upsertProductFromItem = async (
             ) {
               logger.warn(
                 `[Product Sync Conflict] Update failed for SKU '${trimmedSku}' (ID: ${existingBySku.id}). ` +
-                  `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
-                  `Keeping existing product record without updating SS_ID.`
+                `The incoming ShipStation Product ID '${shipstationProductId}' likely already exists on another product. ` +
+                `Keeping existing product record without updating SS_ID.`
               );
               return existingBySku as Product; // Return the original existing product
             } else {
@@ -377,17 +377,17 @@ export const upsertProductFromItem = async (
         return {
           id: mockId, // Use mock number ID
           // Use simple string/null types from createInput/updateInput and ensure we extract actual values
-          name: extractStringValue(createInput.name) || 
-                extractStringValue(updateInput.name) || 
-                'Unknown Product',
-          sku: extractStringValue(createInput.sku) || 
-               extractStringValue(updateInput.sku),
+          name: extractStringValue(createInput.name) ||
+            extractStringValue(updateInput.name) ||
+            'Unknown Product',
+          sku: extractStringValue(createInput.sku) ||
+            extractStringValue(updateInput.sku),
           // Convert string ID to number or keep as is if already a number
-          shipstation_product_id: typeof shipstationProductId === 'string' 
-              ? parseInt(shipstationProductId, 10) 
-              : shipstationProductId,
-          imageUrl: extractStringValue(createInput.imageUrl) || 
-                    extractStringValue(updateInput.imageUrl),
+          shipstation_product_id: typeof shipstationProductId === 'string'
+            ? parseInt(shipstationProductId, 10)
+            : shipstationProductId,
+          imageUrl: extractStringValue(createInput.imageUrl) ||
+            extractStringValue(updateInput.imageUrl),
           createdAt: existingProductById?.createdAt ?? new Date(), // Use existing or new date
           updatedAt: new Date(),
           // Add required fields with null or default values
@@ -699,6 +699,59 @@ export const upsertOrderWithItems = async (
           select: { id: true },
         });
         const dbOrderId = dbOrder.id;
+
+        // Check for order merger status in ShipStation
+        const mergedOrSplit = ssOrder.advancedOptions?.mergedOrSplit || false;
+        const mergedIds = ssOrder.advancedOptions?.mergedIds || [];
+        const parentId = ssOrder.advancedOptions?.parentId || null;
+
+        // Case 1: This order has been merged into another order
+        if (parentId) {
+          logger.info(`[Sync][Order ${ssOrder.orderNumber}] Found order merged into parent ID: ${parentId}`);
+
+          await tx.order.update({
+            where: { id: dbOrderId },
+            data: {
+              is_merged: true,
+              merged_to_order_id: Number(parentId),
+              // Don't auto-update print tasks here to avoid disrupting workflow
+            }
+          });
+        }
+
+        // Case 2: This is a destination order that contains merged orders
+        if (mergedOrSplit && mergedIds.length > 0) {
+          logger.info(`[Sync][Order ${ssOrder.orderNumber}] This is a merged order containing: ${mergedIds.join(', ')}`);
+
+          await tx.order.update({
+            where: { id: dbOrderId },
+            data: {
+              merged_from_order_ids: JSON.stringify(mergedIds)
+            }
+          });
+
+          // Update any source orders we find
+          const sourceOrders = await tx.order.findMany({
+            where: {
+              shipstation_order_id: { in: mergedIds.map(id => String(id)) }
+            },
+            select: { id: true }
+          });
+
+          if (sourceOrders.length > 0) {
+            logger.info(`[Sync][Order ${ssOrder.orderNumber}] Found ${sourceOrders.length} source orders in database`);
+
+            for (const sourceOrder of sourceOrders) {
+              await tx.order.update({
+                where: { id: sourceOrder.id },
+                data: {
+                  is_merged: true,
+                  merged_to_order_id: dbOrderId
+                }
+              });
+            }
+          }
+        }
 
         // Process Incoming Items using Upsert
         const incomingSsItems = ssOrder.items.filter(item => !item.adjustment);

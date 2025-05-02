@@ -224,7 +224,11 @@ and no JSON taskSequence.
 - Each task has only one SKU.`;
 
 
-  const openai = new OpenAI({ apiKey });
+  // Support for OpenAI API proxy (like LiteLLM) via environment variable
+  const openai = new OpenAI({ 
+    apiKey,
+    baseURL: process.env.OPENAI_API_BASE_URL 
+  });
   let response;
   try {
     console.log("Sending request to OpenAI with function call...");

@@ -23,12 +23,12 @@ npx tsx scripts/check-amazon-urls.ts [options]
 
 ## Checks Performed
 
-1.  **Database Check:**
+1. **Database Check:**
     - Queries the local `Order` and related `OrderItem`/`AmazonCustomizationFile` tables.
     - Looks for `AmazonCustomizationFile` records where `originalUrl` contains `amazon.com`.
     - Also flags items where `printTasks` are missing, as this can be a symptom of failed processing.
     - Applies the `--days` filter to the `Order.created_at` field if provided.
-2.  **ShipStation API Check:**
+2. **ShipStation API Check:**
     - Queries the ShipStation API for orders with `orderStatus: 'awaiting_shipment'`.
     - Iterates through the `options` array of each `OrderItem` in the API response.
     - Checks if any option `name` or `value` contains `amazon.com`.

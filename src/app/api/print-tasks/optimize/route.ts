@@ -414,20 +414,24 @@ export async function POST(req: NextRequest) {
 
     // Add date filter if filterDays is specified
     if (filterDays !== undefined) {
-      const today = new Date();
-      const endDate = new Date();
-      endDate.setDate(today.getDate() + filterDays - 1); // -1 because we want to include today
-      endDate.setHours(23, 59, 59, 999); // End of the last day
-
-      // Set the time to the start of today
-      today.setHours(0, 0, 0, 0);
+      /*
+       * Use UTC-based midnight boundaries so behaviour is identical in local dev
+       * (which may run in your local TZ) and in Vercel lambdas (always UTC).
+       */
+      const now = new Date();
+      const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      const endUtc = new Date(startUtc);
+      endUtc.setUTCDate(startUtc.getUTCDate() + filterDays - 1);
+      endUtc.setUTCHours(23, 59, 59, 999);
 
       whereClause.ship_by_date = {
-        gte: today,
-        lte: endDate,
+        gte: startUtc,
+        lte: endUtc,
       };
 
-      console.log(`[API Optimize] Filtering tasks with ship_by_date between ${today.toISOString()} and ${endDate.toISOString()}`);
+      // Extra debug log
+      console.log('[API Optimize] VERCEL_REGION:', process.env.VERCEL_REGION);
+      console.log(`[API Optimize] UTC date filter gte=${startUtc.toISOString()} lte=${endUtc.toISOString()}`);
     }
 
     // Fetch pending tasks with the constructed where clause
@@ -500,7 +504,8 @@ export async function POST(req: NextRequest) {
     // --- End Prepare Data for AI ---
 
     // --- Load Prompt ---
-    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/grouping-prompt-v21.txt');
+    const promptFileName = 'prompt-system-optimized.txt'; // Use the combined system prompt file
+    const promptFilePath = path.join(process.cwd(), 'src', 'lib', 'ai', 'prompts', promptFileName);
     let systemMessageContent: string;
     try {
       // Read the prompt file directly
@@ -524,7 +529,11 @@ export async function POST(req: NextRequest) {
     // --- Call OpenAI API --- (Restored)
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
-    const openai = new OpenAI({ apiKey });
+    // Support for OpenAI API proxy (like LiteLLM) via environment variable
+    const openai = new OpenAI({ 
+      apiKey,
+      baseURL: process.env.OPENAI_API_BASE_URL 
+    });
     console.log('[API Optimize] Sending request to OpenAI for grouping suggestions...');
     const modelToUse = "o3"; // Changed back from o4-mini
     console.log(`[API Optimize] Using model: ${modelToUse}`);

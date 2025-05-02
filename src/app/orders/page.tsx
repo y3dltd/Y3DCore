@@ -192,6 +192,9 @@ async function getOrders(
       ship_by_date: true,
       tracking_number: true,
       lastPackingSlipAt: true,
+      is_merged: true,
+      merged_to_order_id: true,
+      merged_from_order_ids: true,
       _count: {
         select: { items: true },
       },
@@ -206,7 +209,8 @@ async function getOrders(
   // Apply "Only Ready to Print" filter if active (default)
   if (onlyReadyToPrint) {
     where.order_status = 'awaiting_shipment';
-    where.printTasks = { every: { status: 'completed' } };
+    where.printTasks = { some: {} }; // Only include orders that have at least one print task
+    where.is_merged = false; // Exclude merged orders by default
   }
 
   if (searchQuery) {
@@ -322,6 +326,9 @@ type SelectedOrderData = Prisma.OrderGetPayload<{
     ship_by_date: true;
     tracking_number: true;
     lastPackingSlipAt: true;
+    is_merged: true;
+    merged_to_order_id: true;
+    merged_from_order_ids: true;
     _count: { select: { items: true } };
   };
 }>;
@@ -565,9 +572,11 @@ export default async function OrdersPage({
                     isPrime && 'bg-blue-50 dark:bg-blue-900/20',
                     isPremium && 'bg-purple-50 dark:bg-purple-900/20',
                     isPriority && !isPrime && !isPremium && 'bg-amber-50 dark:bg-amber-900/20',
+                    order.is_merged && 'bg-slate-100 dark:bg-slate-800/40',
                     !isPrime &&
                       !isPremium &&
                       !isPriority &&
+                      !order.is_merged &&
                       orders.indexOf(order) % 2 !== 0 &&
                       'bg-muted/25'
                   )}
@@ -577,7 +586,10 @@ export default async function OrdersPage({
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/orders/${order.id}`}
-                        className="text-foreground/90 hover:text-foreground hover:underline"
+                        className={cn(
+                          'text-foreground/90 hover:text-foreground hover:underline',
+                          order.is_merged && 'text-muted-foreground line-through'
+                        )}
                       >
                         {order.shipstation_order_number || 'N/A'}
                       </Link>
@@ -589,6 +601,16 @@ export default async function OrdersPage({
                           Premium
                         </Badge>
                       )}
+                      {order.is_merged && (
+                        <Badge className="bg-slate-500 text-white hover:bg-slate-600">Merged</Badge>
+                      )}
+                      {order.merged_from_order_ids &&
+                        typeof order.merged_from_order_ids === 'object' &&
+                        Object.keys(order.merged_from_order_ids).length > 0 && (
+                          <Badge className="bg-slate-500 text-white hover:bg-slate-600">
+                            Combined
+                          </Badge>
+                        )}
                     </div>
                   </TableCell>
                   <TableCell>

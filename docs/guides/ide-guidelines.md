@@ -1,7 +1,11 @@
 # ---
+
 # title: IDE Guidelines
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Y3DHub IDE Guidelines for Refactoring Project

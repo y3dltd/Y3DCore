@@ -129,8 +129,9 @@ Always return the response in the specified JSON format.
         // Avoid logging full prompts unless absolutely necessary for debugging
         // logger.debug(`[AIProcessor][Order ${order.id}] Full prompt for AI:\n${fullPromptForDebug}`);
 
-        // --- Call OpenAI API ---
-        const apiUrl = 'https://api.openai.com/v1/chat/completions';
+        // --- Call OpenAI API (supports proxy via OPENAI_API_BASE_URL) ---
+        const baseUrl = process.env.OPENAI_API_BASE_URL ?? 'https://api.openai.com/v1';
+        const apiUrl = `${baseUrl}/chat/completions`;
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${options.openaiApiKey}`,
