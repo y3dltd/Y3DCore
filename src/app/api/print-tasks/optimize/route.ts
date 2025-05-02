@@ -504,7 +504,8 @@ export async function POST(req: NextRequest) {
     // --- End Prepare Data for AI ---
 
     // --- Load Prompt ---
-    const promptFilePath = path.join(process.cwd(), 'src/lib/ai/prompts/grouping-prompt-v21.txt');
+    const promptFileName = 'prompt-system-optimized.txt'; // Use the combined system prompt file
+    const promptFilePath = path.join(process.cwd(), 'src', 'lib', 'ai', 'prompts', promptFileName);
     let systemMessageContent: string;
     try {
       // Read the prompt file directly
