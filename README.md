@@ -227,11 +227,11 @@ For best results, merge orders in ShipStation _before_ running the full workflow
 
 ## Deployment
 
-The application is deployed to Netlify. Changes pushed to the main branch trigger automatic deployments.
+The application is deployed to Vercel. Changes pushed to the main branch trigger automatic deployments.
 
 ```bash
-# Manual deployment
-npx netlify deploy --prod
+# View deployment status
+vercel ls
 ```
 
 ## Documentation

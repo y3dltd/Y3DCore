@@ -148,8 +148,7 @@ amazon-spapi-credentials.md
 /node_modules/.cache/
 dev.log
 
-# Local Netlify folder
-.netlify
+# No longer using Netlify
 
 # Ignore STL files
 *.stl
