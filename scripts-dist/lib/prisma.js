@@ -5,7 +5,7 @@ export const prisma = global.prisma ||
         log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
         // Set global transaction timeout to 5 minutes
         transactionOptions: {
-            maxWait: 120000,
+            maxWait: 120000, // 2 minutes in milliseconds
             timeout: 300000, // 5 minutes in milliseconds
         },
     });

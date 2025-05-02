@@ -83,6 +83,10 @@ model Order {
   is_voided                  Boolean?            @default(false)
   marketplace_notified       Boolean             @default(false)
   void_date                  DateTime?           @db.DateTime(0)
+  lastPackingSlipAt          DateTime?           @db.DateTime(0)
+  is_merged                  Boolean             @default(false)
+  merged_to_order_id         Int?
+  merged_from_order_ids      Json?
   customer                   Customer?           @relation(fields: [customerId], references: [id])
   items                      OrderItem[]
   printTasks                 PrintOrderTask[]
@@ -93,6 +97,8 @@ model Order {
   @@index([customerId])
   @@index([marketplace])
   @@index([shipstation_store_id])
+  @@index([is_merged])
+  @@index([merged_to_order_id])
 }
 
 model Customer {
@@ -153,9 +159,6 @@ model PrintOrderTask {
   color_2                  String?         @db.VarChar(50)
   ship_by_date             DateTime?       @db.Date
   status                   PrintTaskStatus @default(pending)
-  stl_render_state         StlRenderStatus @default(pending)
-  stl_path                 String?         @db.VarChar(512)
-  render_retries           Int             @default(0)
   needs_review             Boolean         @default(false)
   review_reason            String?         @db.Text
   created_at               DateTime        @default(now()) @db.Timestamp(0)
@@ -165,6 +168,9 @@ model PrintOrderTask {
   productId                Int
   shorthandProductName     String?         @db.VarChar(100)
   annotation               String?         @db.Text
+  stl_path                 String?         @db.VarChar(512)
+  stl_render_state         StlRenderStatus @default(pending)
+  render_retries           Int             @default(0)
   customer                 Customer?       @relation(fields: [customerId], references: [id])
   order                    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem                OrderItem       @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
@@ -241,21 +247,18 @@ model ScriptRunLog {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String   // Used by Credentials provider
-  name          String?  // Optional: Add if not present
-  emailVerified DateTime? // Required by adapter
-  image         String?  // Optional: Add if not present
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Auth.js specific relations
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  emailVerified DateTime?
+  image         String?
+  name          String?
   accounts      Account[]
   sessions      Session[]
 }
 
-// Auth.js Account model
 model Account {
   id                Int     @id @default(autoincrement())
   userId            Int
@@ -269,14 +272,12 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
 
-// Auth.js Session model
 model Session {
   id           Int      @id @default(autoincrement())
   sessionToken String   @unique
@@ -287,7 +288,6 @@ model Session {
   @@index([userId])
 }
 
-// Auth.js VerificationToken model
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -371,6 +371,33 @@ model Metric {
   @@index([timestamp])
 }
 
+/// AI Reports System
+model AiReportDefinition {
+  id           String        @id @default(uuid())
+  slug         String        @unique
+  name         String
+  description  String
+  systemPrompt String        @db.LongText
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  runs         AiReportRun[]
+}
+
+model AiReportRun {
+  id          String             @id @default(uuid())
+  reportId    String
+  inputJson   Json
+  outputJson  Json?
+  rawResponse String?            @db.LongText
+  status      String             @default("running")
+  errorMsg    String?            @db.Text
+  createdAt   DateTime           @default(now())
+  finishedAt  DateTime?
+  report      AiReportDefinition @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
 enum InternalOrderStatus {
   new
   processing
@@ -391,32 +418,4 @@ enum StlRenderStatus {
   running
   completed
   failed
-}
-
-/// AI Reports System
-model AiReportDefinition {
-  id           String          @id @default(uuid())
-  slug         String          @unique
-  name         String
-  description  String
-  systemPrompt String          @db.LongText
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  runs         AiReportRun[]
-}
-
-model AiReportRun {
-  id          String   @id @default(uuid())
-  reportId    String
-  inputJson   Json
-  outputJson  Json?
-  rawResponse String?  @db.LongText
-  status      String   @default("running")
-  errorMsg    String?  @db.Text
-  createdAt   DateTime @default(now())
-  finishedAt  DateTime?
-
-  report      AiReportDefinition @relation(fields: [reportId], references: [id], onDelete: Cascade)
-
-  @@index([reportId])
 }

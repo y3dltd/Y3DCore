@@ -2,7 +2,17 @@
 'use client';
 
 import { ArrowPathIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { Card, CardBody, Button, Spinner, Tooltip, Alert, Progress } from '@nextui-org/react';
+import {
+  Card,
+  CardBody,
+  Button,
+  Spinner,
+  Tooltip,
+  Alert,
+  Progress,
+  Select,
+  SelectItem,
+} from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 
@@ -26,9 +36,13 @@ interface TaskPageProps {
   error: string | null;
   onRefresh: () => void;
   onGeneratePlan: () => void;
+  onGenerateTodayPlan: () => void;
   onGenerateTodayTomorrowPlan: () => void;
   setTasks: React.Dispatch<React.SetStateAction<PrintTaskCardProps[]>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
+  recentRuns?: { id: string; finishedAt: string }[];
+  selectedRunId?: string | null;
+  onSelectRun?: (id: string | null) => void;
 }
 
 const TaskPage: React.FC<TaskPageProps> = ({
@@ -40,9 +54,13 @@ const TaskPage: React.FC<TaskPageProps> = ({
   error,
   onRefresh,
   onGeneratePlan,
+  onGenerateTodayPlan,
   onGenerateTodayTomorrowPlan,
   setTasks,
   setError,
+  recentRuns = [],
+  selectedRunId = null,
+  onSelectRun,
 }) => {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(
     tasks.length > 0 ? tasks[0].taskId : null
@@ -275,14 +293,56 @@ const TaskPage: React.FC<TaskPageProps> = ({
     };
   }, [activeTaskId]);
 
+  // --- Handler for selecting a historical run ---
+  const handleRunSelect = useCallback(
+    (keys: unknown) => {
+      if (!onSelectRun) return;
+      // NextUI passes a Set of keys (or "all"), we only allow single selection here
+      const keyArray = Array.isArray(keys)
+        ? (keys as unknown as React.Key[])
+        : Array.from(keys as Set<React.Key>);
+      const firstKey = keyArray[0] as string | undefined;
+      if (firstKey === undefined) return;
+      // "latest" denotes the most recent successful run (live data)
+      onSelectRun(firstKey === 'latest' ? null : firstKey);
+    },
+    [onSelectRun]
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Header/Summary */}
       <div ref={headerRef} className="border-b border-gray-700 z-10">
         <div className="container mx-auto p-4">
           <div className="flex justify-between items-center mb-2">
-            <h1 className="text-2xl font-bold text-gray-100">Print Tasks</h1>
+            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              Print Tasks
+            </h1>
             <div className="flex items-center gap-2">
+              {/* Historical runs dropdown */}
+              {recentRuns.length > 0 && (
+                <Select
+                  size="sm"
+                  selectedKeys={new Set([selectedRunId ?? 'latest'])}
+                  onSelectionChange={handleRunSelect}
+                  aria-label="Select previous optimisation run"
+                  placeholder="Run history"
+                  className="min-w-[160px]"
+                  items={[
+                    { id: 'latest', label: 'Latest Run' },
+                    ...recentRuns.map(run => ({
+                      id: run.id,
+                      label: new Date(run.finishedAt).toLocaleString(),
+                    })),
+                  ]}
+                >
+                  {item => (
+                    <SelectItem key={item.id} textValue={item.label}>
+                      {item.label}
+                    </SelectItem>
+                  )}
+                </Select>
+              )}
               <Tooltip content="Refresh Plan">
                 <Button
                   isIconOnly
@@ -291,6 +351,19 @@ const TaskPage: React.FC<TaskPageProps> = ({
                   disabled={isLoading || isOptimizing}
                 >
                   <ArrowPathIcon className="h-5 w-5" />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Generate Plan for Today's Orders Only">
+                <Button
+                  type="button"
+                  color="secondary"
+                  variant="solid"
+                  onPress={onGenerateTodayPlan}
+                  isLoading={isOptimizing}
+                  disabled={isLoading || isOptimizing}
+                  size="sm"
+                >
+                  Today
                 </Button>
               </Tooltip>
               <Tooltip content="Generate Plan for Today & Tomorrow Orders Only">

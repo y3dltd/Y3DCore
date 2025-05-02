@@ -17,7 +17,7 @@ Cross‑cutting observations
 → Split into focused modules (e.g. customers/, products/, orders/, progress/, metrics/).
 → Keep “transactional” logic (one order + its items) in a separate pure function that is easy to unit‑test.
 • Duplication
-− upsertCustomerFromOrder, upsertProductFromItem, mapping helpers and date conversion are duplicated in orders/* and shipstation/*.
+− upsertCustomerFromOrder, upsertProductFromItem, mapping helpers and date conversion are duplicated in orders/*and shipstation/*.
 → Move to lib/shared/{customers,products,mappers}.ts and re‑use.
 • Type ownership
 − ShipStation & Amazon types appear in multiple barrels. Expose them from one canonical lib/integrations/shipstation/types.ts and avoid type Foo = Prisma.Bar.
@@ -31,6 +31,7 @@ Cross‑cutting observations
 • Testing
 − No unit or integration tests found for these critical paths (except amazon/__tests__ folder but empty).
 → Add tests for:
+
 1) mapping accuracy (mapSsItemToOrderItemData, date conversion)
 2) idempotent upserts (unique constraints)
 3) Amazon JSON extraction edge‑cases (colour tags, nested customisation).

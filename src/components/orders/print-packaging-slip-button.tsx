@@ -19,7 +19,7 @@ export function PrintPackagingSlipButton({ order }: PrintPackagingSlipButtonProp
     setError(null);
 
     try {
-      const response = await fetch(`/api/generate-pdf/${order.id}`);
+      const response = await fetch(`/api/generate-pdf/packing-slips?ids=${order.id}`);
 
       if (!response.ok) {
         const errorText = await response.text();

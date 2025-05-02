@@ -96,7 +96,9 @@ const deriveColorsFromItems = (items: PrintItem[]): { color: string; displayName
     return [{ color: 'Unknown', displayName: 'N/A' }];
   }
 
-  return Array.from(colorsSet).map(c => ({ color: c, displayName: c }));
+  // Convert Set to array and sort alphabetically for consistent ordering
+  const sortedColors = Array.from(colorsSet).sort((a, b) => a.localeCompare(b));
+  return sortedColors.map(c => ({ color: c, displayName: c }));
 };
 
 // Helper function to copy text to clipboard
@@ -196,144 +198,157 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
               <div className="mt-4 space-y-3">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">Assigned Items:</h4>
                 {task.items &&
-                  task.items.map((item, itemIdx) => {
-                    const textToCopy = item.customText || '';
-                    const itemStatus = item.status || PrintTaskStatus.pending;
-                    return (
-                      <div
-                        key={item.name || `item-${itemIdx}`}
-                        className={`flex items-center gap-3 p-3 rounded-md ${itemIdx < task.items.length - 1 ? 'border-b border-gray-700/50' : ''} bg-gray-800/30`}
-                      >
+                  [...task.items]
+                    .sort((a, b) => {
+                      // Primary sort by color1, then by color2 (both case-insensitive)
+                      const c1a = (a.color1 || '').toLowerCase();
+                      const c1b = (b.color1 || '').toLowerCase();
+                      if (c1a !== c1b) return c1a.localeCompare(c1b);
+
+                      const c2a = (a.color2 || '').toLowerCase();
+                      const c2b = (b.color2 || '').toLowerCase();
+                      return c2a.localeCompare(c2b);
+                    })
+                    .map((item, itemIdx) => {
+                      const textToCopy = item.customText || '';
+                      const itemStatus = item.status || PrintTaskStatus.pending;
+                      return (
                         <div
-                          className={cn(
-                            'text-sm w-6 text-right flex-shrink-0',
-                            item.quantity > 1
-                              ? 'font-bold text-red-400'
-                              : 'font-semibold text-gray-300'
-                          )}
+                          key={item.name || `item-${itemIdx}`}
+                          className={`flex items-center gap-3 p-3 rounded-md ${itemIdx < task.items.length - 1 ? 'border-b border-gray-700/50' : ''} bg-gray-800/30`}
                         >
-                          {item.quantity}x
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            {item.color1 && (
-                              <div className="flex items-center gap-1">
-                                <ColorChip color={item.color1} size="small" />
-                                <span className="text-xs text-gray-400">{item.color1}</span>
-                              </div>
+                          <div
+                            className={cn(
+                              'text-sm w-6 text-right flex-shrink-0',
+                              item.quantity > 1
+                                ? 'font-bold text-red-400'
+                                : 'font-semibold text-gray-300'
                             )}
-                            {item.color2 && (
-                              <div className="flex items-center gap-1">
-                                <ColorChip color={item.color2} size="small" />
-                                <span className="text-xs text-gray-400">{item.color2}</span>
-                              </div>
-                            )}
+                          >
+                            {item.quantity}x
                           </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-gray-200 text-sm font-medium">
-                              {item.customText || '(No Custom Text)'}
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              {item.color1 && (
+                                <div className="flex items-center gap-1">
+                                  <ColorChip color={item.color1} size="small" />
+                                  <span className="text-xs text-gray-400">{item.color1}</span>
+                                </div>
+                              )}
+                              {item.color2 && (
+                                <div className="flex items-center gap-1">
+                                  <ColorChip color={item.color2} size="small" />
+                                  <span className="text-xs text-gray-400">{item.color2}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-200 text-sm font-medium">
+                                {item.customText || '(No Custom Text)'}
+                              </span>
+                              {textToCopy && (
+                                <Tooltip content="Copy Text">
+                                  <Button
+                                    isIconOnly
+                                    size="sm"
+                                    variant="light"
+                                    className="h-6 w-6 min-w-0 text-gray-400 hover:text-gray-200"
+                                    onPress={() => copyToClipboard(textToCopy)}
+                                    aria-label="Copy text"
+                                  >
+                                    <ClipboardCopy className="h-4 w-4" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              <span className="text-base font-bold text-green-400">
+                                {item.productName || 'Unknown Product'}
+                              </span>
+                              <span className="ml-2 font-bold">SKU: {item.sku || 'N/A'}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              (Item Ref: {item.name || 'N/A'})
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end space-y-1 ml-2">
+                            <span
+                              className={cn(
+                                'text-xs px-1.5 py-0.5 rounded-full',
+                                itemStatus === 'completed'
+                                  ? 'bg-green-700 text-green-100'
+                                  : itemStatus === 'in_progress'
+                                    ? 'bg-yellow-700 text-yellow-100'
+                                    : 'bg-gray-600 text-gray-100'
+                              )}
+                            >
+                              {itemStatus.replace('_', ' ')}
                             </span>
-                            {textToCopy && (
-                              <Tooltip content="Copy Text">
+                            <div className="flex gap-1">
+                              <Tooltip content="Mark In Progress">
                                 <Button
                                   isIconOnly
                                   size="sm"
-                                  variant="light"
-                                  className="h-6 w-6 min-w-0 text-gray-400 hover:text-gray-200"
-                                  onPress={() => copyToClipboard(textToCopy)}
-                                  aria-label="Copy text"
+                                  variant="flat"
+                                  className="h-6 w-6 min-w-0 text-yellow-400"
+                                  onPress={() =>
+                                    onTaskStatusChange(
+                                      task.taskId,
+                                      item.name,
+                                      PrintTaskStatus.in_progress
+                                    )
+                                  }
+                                  isDisabled={
+                                    itemStatus === 'in_progress' || itemStatus === 'completed'
+                                  }
+                                  aria-label="Mark In Progress"
                                 >
-                                  <ClipboardCopy className="h-4 w-4" />
+                                  <Play className="h-3 w-3" />
                                 </Button>
                               </Tooltip>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            <span>SKU: {item.sku || 'N/A'}</span>
-                            <span className="ml-2">({item.productName || 'Unknown Product'})</span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            (Item Ref: {item.name || 'N/A'})
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end space-y-1 ml-2">
-                          <span
-                            className={cn(
-                              'text-xs px-1.5 py-0.5 rounded-full',
-                              itemStatus === 'completed'
-                                ? 'bg-green-700 text-green-100'
-                                : itemStatus === 'in_progress'
-                                  ? 'bg-yellow-700 text-yellow-100'
-                                  : 'bg-gray-600 text-gray-100'
-                            )}
-                          >
-                            {itemStatus.replace('_', ' ')}
-                          </span>
-                          <div className="flex gap-1">
-                            <Tooltip content="Mark In Progress">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="flat"
-                                className="h-6 w-6 min-w-0 text-yellow-400"
-                                onPress={() =>
-                                  onTaskStatusChange(
-                                    task.taskId,
-                                    item.name,
-                                    PrintTaskStatus.in_progress
-                                  )
-                                }
-                                isDisabled={
-                                  itemStatus === 'in_progress' || itemStatus === 'completed'
-                                }
-                                aria-label="Mark In Progress"
-                              >
-                                <Play className="h-3 w-3" />
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content="Reset to Pending">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="flat"
-                                className="h-6 w-6 min-w-0 text-gray-400"
-                                onPress={() =>
-                                  onTaskStatusChange(
-                                    task.taskId,
-                                    item.name,
-                                    PrintTaskStatus.pending
-                                  )
-                                }
-                                isDisabled={itemStatus === 'pending'}
-                                aria-label="Reset Pending"
-                              >
-                                <RotateCcw className="h-3 w-3" />
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content="Mark Complete">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="flat"
-                                className="h-6 w-6 min-w-0 text-green-400"
-                                onPress={() =>
-                                  onTaskStatusChange(
-                                    task.taskId,
-                                    item.name,
-                                    PrintTaskStatus.completed
-                                  )
-                                }
-                                isDisabled={itemStatus === 'completed'}
-                                aria-label="Mark Complete"
-                              >
-                                <Check className="h-3 w-3" />
-                              </Button>
-                            </Tooltip>
+                              <Tooltip content="Reset to Pending">
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="flat"
+                                  className="h-6 w-6 min-w-0 text-gray-400"
+                                  onPress={() =>
+                                    onTaskStatusChange(
+                                      task.taskId,
+                                      item.name,
+                                      PrintTaskStatus.pending
+                                    )
+                                  }
+                                  isDisabled={itemStatus === 'pending'}
+                                  aria-label="Reset Pending"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                </Button>
+                              </Tooltip>
+                              <Tooltip content="Mark Complete">
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="flat"
+                                  className="h-6 w-6 min-w-0 text-green-400"
+                                  onPress={() =>
+                                    onTaskStatusChange(
+                                      task.taskId,
+                                      item.name,
+                                      PrintTaskStatus.completed
+                                    )
+                                  }
+                                  isDisabled={itemStatus === 'completed'}
+                                  aria-label="Mark Complete"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                              </Tooltip>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
               </div>
               <div className="mt-6 pt-4 border-t border-gray-700">
                 <div className="flex justify-between items-center">

@@ -28,8 +28,11 @@ import {
 import { CURRENCY_SYMBOL } from '@/lib/constants'; // Import the constant
 import { detectMarketplaceOrderNumber } from '@/lib/order-utils';
 import { prisma } from '@/lib/prisma';
-import { formatDateForTable } from '@/lib/shared/date-utils'; // Import date utility functions
+import { formatDateForTable, formatDateTime } from '@/lib/shared/date-utils'; // Import date utility functions
 import { cn } from '@/lib/utils'; // Import cn utility for className concatenation
+import { PackingSlipBatchControls } from '@/components/orders/packing-slip-batch-controls';
+import { RowPrintPackingSlipButton } from '@/components/orders/row-print-packing-slip-button';
+import { CheckCircle } from 'lucide-react'; // Import CheckCircle icon
 
 // Force dynamic rendering to ensure searchParams are handled correctly
 export const dynamic = 'force-dynamic';
@@ -73,82 +76,90 @@ function calculatePercentageChange(current: number, previous: number): string {
 
 // Replace mock data with actual database queries
 async function getDashboardStats() {
-  const startOfToday = getStartOfTodayUTC();
-  const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-  const startOfYesterday = getStartOfYesterdayUTC();
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfToday);
+  const day = startOfWeek.getDay();
+  const diff = day === 0 ? 6 : day - 1; // Monday = start of week
+  startOfWeek.setDate(startOfWeek.getDate() - diff);
+  const startOfLastWeek = new Date(startOfWeek);
+  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-  const startOfWeek = getStartOfWeekUTC();
-  const startOfNextWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const startOfLastWeek = getStartOfLastWeekUTC();
+  // Define same window yesterday for more accurate comparisons (same duration as today so far)
+  const windowDuration = now.getTime() - startOfToday.getTime();
+  const prevWindowEnd = new Date(startOfYesterday.getTime() + windowDuration);
 
-  // Fetch stats concurrently
+  // Fetch the required aggregates in a single transaction for efficiency
   const [
-    todayOrderStats,
-    yesterdayOrderStats,
-    thisWeekRevenueStats,
-    lastWeekRevenueStats,
-    todayItemStats,
-    yesterdayItemStats,
-  ] = await Promise.all([
-    // Orders & Revenue: Today
-    prisma.order.aggregate({
-      _count: { id: true },
-      _sum: { total_price: true },
-      where: { created_at: { gte: startOfToday, lt: startOfTomorrow } },
-    }),
-    // Orders & Revenue: Yesterday
-    prisma.order.aggregate({
-      _count: { id: true },
-      _sum: { total_price: true },
-      where: { created_at: { gte: startOfYesterday, lt: startOfToday } },
-    }),
-    // Revenue: This Week
+    ordersTodayCount,
+    ordersYesterdayCount,
+    revenueTodayAgg,
+    revenueYesterdayAgg,
+    itemsSoldTodayAgg,
+    itemsSoldYesterdayAgg,
+    revenueThisWeekAgg,
+    revenueLastWeekAgg,
+  ] = await prisma.$transaction([
+    prisma.order.count({ where: { order_date: { gte: startOfToday, lt: now } } }),
+    prisma.order.count({ where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } }),
     prisma.order.aggregate({
       _sum: { total_price: true },
-      where: { created_at: { gte: startOfWeek, lt: startOfNextWeek } },
+      where: { order_date: { gte: startOfToday, lt: now } },
     }),
-    // Revenue: Last Week
     prisma.order.aggregate({
       _sum: { total_price: true },
-      where: { created_at: { gte: startOfLastWeek, lt: startOfWeek } },
+      where: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } },
     }),
-    // Items: Today (Summing OrderItem quantity)
     prisma.orderItem.aggregate({
       _sum: { quantity: true },
-      where: { order: { created_at: { gte: startOfToday, lt: startOfTomorrow } } },
+      where: { order: { order_date: { gte: startOfToday, lt: now } } },
     }),
-    // Items: Yesterday
     prisma.orderItem.aggregate({
       _sum: { quantity: true },
-      where: { order: { created_at: { gte: startOfYesterday, lt: startOfToday } } },
+      where: { order: { order_date: { gte: startOfYesterday, lt: prevWindowEnd } } },
+    }),
+    prisma.order.aggregate({
+      _sum: { total_price: true },
+      where: { order_date: { gte: startOfWeek, lt: startOfTomorrow } },
+    }),
+    prisma.order.aggregate({
+      _sum: { total_price: true },
+      where: { order_date: { gte: startOfLastWeek, lt: startOfWeek } },
     }),
   ]);
 
-  // Extract values (handle potential null sums)
-  const ordersToday = todayOrderStats._count.id;
-  const revenueToday = todayOrderStats._sum.total_price?.toNumber() ?? 0;
-  const ordersYesterday = yesterdayOrderStats._count.id;
-  const revenueYesterday = yesterdayOrderStats._sum.total_price?.toNumber() ?? 0;
-  const revenueThisWeek = thisWeekRevenueStats._sum.total_price?.toNumber() ?? 0;
-  const revenueLastWeek = lastWeekRevenueStats._sum.total_price?.toNumber() ?? 0;
-  const totalItemsToday = todayItemStats._sum.quantity ?? 0;
-  const totalItemsYesterday = yesterdayItemStats._sum.quantity ?? 0;
+  // Convert Decimal values to numbers & provide fallbacks
+  const revenueToday = Number((revenueTodayAgg._sum.total_price ?? 0).toString());
+  const revenueYesterday = Number((revenueYesterdayAgg._sum.total_price ?? 0).toString());
+  const totalItemsSoldToday = Number((itemsSoldTodayAgg._sum.quantity ?? 0).toString());
+  const itemsSoldYesterday = Number((itemsSoldYesterdayAgg._sum.quantity ?? 0).toString());
+  const revenueThisWeek = Number((revenueThisWeekAgg._sum.total_price ?? 0).toString());
+  const revenueLastWeek = Number((revenueLastWeekAgg._sum.total_price ?? 0).toString());
 
-  // Calculate percentage changes
-  const ordersTodayPrev = `${calculatePercentageChange(ordersToday, ordersYesterday)} vs yesterday`;
-  const revenueTodayPrev = `${calculatePercentageChange(revenueToday, revenueYesterday)} vs yesterday`;
-  const totalItemsPrev = `${calculatePercentageChange(totalItemsToday, totalItemsYesterday)} vs yesterday`;
-  const revenueWeekPrev = `${calculatePercentageChange(revenueThisWeek, revenueLastWeek)} vs last week`;
+  // Helper to format percentage changes (matches dashboard logic)
+  const formatChange = (current: number, previous: number, label: string) => {
+    if (previous > 0) {
+      const change = ((current - previous) / previous) * 100;
+      const sign = change > 0 ? '+' : '';
+      return `${sign}${change.toFixed(1)}% vs ${label}`;
+    }
+    return 'N/A';
+  };
 
   return {
-    ordersToday,
+    ordersToday: ordersTodayCount,
     revenueToday,
-    totalItems: totalItemsToday, // Use today's item count
+    totalItems: totalItemsSoldToday,
     revenueThisWeek,
-    ordersTodayPrev,
-    revenueTodayPrev,
-    totalItemsPrev,
-    revenueWeekPrev,
+    ordersTodayPrev: formatChange(ordersTodayCount, ordersYesterdayCount, 'yesterday'),
+    revenueTodayPrev: formatChange(revenueToday, revenueYesterday, 'yesterday'),
+    totalItemsPrev: formatChange(totalItemsSoldToday, itemsSoldYesterday, 'yesterday'),
+    revenueWeekPrev: formatChange(revenueThisWeek, revenueLastWeek, 'last week'),
   };
 }
 
@@ -160,7 +171,8 @@ async function getOrders(
   statusFilter?: string,
   marketplaceFilter?: string,
   orderDateStart?: string,
-  orderDateEnd?: string
+  orderDateEnd?: string,
+  onlyReadyToPrint?: boolean
 ): Promise<{
   orders: Prisma.OrderGetPayload<{ select: (typeof orderSelectClause)['select'] }>[];
   total: number;
@@ -177,8 +189,12 @@ async function getOrders(
       total_price: true,
       order_date: true,
       shipped_date: true,
-      ship_by_date: true, // Add ship_by_date
+      ship_by_date: true,
       tracking_number: true,
+      lastPackingSlipAt: true,
+      is_merged: true,
+      merged_to_order_id: true,
+      merged_from_order_ids: true,
       _count: {
         select: { items: true },
       },
@@ -189,6 +205,13 @@ async function getOrders(
 
   // Build the where clause dynamically
   const where: Prisma.OrderWhereInput = {};
+
+  // Apply "Only Ready to Print" filter if active (default)
+  if (onlyReadyToPrint) {
+    where.order_status = 'awaiting_shipment';
+    where.printTasks = { some: {} }; // Only include orders that have at least one print task
+    where.is_merged = false; // Exclude merged orders by default
+  }
 
   if (searchQuery) {
     // Trim spaces from search query
@@ -300,8 +323,12 @@ type SelectedOrderData = Prisma.OrderGetPayload<{
     total_price: true;
     order_date: true;
     shipped_date: true;
-    ship_by_date: true; // Add ship_by_date
+    ship_by_date: true;
     tracking_number: true;
+    lastPackingSlipAt: true;
+    is_merged: true;
+    merged_to_order_id: true;
+    merged_from_order_ids: true;
     _count: { select: { items: true } };
   };
 }>;
@@ -382,8 +409,9 @@ export default async function OrdersPage({
     search?: string | string[];
     status?: string | string[];
     marketplace?: string | string[];
-    orderDateStart?: string | string[]; // Add date params
-    orderDateEnd?: string | string[]; // Add date params
+    orderDateStart?: string | string[];
+    orderDateEnd?: string | string[];
+    readyToPrint?: string | string[];
   };
 }) {
   // Await searchParams before accessing properties
@@ -396,8 +424,9 @@ export default async function OrdersPage({
     search: searchParam,
     status: statusParam,
     marketplace: marketplaceParam,
-    orderDateStart: orderDateStartParam, // Destructure date params
-    orderDateEnd: orderDateEndParam, // Destructure date params
+    orderDateStart: orderDateStartParam,
+    orderDateEnd: orderDateEndParam,
+    readyToPrint: readyToPrintParam = 'true',
   } = awaitedSearchParams || {};
 
   // Parse pagination params
@@ -418,18 +447,21 @@ export default async function OrdersPage({
   const currentOrderDateEnd = Array.isArray(orderDateEndParam)
     ? orderDateEndParam[0]
     : orderDateEndParam;
+  const onlyReadyToPrint =
+    (Array.isArray(readyToPrintParam) ? readyToPrintParam[0] : readyToPrintParam) !== 'false';
 
   // Fetch data and filter options concurrently
   const [{ orders, total }, stats, { statuses, marketplaces }, allTags] = await Promise.all([
-    // Pass date filters to getOrders
+    // Pass date filters AND readyToPrint filter to getOrders
     getOrders(
       validatedPage,
       validatedLimit,
       currentSearch,
       currentStatus,
       currentMarketplace,
-      currentOrderDateStart, // Pass start date
-      currentOrderDateEnd // Pass end date
+      currentOrderDateStart,
+      currentOrderDateEnd,
+      onlyReadyToPrint
     ),
     getDashboardStats(),
     getFilterOptions(),
@@ -486,9 +518,14 @@ export default async function OrdersPage({
           currentMarketplace={currentMarketplace}
           currentOrderDateStart={currentOrderDateStart}
           currentOrderDateEnd={currentOrderDateEnd}
+          currentReadyToPrint={onlyReadyToPrint}
           statuses={statuses}
           marketplaces={marketplaces}
         />
+        {/* Batch controls */}
+        <div className="flex justify-between items-center mb-4">
+          <PackingSlipBatchControls />
+        </div>
         {/* Orders Table (Existing) */}
         <Table>
           <TableHeader>
@@ -504,7 +541,8 @@ export default async function OrdersPage({
               <TableHead>Ship By</TableHead>
               <TableHead>Shipped Date</TableHead>
               <TableHead>Tracking #</TableHead>
-              <TableHead className="w-[100px] text-center">Actions</TableHead>
+              <TableHead className="w-[140px] text-center">Actions</TableHead>
+              <TableHead className="w-[160px] text-left">Printed At</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -534,9 +572,11 @@ export default async function OrdersPage({
                     isPrime && 'bg-blue-50 dark:bg-blue-900/20',
                     isPremium && 'bg-purple-50 dark:bg-purple-900/20',
                     isPriority && !isPrime && !isPremium && 'bg-amber-50 dark:bg-amber-900/20',
+                    order.is_merged && 'bg-slate-100 dark:bg-slate-800/40',
                     !isPrime &&
                       !isPremium &&
                       !isPriority &&
+                      !order.is_merged &&
                       orders.indexOf(order) % 2 !== 0 &&
                       'bg-muted/25'
                   )}
@@ -546,7 +586,10 @@ export default async function OrdersPage({
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/orders/${order.id}`}
-                        className="text-foreground/90 hover:text-foreground hover:underline"
+                        className={cn(
+                          'text-foreground/90 hover:text-foreground hover:underline',
+                          order.is_merged && 'text-muted-foreground line-through'
+                        )}
                       >
                         {order.shipstation_order_number || 'N/A'}
                       </Link>
@@ -558,6 +601,16 @@ export default async function OrdersPage({
                           Premium
                         </Badge>
                       )}
+                      {order.is_merged && (
+                        <Badge className="bg-slate-500 text-white hover:bg-slate-600">Merged</Badge>
+                      )}
+                      {order.merged_from_order_ids &&
+                        typeof order.merged_from_order_ids === 'object' &&
+                        Object.keys(order.merged_from_order_ids).length > 0 && (
+                          <Badge className="bg-slate-500 text-white hover:bg-slate-600">
+                            Combined
+                          </Badge>
+                        )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -688,11 +741,27 @@ export default async function OrdersPage({
                     <TrackingNumberCell trackingNumber={order.tracking_number} />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Link href={`/orders/${order.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <div className="flex justify-center gap-2">
+                      <RowPrintPackingSlipButton
+                        orderId={order.id}
+                        orderNumber={order.shipstation_order_number}
+                      />
+                      <Link href={`/orders/${order.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {order.lastPackingSlipAt ? (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                        {formatDateTime(new Date(order.lastPackingSlipAt))}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
                   </TableCell>
                 </TableRow>
               );

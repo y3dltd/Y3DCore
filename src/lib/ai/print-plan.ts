@@ -17,7 +17,7 @@ export interface PrintPlan {
   color_change_sequence: string[];
 }
 
-const COMPLEX_PLAN_PROMPT = `You are an expert 3D print planner for a busy print farm. You will be given a list of print tasks, each with quantity, color(s), and product info. Your job is to create an efficient, step-by-step print plan that minimizes color changes and plate swaps, while grouping compatible tasks together.
+export const COMPLEX_PLAN_PROMPT = `You are an expert 3D print planner for a busy print farm. You will be given a list of print tasks, each with quantity, color(s), and product info. Your job is to create an efficient, step-by-step print plan that minimizes color changes and plate swaps, while grouping compatible tasks together.
 
 Instructions:
 - Analyze the provided TASKS_JSON (array of print tasks).

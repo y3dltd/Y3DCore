@@ -20,7 +20,7 @@ import axios from 'axios';
 export function createSecureApiClient(baseConfig) {
     // Create a secure HTTPS agent that always validates certificates
     const secureHttpsAgent = new https.Agent({
-        rejectUnauthorized: true,
+        rejectUnauthorized: true, // Reject invalid/self-signed certificates
         minVersion: 'TLSv1.2', // Enforce minimum TLS version
     });
     // Create axios instance with secure defaults

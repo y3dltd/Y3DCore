@@ -80,7 +80,11 @@ function serializeOrderDetails(order: OrderDataFromPrisma): SerializableOrderDet
     ship_by_date: order.ship_by_date?.toISOString() ?? null,
     shipped_date: order.shipped_date?.toISOString() ?? null,
     last_sync_date: order.last_sync_date?.toISOString() ?? null,
+    lastPackingSlipAt: order.lastPackingSlipAt?.toISOString() ?? null,
     void_date: order.void_date?.toISOString() ?? null,
+    is_merged: order.is_merged || false,
+    merged_to_order_id: order.merged_to_order_id,
+    merged_from_order_ids: order.merged_from_order_ids,
     items: order.items.map(item => ({
       ...item,
       unit_price: item.unit_price.toString(),
@@ -162,6 +166,7 @@ async function getOrderDetails(
         insurance_insured_value: true,
         tag_ids: true,
         last_sync_date: true,
+        lastPackingSlipAt: true,
         marketplace: true,
         shipping_price: true,
         confirmation: true,
@@ -173,6 +178,9 @@ async function getOrderDetails(
         shipping_tax: true,
         customerId: true,
         marketplace_notified: true,
+        is_merged: true,
+        merged_to_order_id: true,
+        merged_from_order_ids: true,
         customer: true,
         items: {
           orderBy: { id: 'asc' },
@@ -470,6 +478,85 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                 <strong>Ship By Date:</strong>{' '}
                 {order.ship_by_date ? formatDateTime(new Date(order.ship_by_date)) : 'N/A'}
               </p>
+
+              {/* Merged Order Information */}
+              {order.is_merged && (
+                <div className="border-t border-dashed pt-2 mt-2">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    This order has been merged into order ID: {order.merged_to_order_id}
+                  </p>
+                  <Link href={`/orders/${order.merged_to_order_id}`}>
+                    <Button variant="outline" size="sm" className="mt-1">
+                      View Parent Order
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {order.merged_from_order_ids && (
+                <div className="border-t border-dashed pt-2 mt-2">
+                  <p className="font-medium text-green-700 dark:text-green-400">
+                    This order contains merged orders:
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {(() => {
+                      // Safely handle different formats of merged_from_order_ids
+                      try {
+                        let mergedIds: number[] = [];
+
+                        if (Array.isArray(order.merged_from_order_ids)) {
+                          mergedIds = order.merged_from_order_ids.filter(
+                            (id): id is number => typeof id === 'number'
+                          );
+                        } else if (
+                          typeof order.merged_from_order_ids === 'object' &&
+                          order.merged_from_order_ids
+                        ) {
+                          Object.values(order.merged_from_order_ids)
+                            .filter((value): value is number => typeof value === 'number')
+                            .forEach(id => mergedIds.push(id));
+                        }
+                        // Handle string JSON representation
+                        else if (typeof order.merged_from_order_ids === 'string') {
+                          try {
+                            const parsed = JSON.parse(order.merged_from_order_ids);
+                            if (Array.isArray(parsed)) {
+                              mergedIds = parsed.filter(
+                                (id): id is number => typeof id === 'number'
+                              );
+                            } else if (typeof parsed === 'object' && parsed) {
+                              Object.values(parsed)
+                                .filter((value): value is number => typeof value === 'number')
+                                .forEach(id => mergedIds.push(id));
+                            }
+                          } catch (e) {
+                            console.error('Failed to parse merged_from_order_ids JSON string', e);
+                          }
+                        }
+
+                        return mergedIds.length > 0 ? (
+                          mergedIds.map(id => (
+                            <Link key={id} href={`/orders/${id}`}>
+                              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
+                                Order ID: {id}
+                              </Badge>
+                            </Link>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Unknown format</span>
+                        );
+                      } catch (e) {
+                        console.error('Error processing merged order IDs', e);
+                        return (
+                          <span className="text-muted-foreground text-xs">
+                            Error processing merged orders
+                          </span>
+                        );
+                      }
+                    })()}
+                  </div>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="text-sm">
               <div className="flex flex-col space-y-1 w-full">

@@ -1,7 +1,11 @@
 # ---
+
 # title: Troubleshooting Guide
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Troubleshooting Guide
@@ -78,9 +82,11 @@ This document provides guidance for diagnosing and fixing common issues in Y3DHu
 3. **Build your site (if required):**
 
    - For most frameworks (like Next.js, React, etc.), run:
+
      ```bash
      npm run build
      ```
+
    - Make sure the output directory matches your Netlify settings (e.g., `out`, `build`, or `.next`).
 
 4. Deploy your site (from your project root):
@@ -90,6 +96,7 @@ This document provides guidance for diagnosing and fixing common issues in Y3DHu
    ```
 
    - For production:
+
      ```bash
      netlify deploy --prod
      ```

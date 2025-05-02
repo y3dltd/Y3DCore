@@ -139,22 +139,24 @@ interface SyncShipstationParams {
 /**
  * Fetches and upserts orders, customers, and items within a date range.
  * Orchestrates the synchronization process, handling pagination and errors.
- * @param syncParams - Parameters to control the sync (date range, page limit, status filter).
+ * @param syncParams - Parameters to control the sync (date range, page limit, status filter - NOTE: syncAllStatuses is now ignored).
  * @returns A summary object detailing the outcome of the sync process.
  */
 export const syncShipstationData = async (
-  syncParams: SyncShipstationParams = {}
+  // syncParams: SyncShipstationParams = {} - syncAllStatuses is unused now
+  syncParams: Omit<SyncShipstationParams, 'syncAllStatuses'> = {}
 ): Promise<SyncSummary> => {
   let currentPage = 1;
   let totalPages = 1;
   let ordersSuccessfullyProcessed = 0;
   let ordersFailedToProcess = 0;
   let totalOrdersFetched = 0;
+  let ordersSkippedStatus = 0; // Track skipped orders
   const maxPagesToSync = syncParams.pageLimit ?? Infinity; // Default to Infinity if no limit for historical sync
   const syncFailed = false;
   const failureReason = '';
 
-  console.log('Starting full ShipStation data synchronization...');
+  console.log('Starting ShipStation data synchronization (awaiting_shipment & on_hold)...');
 
   // Prepare API parameters based on sync options
   const apiParams: ShipStationApiParams = {
@@ -165,7 +167,8 @@ export const syncShipstationData = async (
     ...(syncParams.modifyDateStart && { modifyDateStart: syncParams.modifyDateStart }),
     ...(syncParams.orderDateStart && { orderDateStart: syncParams.orderDateStart }), // Add date filters
     ...(syncParams.orderDateEnd && { orderDateEnd: syncParams.orderDateEnd }), // Add date filters
-    ...(!syncParams.syncAllStatuses && { orderStatus: 'awaiting_shipment' }),
+    // REMOVED: ...(!syncParams.syncAllStatuses && { orderStatus: 'awaiting_shipment' }),
+    // Fetch all statuses from API, filter locally
   };
 
   // NOTE: The default modifyDateStart logic remains commented out for now
@@ -202,8 +205,25 @@ export const syncShipstationData = async (
         `[Sync] Processing ${response.orders.length} orders from page ${currentPage}/${totalPages === Infinity ? '?' : totalPages}...`
       );
 
-      for (const ssOrder of response.orders) {
+      // Filter fetched orders locally for desired statuses BEFORE processing
+      const ordersToProcess = response.orders.filter(ssOrder => {
+        const shouldProcess = ssOrder.orderStatus === 'awaiting_shipment' || ssOrder.orderStatus === 'on_hold';
+        if (!shouldProcess) {
+          ordersSkippedStatus++;
+          // Optional: Log skipped orders if needed for debugging
+          // console.log(`[Sync] Skipping order ${ssOrder.orderNumber} (Status: ${ssOrder.orderStatus})`);
+        }
+        return shouldProcess;
+      });
+
+      console.log(
+        `[Sync] -> Filtered to ${ordersToProcess.length} orders with status 'awaiting_shipment' or 'on_hold'.`
+      );
+
+
+      for (const ssOrder of ordersToProcess) { // Iterate over the filtered list
         try {
+          // Now process the order (which is guaranteed to be awaiting_shipment or on_hold)
           const result = await upsertOrderWithItems(ssOrder);
           if (result) {
             ordersSuccessfullyProcessed++;
@@ -212,7 +232,7 @@ export const syncShipstationData = async (
           }
         } catch (itemProcessingError) {
           console.error(
-            `[Sync] Uncaught error processing items for order ${ssOrder.orderNumber}:`,
+            `[Sync] Uncaught error processing items for order ${ssOrder.orderNumber} (Status: ${ssOrder.orderStatus}):`,
             itemProcessingError
           );
           ordersFailedToProcess++;
@@ -234,6 +254,7 @@ export const syncShipstationData = async (
       ordersProcessed: ordersSuccessfullyProcessed,
       ordersFailed: ordersFailedToProcess,
       totalOrdersFetched: totalOrdersFetched,
+      ordersSkippedDueToStatus: ordersSkippedStatus, // Add skipped count to summary
       pagesSynced: currentPage - 1, // Number of pages actually fetched
       totalPagesAvailable: totalPages === Infinity ? 'Unknown' : totalPages, // Total reported by API
     });
@@ -248,17 +269,14 @@ export const syncShipstationData = async (
       totalPagesAvailable: totalPages === Infinity ? -1 : totalPages, // Use -1 for unknown
     };
   } catch (error: unknown) {
-    // ... existing error handling ...
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error during sync execution';
-    console.error('\n--- FATAL SYNC ERROR ---');
-    console.error(errorMessage, error);
-    console.error('----------------------\n');
+    console.error('[Sync] Critical error during ShipStation sync:', error);
+    // Ensure summary reflects failure
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
-      message: `Sync failed: ${errorMessage}`,
+      message: `ShipStation sync FAILED: ${errorMessage}`,
       ordersProcessed: ordersSuccessfullyProcessed,
-      ordersFailed: ordersFailedToProcess,
+      ordersFailed: ordersFailedToProcess + (totalOrdersFetched - ordersSuccessfullyProcessed - ordersSkippedStatus), // Estimate remaining as failed
       totalOrdersFetched: totalOrdersFetched,
       pagesSynced: currentPage - 1,
       totalPagesAvailable: totalPages === Infinity ? -1 : totalPages,
@@ -386,7 +404,7 @@ export async function updateOrderItemsOptionsBatch(
     const key = item.lineItemKey;
     // Only attempt patch if lineItemKey exists (is not null/undefined)
     // and is actually a key present in itemsToPatch
-    if (key != null && itemsToPatch.hasOwnProperty(key)) {
+    if (key != null && Object.prototype.hasOwnProperty.call(itemsToPatch, key)) {
       // Ensure itemsToPatch[key] is an array before calling filter
       const optionsToPatch = Array.isArray(itemsToPatch[key]) ? itemsToPatch[key] : [];
 
