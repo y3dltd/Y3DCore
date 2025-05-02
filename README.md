@@ -143,11 +143,11 @@ The entire process can be automated using the workflow script:
 
 ## Deployment
 
-The application is deployed to Netlify. Changes pushed to the main branch trigger automatic deployments.
+The application is deployed to Vercel. Changes pushed to the main branch trigger automatic deployments.
 
 ```bash
-# Manual deployment
-npx netlify deploy --prod
+# View deployment status
+vercel ls
 ```
 
 ## Documentation
