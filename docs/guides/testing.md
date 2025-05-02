@@ -6,10 +6,10 @@ This document outlines the testing strategy for the Y3DHub project.
 
 We aim for a comprehensive testing approach covering different levels:
 
-1.  **Unit Tests**: Test individual functions, modules, and components in isolation.
-2.  **Integration Tests**: Test the interaction between different parts of the system (e.g., API endpoints and database).
-3.  **End-to-End (E2E) Tests**: Test user flows through the application interface.
-4.  **Script Tests**: Test the functionality of command-line scripts.
+1. **Unit Tests**: Test individual functions, modules, and components in isolation.
+2. **Integration Tests**: Test the interaction between different parts of the system (e.g., API endpoints and database).
+3. **End-to-End (E2E) Tests**: Test user flows through the application interface.
+4. **Script Tests**: Test the functionality of command-line scripts.
 
 ## Tools and Frameworks
 

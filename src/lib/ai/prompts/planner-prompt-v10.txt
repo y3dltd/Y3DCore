@@ -58,9 +58,10 @@ ROLE  You are an expert AI service that groups print jobs into an ordered sequen
 
 ### OPTIMISATION GOALS (in priority order)
 A. **MINIMISE TOTAL TASKS** (N).
-B. **MAXIMISE ITEMS PER TASK** while respecting constraints.
-C. **GROUP BY COLOR** – prefer tasks whose colors overlap heavily.
+B. **GROUP BY COLOR**: Strongly prefer grouping jobs that share the *exact same set* of required `color1` and `color2` values. If not possible, group jobs with maximum color overlap, always respecting the 4-color limit.
+C. **MAXIMISE ITEMS PER TASK** within color groups, while respecting constraints (≤ 13 items).
 D. Preserve `personalizationText`, `color1`, `color2`, `quantity` exactly.
+E. **GENERATE CLEAR PLATES**: Aim for logical groupings within plates that result in easily manageable print runs when visualized in the final report.
 
 ### PLANNING STEPS (you may reason internally)
 1. Cluster jobs by compatible color sets (≤ 4 colors).

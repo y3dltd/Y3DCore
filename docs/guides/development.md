@@ -1,7 +1,11 @@
 # ---
+
 # title: Development Guide
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 ## Prerequisites
@@ -50,7 +54,7 @@ src/
 2. **Development Server**:
 
    - Run `npm run dev` to start the development server
-   - Access the application at http://localhost:3000
+   - Access the application at <http://localhost:3000>
 
 3. **Building for Production**:
    - Run `npm run build` to build the application
@@ -151,15 +155,15 @@ Updating specific details of an order item in ShipStation (e.g., adding personal
 
 The correct process, implemented in `src/lib/shipstation/api.ts` (`updateOrderItemOptions` function) and used by scripts like `src/scripts/populate-print-queue.ts`, is as follows:
 
-1.  **Fetch Full Order:** Before attempting an update, fetch the complete, current order details from ShipStation using the appropriate endpoint (e.g., `/orders/{shipstation_order_id}` or `/orders?orderNumber=...`). This provides the base object for the update.
-2.  **Prepare Updated Item Options:** Construct the array of `options` you want to set for the specific item (e.g., `[{ name: "Personalization", value: "..." }, { name: "Color", value: "..." }]`).
-3.  **Modify Items Array:** Create a _new_ array of order items based on the `items` array from the fetched order. Map through the original items:
+1. **Fetch Full Order:** Before attempting an update, fetch the complete, current order details from ShipStation using the appropriate endpoint (e.g., `/orders/{shipstation_order_id}` or `/orders?orderNumber=...`). This provides the base object for the update.
+2. **Prepare Updated Item Options:** Construct the array of `options` you want to set for the specific item (e.g., `[{ name: "Personalization", value: "..." }, { name: "Color", value: "..." }]`).
+3. **Modify Items Array:** Create a _new_ array of order items based on the `items` array from the fetched order. Map through the original items:
     - If an item matches the `lineItemKey` you want to update, return a copy of that item (`...item`) but replace its `options` property with the new options array prepared in step 2.
     - If an item does not match, return it unchanged.
-4.  **Construct Full Payload:** Create the payload object for the POST request:
+4. **Construct Full Payload:** Create the payload object for the POST request:
     - Use the spread operator (`...`) on the **full fetched order object** obtained in step 1. This includes `orderId`, `orderKey`, addresses, status, dates, etc.
     - Override the `items` property in the spread object with the **modified items array** created in step 3.
-5.  **Send Update Request:** Make a `POST` request to `/orders/createorder` with the fully constructed payload.
+5. **Send Update Request:** Make a `POST` request to `/orders/createorder` with the fully constructed payload.
 
 This ensures ShipStation receives all the necessary context from the original order while applying the specific item option changes.
 

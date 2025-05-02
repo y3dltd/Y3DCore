@@ -293,6 +293,22 @@ const TaskPage: React.FC<TaskPageProps> = ({
     };
   }, [activeTaskId]);
 
+  // --- Handler for selecting a historical run ---
+  const handleRunSelect = useCallback(
+    (keys: unknown) => {
+      if (!onSelectRun) return;
+      // NextUI passes a Set of keys (or "all"), we only allow single selection here
+      const keyArray = Array.isArray(keys)
+        ? (keys as unknown as React.Key[])
+        : Array.from(keys as Set<React.Key>);
+      const firstKey = keyArray[0] as string | undefined;
+      if (firstKey === undefined) return;
+      // "latest" denotes the most recent successful run (live data)
+      onSelectRun(firstKey === 'latest' ? null : firstKey);
+    },
+    [onSelectRun]
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Header/Summary */}
@@ -303,6 +319,30 @@ const TaskPage: React.FC<TaskPageProps> = ({
               Print Tasks
             </h1>
             <div className="flex items-center gap-2">
+              {/* Historical runs dropdown */}
+              {recentRuns.length > 0 && (
+                <Select
+                  size="sm"
+                  selectedKeys={new Set([selectedRunId ?? 'latest'])}
+                  onSelectionChange={handleRunSelect}
+                  aria-label="Select previous optimisation run"
+                  placeholder="Run history"
+                  className="min-w-[160px]"
+                  items={[
+                    { id: 'latest', label: 'Latest Run' },
+                    ...recentRuns.map(run => ({
+                      id: run.id,
+                      label: new Date(run.finishedAt).toLocaleString(),
+                    })),
+                  ]}
+                >
+                  {item => (
+                    <SelectItem key={item.id} textValue={item.label}>
+                      {item.label}
+                    </SelectItem>
+                  )}
+                </Select>
+              )}
               <Tooltip content="Refresh Plan">
                 <Button
                   isIconOnly

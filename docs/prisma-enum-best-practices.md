@@ -166,6 +166,7 @@ Changing enum values requires special attention:
 If you encounter issues with enum fields:
 
 1. **Check Database Values**: Use raw SQL to inspect the actual values in the database
+
    ```sql
    SELECT DISTINCT stl_render_state FROM "PrintOrderTask";
    ```
@@ -173,6 +174,7 @@ If you encounter issues with enum fields:
 2. **Validate Against Enum Definition**: Ensure all values match the defined enum
 
 3. **Fix Invalid Values**: Use raw SQL to update invalid values
+
    ```sql
    UPDATE "PrintOrderTask" SET stl_render_state = 'pending' 
    WHERE stl_render_state = '' OR stl_render_state IS NULL;

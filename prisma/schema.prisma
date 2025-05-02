@@ -84,6 +84,9 @@ model Order {
   marketplace_notified       Boolean             @default(false)
   void_date                  DateTime?           @db.DateTime(0)
   lastPackingSlipAt          DateTime?           @db.DateTime(0)
+  is_merged                  Boolean             @default(false)
+  merged_to_order_id         Int?
+  merged_from_order_ids      Json?
   customer                   Customer?           @relation(fields: [customerId], references: [id])
   items                      OrderItem[]
   printTasks                 PrintOrderTask[]
@@ -94,6 +97,8 @@ model Order {
   @@index([customerId])
   @@index([marketplace])
   @@index([shipstation_store_id])
+  @@index([is_merged])
+  @@index([merged_to_order_id])
 }
 
 model Customer {
