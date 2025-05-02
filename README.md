@@ -66,6 +66,7 @@ Y3DHub is a modern Next.js application for managing 3D printing tasks and orders
    ```
 
 6. Start the development server
+
    ```bash
    npm run dev
    ```
@@ -140,6 +141,63 @@ The entire process can be automated using the workflow script:
 # Run the complete workflow
 ./scripts/workflow.sh
 ```
+
+## Troubleshooting and Debugging
+
+### Amazon URL Processing
+
+The system provides tools for debugging issues with Amazon personalization URLs:
+
+```bash
+# Check for orders with Amazon CustomizedURL that haven't been processed
+npm run check:amazon-urls
+
+# Process a specific order with Amazon URL, forcing task recreation
+npx tsx src/scripts/populate-print-queue.ts --order-id <ORDER_ID> --force-recreate
+
+# Sync only ShipStation data for a specific order ID
+npx tsx src/scripts/populate-print-queue.ts --order-id <ORDER_ID> --shipstation-sync-only
+```
+
+### Common Issues and Solutions
+
+#### ShipStation API Rate Limits
+
+If you encounter rate limit issues with ShipStation API, the system will automatically retry operations (up to 3 attempts) with increasing delay between retries.
+
+#### Stale Lock Files
+
+If the `workflow.sh` script reports that another instance is running but you know it's not:
+
+```bash
+# Find and kill any stuck workflow processes
+ps aux | grep workflow.sh | grep -v grep | awk '{print $2}' | xargs kill
+
+# Remove stale lock file
+rm -f /tmp/y3dhub_workflow.pid
+```
+
+#### Order Sync Debugging
+
+For orders that don't appear to update correctly in ShipStation:
+
+1. Check logs for the specific order ID:
+
+   ```bash
+   grep -r "<ORDER_ID>" logs/
+   ```
+
+2. Examine the order status in both the database and ShipStation:
+
+   ```bash
+   # Get order status from database
+   npx tsx scripts/debug-order.ts --id <ORDER_ID>
+   ```
+
+3. Force a complete resync with debug output:
+   ```bash
+   NODE_ENV=development npx tsx src/scripts/populate-print-queue.ts --order-id <ORDER_ID> --force-recreate --verbose
+   ```
 
 ## Deployment
 
