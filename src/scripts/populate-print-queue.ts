@@ -16,6 +16,7 @@ import z from 'zod';
 import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
+import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../lib/email/system-notifications';
 
 // Initialize database connection
 const prisma = new PrismaClient();
@@ -884,19 +885,65 @@ async function createOrUpdateTasksInTransaction(
   }
 
   if (!options.dryRun && Object.keys(itemsToPatch).length > 0 && orderInTx.shipstation_order_id) {
-    try {
-      const ssOrderResp = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
-      if (ssOrderResp.orders && ssOrderResp.orders.length > 0) {
-        const auditNote = `Task sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
-        await updateOrderItemsOptionsBatch(ssOrderResp.orders[0], itemsToPatch, auditNote);
-        logger.info(`[ShipStation Batch][Order ${orderInTx.id}] Successfully updated items: ${patchReasons.join(', ')}`);
-      } else {
-        logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Failed to fetch SS order for batch update.`);
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 2000;
+    let attempt = 0;
+    let batchUpdateSuccess = false;
+
+    while (attempt < MAX_RETRIES && !batchUpdateSuccess) {
+      attempt++;
+      try {
+        logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Fetching order for batch update...`);
+        // NOTE: This fetches the order AGAIN - potential optimization later?
+        const ssOrderResp = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
+
+        if (ssOrderResp.orders && ssOrderResp.orders.length > 0) {
+          const auditNote = `Task sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Calling updateOrderItemsOptionsBatch for items: ${patchReasons.join(', ')}`);
+          await updateOrderItemsOptionsBatch(ssOrderResp.orders[0], itemsToPatch, auditNote);
+          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Successfully updated items: ${patchReasons.join(', ')}`);
+          batchUpdateSuccess = true; // Mark as success to exit loop
+        } else {
+          logger.error(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Failed to fetch SS order for batch update.`);
+          // Potentially retry fetch failure too, but for now, treat as non-retryable for this attempt
+          if (attempt >= MAX_RETRIES) {
+            await sendSystemNotification(
+              `ShipStation Batch Update Failure (Fetch)`,
+              `Failed to fetch ShipStation order details for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Cannot apply batch item updates for items: ${patchReasons.join(', ')}`,
+              ErrorSeverity.ERROR,
+              ErrorCategory.SHIPSTATION
+            );
+          }
+        }
+      } catch (batchErr) {
+        const errorMessage = batchErr instanceof Error ? batchErr.message : String(batchErr);
+        logger.error(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Error during batch update: ${errorMessage}`, batchErr);
+        if (attempt >= MAX_RETRIES) {
+          logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Final attempt failed. Giving up.`);
+          // Send email notification on final failure
+          await sendSystemNotification(
+            `ShipStation Batch Update Failure`,
+            `Failed to update ShipStation item options for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Items attempted: ${patchReasons.join(', ')}. Error: ${errorMessage}`,
+            ErrorSeverity.ERROR,
+            ErrorCategory.SHIPSTATION,
+            batchErr // Include error details if possible
+          );
+          // Decide if this failure should cause the whole transaction to fail
+          // For now, let it continue but log the critical failure.
+          // Consider throwing the error here if it should halt processing:
+          // throw batchErr;
+        } else {
+          logger.warn(`[ShipStation Batch][Order ${orderInTx.id}] Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS)); // Wait before retrying
+        }
       }
-    } catch (batchErr) {
-      logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Error during batch update`, batchErr);
-    }
-  }
+    } // end while loop
+  } // end if check
+
+  logger.info(
+    `[DB][Order ${orderInTx.id}] DB Transaction finished. Tasks upserted: ${tasksCreatedCount}.`
+  );
+
   return { tasksCreatedCount, tasksSkippedCount, itemsNeedReviewCount };
 }
 
