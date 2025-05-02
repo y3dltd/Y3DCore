@@ -99,6 +99,9 @@ export interface ShipStationOrder {
     customField2?: string | null;
     customField3?: string | null;
     source?: string | null;
+    mergedOrSplit?: boolean;
+    mergedIds?: number[];
+    parentId?: number | null;
   } | null;
   tagIds?: number[] | null;
   orderSource?: string | null;
