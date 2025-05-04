@@ -1,6 +1,6 @@
 // Remove unused imports
 // import { PrintOrderTask, PrintTaskStatus } from '@prisma/client';
-import { PrintTaskStatus, Prisma } from '@prisma/client'; // Import enum and Prisma namespace
+import { PrintTaskStatus, Prisma } from "@prisma/client"; // Import enum and Prisma namespace
 
 // Unused imports removed:
 // import { AutoRefresher } from '@/components/auto-refresher';
@@ -10,16 +10,16 @@ import { PrintTaskStatus, Prisma } from '@prisma/client'; // Import enum and Pri
 // import { PrintQueueHeader } from '@/components/print-queue-header';
 // import { PrintQueueTaskTotals } from '@/components/print-queue-task-totals';
 // import { cleanShippedOrderTasks } from '@/lib/actions/print-queue-actions';
-import { fixInvalidStlRenderStatus } from '@/lib/order-processing'; // Import the fix function
-import { detectMarketplaceOrderNumber } from '@/lib/order-utils'; // Import order number detection
-import { prisma } from '@/lib/prisma';
-import { ClientPrintTaskData } from '@/types/print-tasks'; // Import the new client-safe type
+import { fixInvalidStlRenderStatus } from "@/lib/order-processing"; // Import the fix function
+import { detectMarketplaceOrderNumber } from "@/lib/order-utils"; // Import order number detection
+import { prisma } from "@/lib/prisma";
+import { ClientPrintTaskData } from "@/types/print-tasks"; // Import the new client-safe type
 
 // import PrintQueueSummaryServer from './PrintQueueSummaryServer';
-import PrintQueueClient from './PrintQueueClient'; // Import the new client component
+import PrintQueueClient from "./PrintQueueClient"; // Import the new client component
 
 // Restore dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // Function to get distinct product names linked to tasks
 async function getDistinctProductNamesForTasks(): Promise<string[]> {
@@ -32,21 +32,21 @@ async function getDistinctProductNamesForTasks(): Promise<string[]> {
         },
         // Ensure name is not null or empty (simplifying check)
         name: {
-          not: '', // Primarily check for non-empty string
+          not: "", // Primarily check for non-empty string
         },
       },
       select: {
         name: true,
       },
-      distinct: ['name'],
+      distinct: ["name"],
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
     // Extract names, filter out any potential nulls/empties just in case
-    return products.map(p => p.name).filter(Boolean) as string[];
+    return products.map((p) => p.name).filter(Boolean) as string[];
   } catch (error) {
-    console.error('Error fetching distinct product names:', error);
+    console.error("Error fetching distinct product names:", error);
     return []; // Return empty array on error
   }
 }
@@ -68,15 +68,17 @@ async function getDistinctShippingMethodsForTasks(): Promise<string[]> {
       select: {
         requested_shipping_service: true,
       },
-      distinct: ['requested_shipping_service'],
+      distinct: ["requested_shipping_service"],
       orderBy: {
-        requested_shipping_service: 'asc',
+        requested_shipping_service: "asc",
       },
     });
     // Extract names, filter out nulls/empties
-    return orders.map(o => o.requested_shipping_service).filter(Boolean) as string[];
+    return orders
+      .map((o) => o.requested_shipping_service)
+      .filter(Boolean) as string[];
   } catch (error) {
-    console.error('Error fetching distinct shipping methods:', error);
+    console.error("Error fetching distinct shipping methods:", error);
     return []; // Return empty array on error
   }
 }
@@ -115,8 +117,8 @@ async function getPrintTasks({
 }: {
   validatedPage: number;
   validatedLimit: number;
-  validatedStatus: PrintTaskStatus | 'all' | 'active';
-  validatedNeedsReview: 'yes' | 'no' | 'all';
+  validatedStatus: PrintTaskStatus | "all" | "active";
+  validatedNeedsReview: "yes" | "no" | "all";
   validatedQuery: string;
   validatedShipByDateStart?: string;
   validatedShipByDateEnd?: string;
@@ -133,23 +135,23 @@ async function getPrintTasks({
   const filters: Prisma.PrintOrderTaskWhereInput[] = [];
 
   // Status filter
-  if (validatedStatus === 'active') {
+  if (validatedStatus === "active") {
     filters.push({
       status: {
         in: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
       },
     });
-  } else if (validatedStatus !== 'all') {
+  } else if (validatedStatus !== "all") {
     filters.push({ status: validatedStatus });
   }
 
   // Needs Review filter
-  if (validatedNeedsReview !== 'all') {
-    filters.push({ needs_review: validatedNeedsReview === 'yes' });
+  if (validatedNeedsReview !== "all") {
+    filters.push({ needs_review: validatedNeedsReview === "yes" });
   }
 
   // Product Name filter
-  if (validatedProductName && validatedProductName !== 'all') {
+  if (validatedProductName && validatedProductName !== "all") {
     filters.push({
       product: {
         name: validatedProductName,
@@ -158,7 +160,7 @@ async function getPrintTasks({
   }
 
   // Shipping Method filter
-  if (validatedShippingMethod && validatedShippingMethod !== 'all') {
+  if (validatedShippingMethod && validatedShippingMethod !== "all") {
     filters.push({
       order: {
         is: {
@@ -181,7 +183,10 @@ async function getPrintTasks({
         dateFilterApplied = true;
       }
     } catch (_ignoredError) {
-      console.warn('Invalid shipByDateStart format received:', validatedShipByDateStart);
+      console.warn(
+        "Invalid shipByDateStart format received:",
+        validatedShipByDateStart
+      );
     }
   }
   if (validatedShipByDateEnd) {
@@ -193,7 +198,10 @@ async function getPrintTasks({
         dateFilterApplied = true;
       }
     } catch (_ignoredError) {
-      console.warn('Invalid shipByDateEnd format received:', validatedShipByDateEnd);
+      console.warn(
+        "Invalid shipByDateEnd format received:",
+        validatedShipByDateEnd
+      );
     }
   }
 
@@ -210,9 +218,13 @@ async function getPrintTasks({
       const detection = detectMarketplaceOrderNumber(trimmedQuery);
       if (detection.isMarketplaceNumber) {
         orConditions.push({ marketplace_order_number: trimmedQuery }); // Exact match
-        orConditions.push({ marketplace_order_number: { contains: trimmedQuery } });
+        orConditions.push({
+          marketplace_order_number: { contains: trimmedQuery },
+        });
       } else {
-        orConditions.push({ marketplace_order_number: { contains: trimmedQuery } });
+        orConditions.push({
+          marketplace_order_number: { contains: trimmedQuery },
+        });
       }
       orConditions.push({ custom_text: { contains: trimmedQuery } });
       // Include color fields in the main query OR search
@@ -231,10 +243,10 @@ async function getPrintTasks({
 
   // Color 1 filter
   if (validatedColor1) {
-    if (validatedColor1 === 'none') {
+    if (validatedColor1 === "none") {
       // Add to OR conditions for null or empty string
       orConditions.push({ color_1: { equals: null } });
-      orConditions.push({ color_1: { equals: '' } });
+      orConditions.push({ color_1: { equals: "" } });
     } else {
       // Add as an AND condition for specific color
       filters.push({ color_1: { contains: validatedColor1 } });
@@ -243,10 +255,10 @@ async function getPrintTasks({
 
   // Color 2 filter
   if (validatedColor2) {
-    if (validatedColor2 === 'none') {
+    if (validatedColor2 === "none") {
       // Add to OR conditions for null or empty string
       orConditions.push({ color_2: { equals: null } });
-      orConditions.push({ color_2: { equals: '' } });
+      orConditions.push({ color_2: { equals: "" } });
     } else {
       // Add as an AND condition for specific color
       filters.push({ color_2: { contains: validatedColor2 } });
@@ -259,7 +271,8 @@ async function getPrintTasks({
   }
 
   // Combine all filters with AND
-  const whereClause: Prisma.PrintOrderTaskWhereInput = filters.length > 0 ? { AND: filters } : {};
+  const whereClause: Prisma.PrintOrderTaskWhereInput =
+    filters.length > 0 ? { AND: filters } : {};
 
   // If there's only one filter and it's an OR condition, remove the redundant AND
   if (filters.length === 1 && filters[0].OR) {
@@ -267,14 +280,17 @@ async function getPrintTasks({
     delete whereClause.AND;
   }
 
-  console.log('[getPrintTasks] Using validated filters:', {
+  console.log("[getPrintTasks] Using validated filters:", {
     status: validatedStatus,
     needsReview: validatedNeedsReview,
     query: validatedQuery,
     shipByDateStart: validatedShipByDateStart,
     shipByDateEnd: validatedShipByDateEnd,
   });
-  console.log('[getPrintTasks] Generated Where Clause:', JSON.stringify(whereClause));
+  console.log(
+    "[getPrintTasks] Generated Where Clause:",
+    JSON.stringify(whereClause)
+  );
 
   const [tasks, total] = await prisma.$transaction([
     prisma.printOrderTask.findMany({
@@ -282,9 +298,9 @@ async function getPrintTasks({
       skip: skip,
       take: validatedLimit,
       orderBy: [
-        { needs_review: 'desc' },
-        { color_1: { sort: 'asc', nulls: 'last' } },
-        { color_2: { sort: 'asc', nulls: 'last' } },
+        { needs_review: "desc" },
+        { color_1: { sort: "asc", nulls: "last" } },
+        { color_2: { sort: "asc", nulls: "last" } },
       ],
       include: {
         order: {
@@ -299,15 +315,15 @@ async function getPrintTasks({
     prisma.printOrderTask.count({ where: whereClause }),
   ]);
 
-  const tasksWithLinks = tasks.map(task => ({
+  const tasksWithLinks = tasks.map((task) => ({
     ...task,
     orderLink: `/orders/${task.orderId}`,
   }));
 
   // --- Filter tasks missing products and Convert Decimal/Date fields ---
-  const validTasks = tasksWithLinks.filter(task => task.product); // Filter out tasks without a product
+  const validTasks = tasksWithLinks.filter((task) => task.product); // Filter out tasks without a product
 
-  const serializableTasks: ClientPrintTaskData[] = validTasks.map(task => {
+  const serializableTasks: ClientPrintTaskData[] = validTasks.map((task) => {
     // Use ClientPrintTaskData here
     // Now we know task.product is not null within this map
     const product = task.product!; // Use non-null assertion as we've filtered
@@ -320,7 +336,7 @@ async function getPrintTasks({
       ship_by_date: task.ship_by_date?.toISOString() ?? null, // Handle potential null
 
       // Map product name to product_name field for the column
-      product_name: product.name || 'N/A', // Use non-null product
+      product_name: product.name || "N/A", // Use non-null product
       // Ensure the order object exists before accessing its properties
       order: task.order
         ? {
@@ -365,7 +381,7 @@ export default async function PrintQueuePage({
 }) {
   const now = new Date(); // Get current time on the server
   const formattedNow = now.toLocaleTimeString(); // Format the string on the server
-  console.log('[PrintQueuePage] Received searchParams prop:', searchParams); // Log the initial prop
+  console.log("[PrintQueuePage] Received searchParams prop:", searchParams); // Log the initial prop
 
   try {
     // Fix any invalid StlRenderStatus values before proceeding
@@ -378,13 +394,18 @@ export default async function PrintQueuePage({
       }
     } catch (fixError) {
       console.warn(
-        `[PrintQueuePage] Unable to fix invalid StlRenderStatus values: ${fixError instanceof Error ? fixError.message : String(fixError)}`
+        `[PrintQueuePage] Unable to fix invalid StlRenderStatus values: ${
+          fixError instanceof Error ? fixError.message : String(fixError)
+        }`
       );
     }
 
     // --- Explicitly await the searchParams object ---
     const resolvedSearchParams = (await searchParams) || {};
-    console.log('[PrintQueuePage] Resolved searchParams:', resolvedSearchParams); // Log the resolved object
+    console.log(
+      "[PrintQueuePage] Resolved searchParams:",
+      resolvedSearchParams
+    ); // Log the resolved object
 
     // Access properties from the RESOLVED object
     const pageParamRaw = resolvedSearchParams.page;
@@ -402,7 +423,7 @@ export default async function PrintQueuePage({
     // Get shipping method filter param
     const shippingMethodParamRaw = resolvedSearchParams.shippingMethod;
 
-    console.log('[PrintQueuePage] Accessed raw params from resolved object');
+    console.log("[PrintQueuePage] Accessed raw params from resolved object");
 
     // --- Validation ---
     // No need to check for array type now, as the interface enforces string
@@ -419,50 +440,53 @@ export default async function PrintQueuePage({
     const shippingMethodParam = shippingMethodParamRaw;
 
     // Validate and set defaults
-    const page = parseInt(pageParam || '1', 10);
+    const page = parseInt(pageParam || "1", 10);
     // Default limit is set to 250 here if limitParam is missing
-    const limit = parseInt(limitParam || '250', 10);
+    const limit = parseInt(limitParam || "250", 10);
     const validatedPage = isNaN(page) || page < 1 ? 1 : page;
     // Fallback limit during validation is also 250
-    const validatedLimit = isNaN(limit) || limit < 1 ? 250 : Math.min(limit, 1000); // Cap at 1000 items per page
+    const validatedLimit =
+      isNaN(limit) || limit < 1 ? 250 : Math.min(limit, 1000); // Cap at 1000 items per page
 
     // Add debug logging
-    console.log('[PrintQueuePage] Raw limit param:', limitParam);
-    console.log('[PrintQueuePage] Parsed limit:', limit);
-    console.log('[PrintQueuePage] Validated limit:', validatedLimit);
+    console.log("[PrintQueuePage] Raw limit param:", limitParam);
+    console.log("[PrintQueuePage] Parsed limit:", limit);
+    console.log("[PrintQueuePage] Validated limit:", validatedLimit);
 
-    const validStatuses: (PrintTaskStatus | 'all' | 'active')[] = [
+    const validStatuses: (PrintTaskStatus | "all" | "active")[] = [
       ...Object.values(PrintTaskStatus),
-      'all',
-      'active',
+      "all",
+      "active",
     ];
     // Default to 'active' (pending or in_progress) if no status is specified
-    const currentStatus = statusParam || 'active';
+    const currentStatus = statusParam || "active";
     const validatedStatus = validStatuses.includes(
-      currentStatus as PrintTaskStatus | 'all' | 'active'
+      currentStatus as PrintTaskStatus | "all" | "active"
     )
-      ? (currentStatus as PrintTaskStatus | 'all' | 'active')
-      : 'active';
+      ? (currentStatus as PrintTaskStatus | "all" | "active")
+      : "active";
 
-    const validReviewOptions: ('yes' | 'no' | 'all')[] = ['yes', 'no', 'all'];
-    const currentNeedsReview = needsReviewParam || 'no'; // Default to 'no'
+    const validReviewOptions: ("yes" | "no" | "all")[] = ["yes", "no", "all"];
+    const currentNeedsReview = needsReviewParam || "all"; // Default to 'all' when param is missing
     const validatedNeedsReview = validReviewOptions.includes(
-      currentNeedsReview as 'yes' | 'no' | 'all'
+      currentNeedsReview as "yes" | "no" | "all"
     )
-      ? (currentNeedsReview as 'yes' | 'no' | 'all')
-      : 'no'; // Default to 'no'
+      ? (currentNeedsReview as "yes" | "no" | "all")
+      : "no"; // Default to 'no'
 
-    const validatedQuery = queryParam || '';
+    const validatedQuery = queryParam || "";
 
     // Validate product name (default to "all" if empty or invalid)
-    const validatedProductName = productNameParam || 'all';
+    const validatedProductName = productNameParam || "all";
 
     // Validate shipping method (default to "all" if empty or invalid)
-    const validatedShippingMethod = shippingMethodParam || 'all';
+    const validatedShippingMethod = shippingMethodParam || "all";
 
     // --- End Validation ---
 
-    console.log('[PrintQueuePage] Successfully validated searchParams properties');
+    console.log(
+      "[PrintQueuePage] Successfully validated searchParams properties"
+    );
     console.log({
       validatedPage,
       validatedLimit,
@@ -475,23 +499,25 @@ export default async function PrintQueuePage({
     });
 
     // --- Call getPrintTasks & getDistinctProductNames --- Fetch in parallel
-    const [{ tasks, total }, productNames, shippingMethods] = await Promise.all([
-      getPrintTasks({
-        validatedPage,
-        validatedLimit,
-        validatedStatus,
-        validatedNeedsReview,
-        validatedQuery: validatedQuery,
-        validatedShipByDateStart: shipByDateStartParam,
-        validatedShipByDateEnd: shipByDateEndParam,
-        validatedColor1: color1Param,
-        validatedColor2: color2Param,
-        validatedProductName: validatedProductName,
-        validatedShippingMethod: validatedShippingMethod,
-      }),
-      getDistinctProductNamesForTasks(), // Fetch distinct product names
-      getDistinctShippingMethodsForTasks(), // Fetch distinct shipping methods
-    ]);
+    const [{ tasks, total }, productNames, shippingMethods] = await Promise.all(
+      [
+        getPrintTasks({
+          validatedPage,
+          validatedLimit,
+          validatedStatus,
+          validatedNeedsReview,
+          validatedQuery: validatedQuery,
+          validatedShipByDateStart: shipByDateStartParam,
+          validatedShipByDateEnd: shipByDateEndParam,
+          validatedColor1: color1Param,
+          validatedColor2: color2Param,
+          validatedProductName: validatedProductName,
+          validatedShippingMethod: validatedShippingMethod,
+        }),
+        getDistinctProductNamesForTasks(), // Fetch distinct product names
+        getDistinctShippingMethodsForTasks(), // Fetch distinct shipping methods
+      ]
+    );
 
     // Prepare initial filters object based on validated params for the client component
     const initialFilters: PrintQueuePageSearchParams = {
@@ -521,9 +547,9 @@ export default async function PrintQueuePage({
       />
     );
   } catch (error) {
-    console.error('[PrintQueuePage] Error fetching data:', error);
+    console.error("[PrintQueuePage] Error fetching data:", error);
     // Improved error display
-    let errorMessage = 'Failed to load print queue data.';
+    let errorMessage = "Failed to load print queue data.";
     if (error instanceof Error) {
       errorMessage += ` Error: ${error.message}`;
     }
@@ -535,8 +561,12 @@ export default async function PrintQueuePage({
         </div>
         <div className="flex h-[calc(100vh-200px)] items-center justify-center rounded-md border border-dashed p-8 text-center animate-in fade-in-50">
           <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-            <p className="mt-4 text-lg font-semibold text-destructive">Error Loading Data</p>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground">{errorMessage}</p>
+            <p className="mt-4 text-lg font-semibold text-destructive">
+              Error Loading Data
+            </p>
+            <p className="mb-4 mt-2 text-sm text-muted-foreground">
+              {errorMessage}
+            </p>
           </div>
         </div>
       </div>

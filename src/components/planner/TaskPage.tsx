@@ -38,9 +38,11 @@ interface TaskPageProps {
   onGeneratePlan: () => void;
   onGenerateTodayPlan: () => void;
   onGenerateTodayTomorrowPlan: () => void;
+  onGenerateTomorrowPlan: () => void;
+  onGenerateSmallOrdersPlan: () => void;
   setTasks: React.Dispatch<React.SetStateAction<PrintTaskCardProps[]>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
-  recentRuns?: { id: string; finishedAt: string }[];
+  recentRuns?: { id: string; finishedAt: string; reportType?: string }[];
   selectedRunId?: string | null;
   onSelectRun?: (id: string | null) => void;
 }
@@ -56,6 +58,8 @@ const TaskPage: React.FC<TaskPageProps> = ({
   onGeneratePlan,
   onGenerateTodayPlan,
   onGenerateTodayTomorrowPlan,
+  onGenerateTomorrowPlan,
+  onGenerateSmallOrdersPlan,
   setTasks,
   setError,
   recentRuns = [],
@@ -68,6 +72,9 @@ const TaskPage: React.FC<TaskPageProps> = ({
 
   const carouselRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  // New state for selected optimization type
+  const [selectedOptimization, setSelectedOptimization] = useState<string>('today');
 
   // Handle scrolling to task when timeline item is clicked
   const handleTaskSelect = useCallback((taskId: string) => {
@@ -309,6 +316,28 @@ const TaskPage: React.FC<TaskPageProps> = ({
     [onSelectRun]
   );
 
+  // Handler for optimization selection
+  const handleRunOptimization = () => {
+    switch (selectedOptimization) {
+      case 'today':
+        onGenerateTodayPlan();
+        break;
+      case 'tomorrow':
+        onGenerateTomorrowPlan();
+        break;
+      case 'today-tomorrow':
+        onGenerateTodayTomorrowPlan();
+        break;
+      case 'small-orders':
+        onGenerateSmallOrdersPlan();
+        break;
+      case 'all':
+      default:
+        onGeneratePlan();
+        break;
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header/Summary */}
@@ -327,17 +356,30 @@ const TaskPage: React.FC<TaskPageProps> = ({
                   onSelectionChange={handleRunSelect}
                   aria-label="Select previous optimisation run"
                   placeholder="Run history"
-                  className="min-w-[160px]"
+                  className="min-w-[180px]"
+                  classNames={{
+                    listbox: 'bg-gray-800',
+                    popoverContent: 'bg-gray-800',
+                    base: 'text-white',
+                    trigger: 'bg-gray-800 data-[hover=true]:bg-gray-700 px-3 h-10',
+                    innerWrapper: 'text-white',
+                    value: 'mr-7',
+                    selectorIcon: 'right-2',
+                  }}
                   items={[
                     { id: 'latest', label: 'Latest Run' },
                     ...recentRuns.map(run => ({
                       id: run.id,
-                      label: new Date(run.finishedAt).toLocaleString(),
+                      label: `${new Date(run.finishedAt).toLocaleString()}${run.reportType ? ` (${run.reportType})` : ''}`,
                     })),
                   ]}
                 >
                   {item => (
-                    <SelectItem key={item.id} textValue={item.label}>
+                    <SelectItem
+                      key={item.id}
+                      textValue={item.label}
+                      className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                    >
                       {item.label}
                     </SelectItem>
                   )}
@@ -353,45 +395,78 @@ const TaskPage: React.FC<TaskPageProps> = ({
                   <ArrowPathIcon className="h-5 w-5" />
                 </Button>
               </Tooltip>
-              <Tooltip content="Generate Plan for Today's Orders Only">
-                <Button
-                  type="button"
-                  color="secondary"
-                  variant="solid"
-                  onPress={onGenerateTodayPlan}
-                  isLoading={isOptimizing}
-                  disabled={isLoading || isOptimizing}
+              {/* Replace individual buttons with dropdown and single Generate button */}
+              <div className="flex gap-2">
+                <Select
                   size="sm"
-                >
-                  Today
-                </Button>
-              </Tooltip>
-              <Tooltip content="Generate Plan for Today & Tomorrow Orders Only">
-                <Button
-                  type="button"
-                  color="warning"
-                  variant="solid"
-                  onPress={onGenerateTodayTomorrowPlan}
-                  isLoading={isOptimizing}
+                  label="Optimization Type"
+                  labelPlacement="outside"
+                  selectedKeys={[selectedOptimization]}
+                  onChange={e => setSelectedOptimization(e.target.value)}
+                  className="min-w-[200px]"
+                  classNames={{
+                    listbox: 'bg-gray-800',
+                    popoverContent: 'bg-gray-800',
+                    base: 'text-white',
+                    trigger: 'bg-gray-800 data-[hover=true]:bg-gray-700 px-3 h-10 mt-1',
+                    innerWrapper: 'text-white',
+                    value: 'mr-7',
+                    selectorIcon: 'right-2',
+                    label: 'mb-1',
+                  }}
+                  aria-label="Select optimization type"
                   disabled={isLoading || isOptimizing}
-                  size="sm"
                 >
-                  Today & Tomorrow
-                </Button>
-              </Tooltip>
-              <Tooltip content="Generate New Optimized Plan for All Pending Orders">
-                <Button
-                  type="button"
-                  color="primary"
-                  variant="solid"
-                  onPress={onGeneratePlan}
-                  isLoading={isOptimizing}
-                  disabled={isLoading || isOptimizing}
-                  startContent={!isOptimizing && <PlayIcon className="h-5 w-5" />}
-                >
-                  {isOptimizing ? `Optimizing... (${optimizingElapsedTime}s)` : 'Generate Plan'}
-                </Button>
-              </Tooltip>
+                  <SelectItem
+                    key="today"
+                    value="today"
+                    className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                  >
+                    Today
+                  </SelectItem>
+                  <SelectItem
+                    key="tomorrow"
+                    value="tomorrow"
+                    className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                  >
+                    Tomorrow
+                  </SelectItem>
+                  <SelectItem
+                    key="today-tomorrow"
+                    value="today-tomorrow"
+                    className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                  >
+                    Today & Tomorrow
+                  </SelectItem>
+                  <SelectItem
+                    key="all"
+                    value="all"
+                    className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                  >
+                    All
+                  </SelectItem>
+                  <SelectItem
+                    key="small-orders"
+                    value="small-orders"
+                    className="text-white data-[hover=true]:bg-gray-700 data-[selected=true]:bg-blue-700"
+                  >
+                    Small Orders
+                  </SelectItem>
+                </Select>
+                <Tooltip content="Generate plan based on selected optimization type">
+                  <Button
+                    type="button"
+                    color="primary"
+                    variant="solid"
+                    onPress={handleRunOptimization}
+                    isLoading={isOptimizing}
+                    disabled={isLoading || isOptimizing}
+                    startContent={!isOptimizing && <PlayIcon className="h-5 w-5" />}
+                  >
+                    {isOptimizing ? `Optimizing... (${optimizingElapsedTime}s)` : 'Generate Plan'}
+                  </Button>
+                </Tooltip>
+              </div>
             </div>
           </div>
           <div className="flex justify-between items-center text-sm">

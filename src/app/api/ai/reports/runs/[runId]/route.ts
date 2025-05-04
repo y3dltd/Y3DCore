@@ -37,6 +37,20 @@ export async function GET(_req: Request, { params }: RouteParams) {
             return NextResponse.json({ error: 'Run not found' }, { status: 404 });
         }
 
+        // Extract reportType from outputJson metadata
+        let reportType = undefined;
+        if (run.outputJson) {
+            try {
+                const parsedOutput = typeof run.outputJson === 'string'
+                    ? JSON.parse(run.outputJson)
+                    : run.outputJson;
+
+                reportType = parsedOutput.metadata?.reportType;
+            } catch (error) {
+                console.error("Error parsing outputJson for run", run.id, error);
+            }
+        }
+
         return NextResponse.json({
             success: true,
             run: {
@@ -44,6 +58,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
                 status: run.status,
                 errorMsg: run.errorMsg,
                 finishedAt: run.finishedAt,
+                reportType, // Include the extracted reportType
                 // Conditionally include outputJson only if status is success
                 outputJson: run.status === 'success' ? run.outputJson : undefined,
             },

@@ -25,7 +25,7 @@
     "clean:all": "tsx src/scripts/clean.ts --browser-caches --node-modules",
     "clean:dry": "tsx src/scripts/clean.ts --dry-run --verbose",
     "cleanup-print-tasks": "tsx scripts/cleanup-print-tasks.ts",
-    "c": "tsx scripts/check-amazon-urls.ts",
+    "check:amazon-urls": "tsx scripts/check-amazon-urls.ts",
     "full-workflow": "bash scripts/workflow.sh",
     "seed:test-user": "tsx src/scripts/seed-test-user.ts",
     "test:coverage": "echo 'Skipping coverage tests' && exit 0",

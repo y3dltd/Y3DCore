@@ -78,17 +78,54 @@ export async function renderScadToStl(
 
         const env = { ...process.env };
         if (fontPathExists) {
-            console.log(`Using custom fonts from ${customFontsDir}`);
-            env.FONTPATH = customFontsDir;
+            // Set absolute path to fonts directory
+            const absoluteFontPath = path.resolve(customFontsDir);
+            console.log(`Using custom fonts from ${absoluteFontPath}`);
+
+            // Ensure we preserve any existing font paths
+            const existingFontPath = process.env.FONTPATH || '';
+
+            // Set the font path environment variable with highest priority to our custom dir
+            env.FONTPATH = existingFontPath
+                ? `${absoluteFontPath}:${existingFontPath}`
+                : absoluteFontPath;
+
+            console.log(`FONTPATH set to: ${env.FONTPATH}`);
+
+            // Debug output for font name if present in variables
+            if (variables.font_name) {
+                console.log(`Using font: ${variables.font_name}`);
+            }
         }
 
-        await execFile('openscad', args, {
+        // Execute OpenSCAD and capture output
+        const { stdout, stderr } = await execFile('openscad', args, {
             maxBuffer: 1024 * 1024 * 10,
             env
-        })
+        });
+
+        // Print stdout and stderr even on success for debugging
+        if (stdout) {
+            console.log('OpenSCAD stdout:\n', stdout);
+        }
+        if (stderr) {
+            // OpenSCAD often prints non-error info to stderr, treat as info
+            console.log('OpenSCAD stderr (info/warnings):\n', stderr);
+        }
+
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        throw new Error(`OpenSCAD failed to render STL: ${message}`)
+        // Include stdout/stderr in error if available
+        let errorDetails = '';
+        if (err && typeof err === 'object') {
+            if ('stdout' in err && err.stdout) {
+                errorDetails += `\n--- stdout ---\n${err.stdout}`;
+            }
+            if ('stderr' in err && err.stderr) {
+                errorDetails += `\n--- stderr ---\n${err.stderr}`;
+            }
+        }
+        throw new Error(`OpenSCAD failed to render STL: ${message}${errorDetails}`)
     }
 
     return outFile
@@ -197,6 +234,9 @@ export async function renderDualColourFromConfig(
             finalVariables[key] = variablesFromConfig[key];
         }
     }
+
+    // For debugging, display the font name being used
+    console.log(`Using configuration "${parameterSetKey}" with font "${finalVariables.font_name}"`);
 
     return renderScadToStl(scadPath, { // Use scadPath here
         ...options,

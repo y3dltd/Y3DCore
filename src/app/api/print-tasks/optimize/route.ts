@@ -58,6 +58,8 @@ const InputSchema = z.object({
 // Define the request schema to include optional filterDays
 const RequestSchema = z.object({
   filterDays: z.number().optional(), // Optional parameter to filter tasks by ship_by_date
+  maxQuantity: z.number().optional(), // Optional parameter to filter tasks by maximum quantity
+  dayOffset: z.number().optional(), // Optional parameter to offset the start date
 });
 // --- End Input Schema ---
 
@@ -396,11 +398,15 @@ export async function POST(req: NextRequest) {
   try {
     // Parse request body if it exists to get filterDays
     let filterDays: number | undefined = undefined;
+    let maxQuantity: number | undefined = undefined;
+    let dayOffset: number | undefined = undefined;
     try {
       if (req.body) {
         const body = await req.json();
         const parsed = RequestSchema.parse(body);
         filterDays = parsed.filterDays;
+        maxQuantity = parsed.maxQuantity;
+        dayOffset = parsed.dayOffset;
       }
     } catch (error) {
       console.warn("[API Optimize] Error parsing request body, proceeding without filters:", error);
@@ -412,6 +418,14 @@ export async function POST(req: NextRequest) {
       needs_review: false,
     };
 
+    // Add quantity filter if maxQuantity is specified
+    if (maxQuantity !== undefined) {
+      whereClause.quantity = {
+        lte: maxQuantity
+      };
+      console.log(`[API Optimize] Filtering tasks with quantity <= ${maxQuantity}`);
+    }
+
     // Add date filter if filterDays is specified
     if (filterDays !== undefined) {
       /*
@@ -420,6 +434,13 @@ export async function POST(req: NextRequest) {
        */
       const now = new Date();
       const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+      // Apply day offset if provided
+      if (dayOffset !== undefined) {
+        startUtc.setUTCDate(startUtc.getUTCDate() + dayOffset);
+        console.log(`[API Optimize] Applied day offset: ${dayOffset}, start date is now ${startUtc.toISOString()}`);
+      }
+
       const endUtc = new Date(startUtc);
       endUtc.setUTCDate(startUtc.getUTCDate() + filterDays - 1);
       endUtc.setUTCHours(23, 59, 59, 999);
@@ -447,7 +468,7 @@ export async function POST(req: NextRequest) {
       take: 200,
     });
 
-    console.log(`[API Optimize] Found ${pendingTasks.length} pending tasks to optimize.${filterDays ? ` (Filtered to ${filterDays} days)` : ''}`);
+    console.log(`[API Optimize] Found ${pendingTasks.length} pending tasks to optimize.${filterDays ? ` (Filtered to ${filterDays} days)` : ''}${maxQuantity ? ` (Filtered to max quantity ${maxQuantity})` : ''}`);
 
     if (pendingTasks.length === 0) {
       return NextResponse.json({ success: true, message: 'No pending tasks found', tasks: [] });
@@ -530,9 +551,9 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
     // Support for OpenAI API proxy (like LiteLLM) via environment variable
-    const openai = new OpenAI({ 
+    const openai = new OpenAI({
       apiKey,
-      baseURL: process.env.OPENAI_API_BASE_URL 
+      baseURL: process.env.OPENAI_API_BASE_URL
     });
     console.log('[API Optimize] Sending request to OpenAI for grouping suggestions...');
     const modelToUse = "o3"; // Changed back from o4-mini
@@ -657,18 +678,42 @@ export async function POST(req: NextRequest) {
     console.log(`[API Optimize] Saving run record with status: ${runStatus}`);
     const outputJsonString = JSON.stringify(outputJsonForDb);
 
+    // Determine report type based on filters
+    let reportType = "All";
+    if (filterDays !== undefined) {
+      if (filterDays === 1) {
+        if (dayOffset === 1) {
+          reportType = "Tomorrow";
+        } else {
+          reportType = "Today";
+        }
+      } else if (filterDays === 2) {
+        reportType = "Today & Tomorrow";
+      }
+    }
+    if (maxQuantity !== undefined) {
+      reportType = `Small Orders (max qty: ${maxQuantity})`;
+    }
+
+    // Add report type to the output JSON
+    const outputJsonWithMetadata = {
+      ...JSON.parse(outputJsonString),
+      metadata: { reportType }
+    };
+    const finalOutputJsonString = JSON.stringify(outputJsonWithMetadata);
+
     dbRunRecord = await prisma.aiReportRun.create({
       data: {
         reportId: 'planner',
         inputJson: inputData as unknown as Prisma.InputJsonValue, // Log original input
-        outputJson: outputJsonString, // Log final sequence or specific error from builder/parser
+        outputJson: finalOutputJsonString, // Log final sequence with metadata
         rawResponse: rawResponseText ?? 'No AI Response', // Log raw AI response if available
         status: runStatus,
         finishedAt: new Date(),
       },
     });
     runId = dbRunRecord.id;
-    console.log(`[API Optimize] Saved run record ID: ${runId}`);
+    console.log(`[API Optimize] Saved run record ID: ${runId} with report type: ${reportType}`);
     // --- End Save to Database ---
 
     // --- Return Response --- (Adjusted slightly for clarity)

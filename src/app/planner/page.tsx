@@ -110,7 +110,9 @@ export default function PlannerPage(): React.ReactNode {
   });
   const [optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [savedRuns, setSavedRuns] = useState<{ id: string; finishedAt: string }[]>([]);
+  const [savedRuns, setSavedRuns] = useState<
+    { id: string; finishedAt: string; reportType: string }[]
+  >([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -695,12 +697,139 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
+  // New function for tomorrow only optimization
+  const runTomorrowOptimization = async () => {
+    if (optimizing || polling) return;
+
+    setOptimizing(true);
+    setPolling(false);
+    setError(null);
+    startTimer();
+    setOptimizingRunId(null);
+
+    try {
+      // Use POST with a filter parameter for tomorrow only
+      const response = await fetch('/api/print-tasks/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filterDays: 1, dayOffset: 1 }), // Tomorrow only with offset
+      });
+
+      if (!response.ok) {
+        let errorBody = 'Failed to start optimization';
+        try {
+          const errorData = await response.json();
+          errorBody = errorData.error || response.statusText;
+        } catch {}
+        throw new Error(`${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      console.log('[PlannerPage] Start Tomorrow Optimization Response:', data);
+
+      if (data.success && data.runId) {
+        console.log(
+          `[PlannerPage] Tomorrow optimization started. Run ID: ${data.runId}. Starting polling.`
+        );
+        setOptimizingRunId(data.runId);
+        setPolling(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollOptimizationStatus(data.runId);
+        pollRef.current = setInterval(() => pollOptimizationStatus(data.runId), 5000);
+      } else if (data.success && data.taskSequence) {
+        console.log('[PlannerPage] Tomorrow optimization finished immediately.');
+        stopTimer();
+        setOptimizing(false);
+        await loadLatestPlan(false);
+      } else {
+        throw new Error(
+          data.error || 'Tomorrow optimization returned success but no run ID or result.'
+        );
+      }
+    } catch (err) {
+      setError(`Error starting tomorrow optimization: ${(err as Error).message}`);
+      console.error('Error starting tomorrow optimization:', err);
+      stopTimer();
+      setOptimizing(false);
+      setPolling(false);
+      setOptimizingRunId(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  };
+
+  // New function for small orders optimization
+  const runSmallOrdersOptimization = async () => {
+    if (optimizing || polling) return;
+
+    setOptimizing(true);
+    setPolling(false);
+    setError(null);
+    startTimer();
+    setOptimizingRunId(null);
+
+    try {
+      // Use POST with a filter parameter for small orders (qty <= 2)
+      const response = await fetch('/api/print-tasks/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxQuantity: 2 }), // Small orders only
+      });
+
+      if (!response.ok) {
+        let errorBody = 'Failed to start optimization';
+        try {
+          const errorData = await response.json();
+          errorBody = errorData.error || response.statusText;
+        } catch {}
+        throw new Error(`${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      console.log('[PlannerPage] Start Small Orders Optimization Response:', data);
+
+      if (data.success && data.runId) {
+        console.log(
+          `[PlannerPage] Small Orders optimization started. Run ID: ${data.runId}. Starting polling.`
+        );
+        setOptimizingRunId(data.runId);
+        setPolling(true);
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollOptimizationStatus(data.runId);
+        pollRef.current = setInterval(() => pollOptimizationStatus(data.runId), 5000);
+      } else if (data.success && data.taskSequence) {
+        console.log('[PlannerPage] Small Orders optimization finished immediately.');
+        stopTimer();
+        setOptimizing(false);
+        await loadLatestPlan(false);
+      } else {
+        throw new Error(
+          data.error || 'Small Orders optimization returned success but no run ID or result.'
+        );
+      }
+    } catch (err) {
+      setError(`Error starting small orders optimization: ${(err as Error).message}`);
+      console.error('Error starting small orders optimization:', err);
+      stopTimer();
+      setOptimizing(false);
+      setPolling(false);
+      setOptimizingRunId(null);
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  };
+
   // fetch recent runs once
   useEffect(() => {
     fetch('/api/ai/reports/runs?reportId=planner')
       .then(r => r.json())
       .then(json => {
-        setSavedRuns((json.runs || []).slice(0, 10));
+        const runsWithTypes = (json.runs || []).map(
+          (run: { id: string; finishedAt: string; reportType?: string }) => ({
+            id: run.id,
+            finishedAt: run.finishedAt,
+            reportType: run.reportType || 'Unknown',
+          })
+        );
+        setSavedRuns(runsWithTypes.slice(0, 10));
       })
       .catch(console.error);
   }, []);
@@ -744,6 +873,8 @@ export default function PlannerPage(): React.ReactNode {
       onGeneratePlan={runNewOptimization}
       onGenerateTodayPlan={runTodayOptimization}
       onGenerateTodayTomorrowPlan={runTodayTomorrowOptimization}
+      onGenerateTomorrowPlan={runTomorrowOptimization}
+      onGenerateSmallOrdersPlan={runSmallOrdersOptimization}
       setTasks={setOptimizedTasks} // Pass down the state setter
       setError={setError} // Pass down the state setter
       recentRuns={savedRuns}
