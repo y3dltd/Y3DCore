@@ -196,7 +196,7 @@ const isOptionObject = (opt: Prisma.JsonValue): opt is { name: string; value: Pr
   opt !== null && typeof opt === 'object' && !Array.isArray(opt) &&
   'name' in opt && typeof opt.name === 'string' && 'value' in opt;
 
-// MODIFIED: Remove all marketplace-specific logic to force AI fallback
+// MODIFIED: Added marketplace-specific logic for eBay, Amazon, and Etsy
 async function extractCustomizationData(
   order: Prisma.OrderGetPayload<{ include: { items: { include: { product: true } } } }>,
   item: OrderItem,
@@ -208,9 +208,17 @@ async function extractCustomizationData(
   dataSource: 'AmazonURL' | 'ItemOptions' | 'CustomerNotes' | null;
   annotation: string;
 }> {
-  // --- Amazon URL Extraction ---
+  // --- Marketplace Detection ---
   const isAmazon = order.marketplace?.toLowerCase().includes('amazon');
-  logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Marketplace='${order.marketplace}', IsAmazon=${isAmazon}`);
+  const isEbay = order.marketplace?.toLowerCase().includes('ebay');
+  logger.info(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Marketplace='${order.marketplace}', IsAmazon=${isAmazon}, IsEbay=${isEbay}`);
+
+  // Log customer notes for debugging
+  if (order.customer_notes) {
+    logger.info(`[Debug][extractCustomizationData] Order ${order.id} Customer Notes: ${order.customer_notes}`);
+  } else {
+    logger.info(`[Debug][extractCustomizationData] Order ${order.id} has no customer notes`);
+  }
 
   // Use case-insensitive check and includes for broader matching (e.g., Amazon.com, Amazon.co.uk)
   if (isAmazon) {
@@ -255,13 +263,52 @@ async function extractCustomizationData(
       logger.debug(`[Debug][extractCustomizationData] Amazon order ${order.id}, Item ${item.id}: CustomizedURL extraction returned null. Falling back.`);
       // Fall through to AI fallback below
     }
+  } else if (isEbay && order.customer_notes) {
+    // --- eBay Customer Notes Extraction ---
+    logger.info(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Processing eBay order with customer notes.`);
+
+    try {
+      // Log item details for debugging
+      logger.info(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Product SKU=${product?.sku}, Name=${product?.name}`);
+      logger.info(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Print Settings=${JSON.stringify(item.print_settings)}`);
+
+      // Extract personalization data from eBay customer notes
+      const ebayData = extractEbayPersonalizationData(order.customer_notes, item, product);
+
+      logger.info(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: eBay extraction result: ${JSON.stringify(ebayData)}`);
+
+      if (ebayData.customText) {
+        logger.info(`[DB][Order ${order.id}][Item ${item.id}] Successfully extracted personalization from eBay customer notes.`);
+
+        // REGKEY SKU rule: force uppercase registration text
+        let processedCustomText = ebayData.customText;
+        if (product?.sku?.toUpperCase().includes('REGKEY') && processedCustomText) {
+          processedCustomText = processedCustomText.toUpperCase();
+          logger.info(`[DB][Order ${order.id}][Item ${item.id}] REGKEY SKU detected, upper-casing custom text to '${processedCustomText}'.`);
+        }
+
+        return {
+          customText: processedCustomText,
+          color1: ebayData.color1 || extractColorFromPrintSettings(item),
+          color2: ebayData.color2,
+          dataSource: 'CustomerNotes',
+          annotation: 'Data from eBay customer notes',
+        };
+      } else {
+        logger.info(`[Debug][extractCustomizationData] eBay order ${order.id}, Item ${item.id}: No personalization found in customer notes. Falling back.`);
+        // Fall through to AI fallback below
+      }
+    } catch (ebayError) {
+      logger.error(`[DB][Order ${order.id}][Item ${item.id}] Error during eBay notes extraction:`, ebayError);
+      // Fall through to AI fallback below
+    }
   } else {
-    logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Not identified as Amazon marketplace. Falling back.`);
+    logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Not identified as Amazon or eBay marketplace. Falling back.`);
     // Fall through to AI fallback below
   }
 
   // --- Fallback to AI ---
-  logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Conditions not met for direct Amazon URL processing. Falling back to AI.`);
+  logger.debug(`[Debug][extractCustomizationData] Order ${order.id}, Item ${item.id}: Conditions not met for direct extraction. Falling back to AI.`);
   return {
     customText: null,
     color1: null,
@@ -269,6 +316,141 @@ async function extractCustomizationData(
     dataSource: null, // Indicate fallback is needed
     annotation: 'Needs AI processing', // Annotation indicates AI is the intended next step
   };
+}
+
+// Helper function to extract color from print settings
+function extractColorFromPrintSettings(item: OrderItem): string | null {
+  if (!item.print_settings) return null;
+
+  // Check for color in print settings
+  if (Array.isArray(item.print_settings)) {
+    const colorSetting = item.print_settings.find(setting =>
+      isOptionObject(setting) &&
+      (setting.name.toLowerCase().includes('color') ||
+        setting.name.toLowerCase().includes('colour'))
+    );
+
+    if (colorSetting && isOptionObject(colorSetting) && typeof colorSetting.value === 'string') {
+      return colorSetting.value;
+    }
+  }
+
+  return null;
+}
+
+// Helper function to extract personalization data from eBay customer notes
+function extractEbayPersonalizationData(
+  customerNotes: string | null,
+  item: OrderItem,
+  product: Product | null
+): {
+  customText: string | null;
+  color1: string | null;
+  color2: string | null;
+} {
+  if (!customerNotes) return { customText: null, color1: null, color2: null };
+
+  // Default return values
+  let customText: string | null = null;
+  let color1: string | null = null;
+  let color2: string | null = null;
+
+  // Extract product SKU or ID to match with notes
+  const productSku = product?.sku || '';
+  const productId = productSku.split('_')[1] || ''; // Extract ID part from SKU like wi_395107128418_6
+  const productVariant = productSku.split('_')[2] || ''; // Extract variant part from SKU like wi_395107128418_6
+
+  logger.debug(`[eBay][extractEbayPersonalizationData] Processing item with SKU=${productSku}, ID=${productId}, Variant=${productVariant}`);
+  logger.debug(`[eBay][extractEbayPersonalizationData] Customer notes: ${customerNotes}`);
+
+  // Parse the notes to extract personalization data
+  // For eBay, we need to match the variant number with the color in the notes
+
+  // First, let's extract all personalization blocks
+  const personalizationBlocks: Array<{ itemId: string, color: string, text: string }> = [];
+
+  // Parse customer notes for eBay format
+  const lines = customerNotes.split('\n');
+  let currentItemId = '';
+  let currentColor = '';
+  let currentText = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    logger.debug(`[eBay][extractEbayPersonalizationData] Processing line: "${line}"`);
+
+    if (line.startsWith('Item ID:')) {
+      // If we already have data from a previous block, save it
+      if (currentItemId && currentText) {
+        personalizationBlocks.push({
+          itemId: currentItemId,
+          color: currentColor,
+          text: currentText
+        });
+        logger.debug(`[eBay][extractEbayPersonalizationData] Added block: ID=${currentItemId}, Color=${currentColor}, Text=${currentText}`);
+      }
+
+      // Start a new block
+      const itemIdMatch = line.match(/Item ID: (\d+)/);
+      const colorMatch = line.match(/Color=([^,\n]+)/);
+
+      currentItemId = itemIdMatch ? itemIdMatch[1] : '';
+      currentColor = colorMatch ? colorMatch[1].trim() : '';
+      currentText = '';
+
+      logger.debug(`[eBay][extractEbayPersonalizationData] New block: ID=${currentItemId}, Color=${currentColor}`);
+    }
+    else if (line.startsWith('Text:')) {
+      // The text value is on this line after "Text:"
+      currentText = line.substring(5).trim();
+      logger.debug(`[eBay][extractEbayPersonalizationData] Found Text: "${currentText}"`);
+    }
+  }
+
+  // Add the last block if it exists
+  if (currentItemId && currentText) {
+    personalizationBlocks.push({
+      itemId: currentItemId,
+      color: currentColor,
+      text: currentText
+    });
+    logger.debug(`[eBay][extractEbayPersonalizationData] Added final block: ID=${currentItemId}, Color=${currentColor}, Text=${currentText}`);
+  }
+
+  logger.debug(`[eBay][extractEbayPersonalizationData] Extracted ${personalizationBlocks.length} personalization blocks`);
+
+  // Now find the matching block for this product
+  for (const block of personalizationBlocks) {
+    logger.debug(`[eBay][extractEbayPersonalizationData] Checking block: ID=${block.itemId}, Color=${block.color}, Text=${block.text}`);
+
+    // Check if this block matches our product
+    const idMatches = productId === block.itemId;
+
+    // Check if the color matches the variant
+    const colorMatches =
+      // Direct match by variant number and color
+      (productVariant === '6' && block.color === 'Light Blue') ||
+      (productVariant === '15' && block.color === 'Rose Gold') ||
+      // Or check if the color is in the print settings
+      (Array.isArray(item.print_settings) &&
+        item.print_settings.some(setting =>
+          isOptionObject(setting) &&
+          typeof setting.value === 'string' &&
+          setting.value.toLowerCase() === block.color.toLowerCase()
+        ));
+
+    logger.debug(`[eBay][extractEbayPersonalizationData] Matching: ID=${idMatches}, Color=${colorMatches}, Product ID=${productId}, Variant=${productVariant}`);
+
+    if (idMatches && colorMatches) {
+      customText = block.text;
+      color1 = block.color;
+      logger.debug(`[eBay][extractEbayPersonalizationData] MATCH FOUND! Setting customText="${customText}", color1="${color1}"`);
+      break;
+    }
+  }
+
+  logger.debug(`[eBay][extractEbayPersonalizationData] Final result: customText="${customText}", color1="${color1}", color2="${color2}"`);
+  return { customText, color1, color2 };
 }
 
 // --- AI Extraction Logic (Order Level) --- Replace Placeholder
