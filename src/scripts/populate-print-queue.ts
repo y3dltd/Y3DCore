@@ -15,7 +15,7 @@ import z from 'zod';
 // Internal/local imports
 import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization';
-import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
+import { getShipstationOrders, updateOrderItemsOptionsBatch, ShipStationOrder, ShipStationOrderItem } from '../lib/shared/shipstation'; // Added ShipStationOrder, ShipStationOrderItem
 import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../lib/email/system-notifications';
 
 // Initialize database connection
@@ -85,6 +85,7 @@ interface OrderDebugInfo {
     status: string;
     error?: string;
     createdTaskIds?: number[];
+    generatedTaskCount?: number; // Added to track generated tasks
   }>;
 }
 
@@ -538,6 +539,7 @@ async function createOrUpdateTasksInTransaction(
   }
 
   const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
+  const generatedTaskCounts: Record<string, number> = {}; // Map lineItemKey to generated task count
   const patchReasons: string[] = [];
 
   for (const item of orderInTx.items) {
@@ -545,14 +547,16 @@ async function createOrUpdateTasksInTransaction(
     const productId = item.productId;
     const product = item.product;
     const shorthandName = product?.name?.substring(0, 100) ?? 'Unknown Product';
+    const originalQuantity = item.quantity; // Store original DB quantity
 
     let itemDebugEntry = orderDebugInfo.items.find(i => i.itemId === item.id);
     if (!itemDebugEntry) {
-      itemDebugEntry = { itemId: item.id, status: 'Processing Transaction', createdTaskIds: [] };
+      itemDebugEntry = { itemId: item.id, status: 'Processing Transaction', createdTaskIds: [], generatedTaskCount: 0 };
       orderDebugInfo.items.push(itemDebugEntry);
     } else {
       itemDebugEntry.status = 'Processing Transaction';
       itemDebugEntry.createdTaskIds = [];
+      itemDebugEntry.generatedTaskCount = 0;
     }
 
     const taskDetailsToCreate: Array<
@@ -569,6 +573,7 @@ async function createOrUpdateTasksInTransaction(
       >
     > = [];
     let finalDataSource: string | null = null;
+    let generatedTaskCountForItem = 0; // Track tasks generated for this specific item
 
     const extractedData = await extractCustomizationData(orderInTx, item, product);
     finalDataSource = extractedData.dataSource;
@@ -592,11 +597,13 @@ async function createOrUpdateTasksInTransaction(
         }
       }
 
+      // For non-AI sources, assume 1 task per original quantity
+      generatedTaskCountForItem = originalQuantity;
       taskDetailsToCreate.push({
         custom_text: customTextToUse,
         color_1: extractedData.color1,
         color_2: extractedData.color2,
-        quantity: item.quantity,
+        quantity: originalQuantity, // Use original quantity
         needs_review: false,
         review_reason: null,
         status: PrintTaskStatus.pending,
@@ -614,22 +621,18 @@ async function createOrUpdateTasksInTransaction(
             `[ShipStation Update][Order ${order.id}][Item ${item.id}] Preparing to update item options from ${extractedData.dataSource}.`
           );
           try {
-            const ssOrderResponse = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
-            if (ssOrderResponse?.orders?.length > 0) {
-              const ssOptions = [];
-              if (extractedData.customText) ssOptions.push({ name: 'Name or Text', value: extractedData.customText });
-              if (extractedData.color1) ssOptions.push({ name: 'Colour 1', value: extractedData.color1 });
-              if (extractedData.color2) ssOptions.push({ name: 'Colour 2', value: extractedData.color2 });
+            // Fetching SS order is now done later, before the batch update call
+            const ssOptions = [];
+            if (extractedData.customText) ssOptions.push({ name: 'Name or Text', value: extractedData.customText });
+            if (extractedData.color1) ssOptions.push({ name: 'Colour 1', value: extractedData.color1 });
+            if (extractedData.color2) ssOptions.push({ name: 'Colour 2', value: extractedData.color2 });
 
-              if (ssOptions.length > 0) {
-                itemsToPatch[item.shipstationLineItemKey] = ssOptions;
-                patchReasons.push(`${item.shipstationLineItemKey}(${extractedData.dataSource})`);
-              }
-            } else {
-              logger.error(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Failed to fetch SS order details.`);
+            if (ssOptions.length > 0) {
+              itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+              patchReasons.push(`${item.shipstationLineItemKey}(${extractedData.dataSource})`);
             }
           } catch (fetchOrUpdateError) {
-            logger.error(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Error during SS fetch/update:`, fetchOrUpdateError);
+            logger.error(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Error preparing SS options:`, fetchOrUpdateError);
           }
         } else {
           logger.warn(`[ShipStation Update][Order ${order.id}][Item ${item.id}] Cannot update SS item options from ${extractedData.dataSource}: Missing required IDs or data.`);
@@ -651,6 +654,7 @@ async function createOrUpdateTasksInTransaction(
         finalDataSource = 'Placeholder';
         itemDebugEntry.status = 'Placeholder Created';
         itemsNeedReviewCount++;
+        generatedTaskCountForItem = 1; // Placeholder counts as 1 task
 
         let customText = 'Placeholder - Review Needed';
         let placeholderAnnotation = 'Placeholder created: ' + reason;
@@ -672,7 +676,7 @@ async function createOrUpdateTasksInTransaction(
           custom_text: customText,
           color_1: null,
           color_2: null,
-          quantity: item.quantity,
+          quantity: originalQuantity, // Placeholder uses original quantity
           needs_review: true,
           review_reason: reason.substring(0, 1000),
           status: PrintTaskStatus.pending,
@@ -680,21 +684,26 @@ async function createOrUpdateTasksInTransaction(
         });
       } else {
         logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using AI data.`);
+        generatedTaskCountForItem = itemResult.personalizations.length; // Count tasks from AI
         let itemRequiresReview = itemResult.overallNeedsReview || false;
         const itemReviewReasons: string[] = itemResult.overallReviewReason
           ? [itemResult.overallReviewReason]
           : [];
         let totalQuantityFromAI = 0;
         itemResult.personalizations.forEach(p => (totalQuantityFromAI += p.quantity));
-        if (totalQuantityFromAI !== item.quantity) {
+
+        // Check for quantity mismatch between AI's *summed* quantity and original order item quantity
+        if (totalQuantityFromAI !== originalQuantity) {
           logger.warn(
-            `[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI Quantity Mismatch!`
+            `[Order ${order.id}][Item ${orderItemId}] REVIEW NEEDED: AI summed quantity (${totalQuantityFromAI}) differs from original item quantity (${originalQuantity}).`
           );
           itemRequiresReview = true;
           itemReviewReasons.push(
-            `Qty Mismatch (AI: ${totalQuantityFromAI}, Order: ${item.quantity})`
+            `Qty Mismatch (AI Sum: ${totalQuantityFromAI}, Order: ${originalQuantity})`
           );
         }
+
+        // Quantity update check moved to before batch update call
 
         for (let i = 0; i < itemResult.personalizations.length; i++) {
           const detail = itemResult.personalizations[i];
@@ -743,18 +752,42 @@ async function createOrUpdateTasksInTransaction(
             custom_text: customText,
             color_1: detail.color1,
             color_2: detail.color2,
-            quantity: detail.quantity,
+            quantity: detail.quantity, // Use quantity from AI personalization
             needs_review: combinedNeedsReview,
             review_reason: reviewReasonCombined,
             status: PrintTaskStatus.pending,
             annotation: annotation,
           });
           if (combinedNeedsReview) itemsNeedReviewCount++;
+
+          // Prepare ShipStation options update if needed (only if not dry run)
+          if (!options.dryRun && item.shipstationLineItemKey && orderInTx.shipstation_order_id) {
+            const ssOptions = [];
+            if (customText) ssOptions.push({ name: 'Name or Text', value: customText });
+            if (detail.color1) ssOptions.push({ name: 'Colour 1', value: detail.color1 });
+            if (detail.color2) ssOptions.push({ name: 'Colour 2', value: detail.color2 });
+
+            if (ssOptions.length > 0) {
+              // Overwrite options for this key; batch update handles merging later
+              itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+              if (!patchReasons.some(r => r.startsWith(`${item.shipstationLineItemKey}(AI)`))) {
+                patchReasons.push(`${item.shipstationLineItemKey}(AI)`);
+              }
+            }
+          } else if (options.dryRun && item.shipstationLineItemKey && orderInTx.shipstation_order_id) {
+            logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${item.id}] Would update SS item options from AI.`);
+          }
         }
         itemDebugEntry.status = itemRequiresReview ? 'Success (Needs Review)' : 'Success (AI)';
       }
     }
 
+    // Store the generated task count for this item's lineItemKey
+    if (item.shipstationLineItemKey) {
+      generatedTaskCounts[item.shipstationLineItemKey] = generatedTaskCountForItem;
+    }
+
+    itemDebugEntry.generatedTaskCount = generatedTaskCountForItem; // Store generated task count for debug/logging
     itemDebugEntry.createdTaskIds = [];
     let currentTaskIndex = 0;
 
@@ -812,59 +845,8 @@ async function createOrUpdateTasksInTransaction(
             `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${finalDataSource}.`
           );
 
-          if (finalDataSource === 'AI' && item.shipstationLineItemKey && orderInTx.shipstation_order_id) {
-            if (options.dryRun) {
-              logger.info(
-                `[Dry Run][ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}][Task ${task.id}] Would fetch order and attempt to update item options using AI task data.`
-              );
-            } else {
-              logger.info(
-                `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}][Task ${task.id}] AI Task upserted, preparing ShipStation update...`
-              );
-              try {
-                const ssOrderResponse = await getShipstationOrders({
-                  orderId: Number(orderInTx.shipstation_order_id),
-                });
-                if (
-                  ssOrderResponse &&
-                  ssOrderResponse.orders &&
-                  ssOrderResponse.orders.length > 0
-                ) {
-                  const ssOptions = [];
-                  if (taskDetail.custom_text) {
-                    ssOptions.push({ name: 'Name or Text', value: taskDetail.custom_text });
-                  }
-                  if (taskDetail.color_1) {
-                    ssOptions.push({ name: 'Colour 1', value: taskDetail.color_1 });
-                  }
-                  if (taskDetail.color_2) {
-                    ssOptions.push({ name: 'Colour 2', value: taskDetail.color_2 });
-                  }
+          // ShipStation update logic moved outside the task loop, handled before batch call
 
-                  if (ssOptions.length > 0) {
-                    itemsToPatch[item.shipstationLineItemKey] = ssOptions;
-                    patchReasons.push(`${item.shipstationLineItemKey}(AI)`);
-                  }
-                } else {
-                  logger.error(
-                    `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}][Task ${task.id}] Failed to fetch order details from ShipStation for AI update.`
-                  );
-                }
-              } catch (fetchOrUpdateError) {
-                logger.error(
-                  `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}][Task ${task.id}] Error during ShipStation fetch or update process for AI task:`,
-                  fetchOrUpdateError
-                );
-              }
-            }
-          } else if (
-            finalDataSource === 'AI' &&
-            (!item.shipstationLineItemKey || !orderInTx.shipstation_order_id)
-          ) {
-            logger.warn(
-              `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Skipping update for AI task: Missing shipstationLineItemKey or shipstation_order_id.`
-            );
-          }
           tasksCreatedCount++;
           itemDebugEntry.createdTaskIds.push(task.id);
         } catch (e) {
@@ -880,36 +862,71 @@ async function createOrUpdateTasksInTransaction(
       currentTaskIndex++;
     }
     logger.info(
-      `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`
+      `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}. Generated Tasks: ${generatedTaskCountForItem}`
     );
-  }
+  } // End loop through orderInTx.items
 
-  if (!options.dryRun && Object.keys(itemsToPatch).length > 0 && orderInTx.shipstation_order_id) {
+  // --- ShipStation Batch Update Section ---
+  const needsShipstationUpdate = (Object.keys(itemsToPatch).length > 0 || Object.keys(generatedTaskCounts).length > 0) && orderInTx.shipstation_order_id;
+
+  if (!options.dryRun && needsShipstationUpdate) {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
     let attempt = 0;
     let batchUpdateSuccess = false;
+    let finalPatchReasons = [...patchReasons]; // Start with option patch reasons
 
     while (attempt < MAX_RETRIES && !batchUpdateSuccess) {
       attempt++;
       try {
         logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Fetching order for batch update...`);
-        // NOTE: This fetches the order AGAIN - potential optimization later?
+        // Fetch the latest ShipStation order details *before* applying modifications
         const ssOrderResp = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
 
         if (ssOrderResp.orders && ssOrderResp.orders.length > 0) {
-          const auditNote = `Task sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
-          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Calling updateOrderItemsOptionsBatch for items: ${patchReasons.join(', ')}`);
-          await updateOrderItemsOptionsBatch(ssOrderResp.orders[0], itemsToPatch, auditNote);
-          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Successfully updated items: ${patchReasons.join(', ')}`);
+          const ssOrderToUpdate: ShipStationOrder = JSON.parse(JSON.stringify(ssOrderResp.orders[0])); // Deep clone to avoid modifying original
+          let quantityWasUpdated = false;
+
+          // --- Apply Quantity Updates ---
+          logger.info(`[ShipStation Batch][Order ${orderInTx.id}] Checking for quantity updates...`);
+          ssOrderToUpdate.items = ssOrderToUpdate.items.map((ssItem: ShipStationOrderItem) => {
+            if (ssItem.lineItemKey && generatedTaskCounts[ssItem.lineItemKey] !== undefined) {
+              const generatedCount = generatedTaskCounts[ssItem.lineItemKey];
+              if (ssItem.quantity !== generatedCount) {
+                logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Item ${ssItem.lineItemKey}] Updating quantity from ${ssItem.quantity} to ${generatedCount}`);
+                quantityWasUpdated = true;
+                // Add quantity update reason only if not already present from options update
+                const qtyReason = `${ssItem.lineItemKey}(Qty:${generatedCount})`;
+                if (!finalPatchReasons.includes(qtyReason)) {
+                  finalPatchReasons.push(qtyReason);
+                }
+                return { ...ssItem, quantity: generatedCount };
+              } else {
+                logger.debug(`[ShipStation Batch][Order ${orderInTx.id}][Item ${ssItem.lineItemKey}] Quantity matches (${ssItem.quantity}), no update needed.`);
+              }
+            }
+            return ssItem;
+          });
+
+          if (!quantityWasUpdated) {
+            logger.info(`[ShipStation Batch][Order ${orderInTx.id}] No quantity updates needed.`);
+          }
+
+          // --- Apply Option Updates (using the potentially quantity-modified ssOrderToUpdate) ---
+          const auditNote = `Task sync ${new Date().toISOString()} -> ${finalPatchReasons.join(', ')}`;
+          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Calling updateOrderItemsOptionsBatch for items: ${finalPatchReasons.join(', ')}`);
+
+          // Pass the potentially modified ssOrderToUpdate object
+          await updateOrderItemsOptionsBatch(ssOrderToUpdate, itemsToPatch, auditNote);
+
+          logger.info(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Successfully updated items: ${finalPatchReasons.join(', ')}`);
           batchUpdateSuccess = true; // Mark as success to exit loop
         } else {
           logger.error(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Failed to fetch SS order for batch update.`);
-          // Potentially retry fetch failure too, but for now, treat as non-retryable for this attempt
           if (attempt >= MAX_RETRIES) {
             await sendSystemNotification(
               `ShipStation Batch Update Failure (Fetch)`,
-              `Failed to fetch ShipStation order details for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Cannot apply batch item updates for items: ${patchReasons.join(', ')}`,
+              `Failed to fetch ShipStation order details for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Cannot apply batch item updates for items: ${finalPatchReasons.join(', ')}`,
               ErrorSeverity.ERROR,
               ErrorCategory.SHIPSTATION
             );
@@ -920,24 +937,35 @@ async function createOrUpdateTasksInTransaction(
         logger.error(`[ShipStation Batch][Order ${orderInTx.id}][Attempt ${attempt}/${MAX_RETRIES}] Error during batch update: ${errorMessage}`, batchErr);
         if (attempt >= MAX_RETRIES) {
           logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Final attempt failed. Giving up.`);
-          // Send email notification on final failure
           await sendSystemNotification(
             `ShipStation Batch Update Failure`,
-            `Failed to update ShipStation item options for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Items attempted: ${patchReasons.join(', ')}. Error: ${errorMessage}`,
+            `Failed to update ShipStation item options/quantity for order ID ${orderInTx.shipstation_order_id} (DB ID ${orderInTx.id}) after ${attempt} attempts. Items attempted: ${finalPatchReasons.join(', ')}. Error: ${errorMessage}`,
             ErrorSeverity.ERROR,
             ErrorCategory.SHIPSTATION,
-            batchErr // Include error details if possible
+            batchErr
           );
-          // Decide if this failure should cause the whole transaction to fail
-          // For now, let it continue but log the critical failure.
-          // Consider throwing the error here if it should halt processing:
-          // throw batchErr;
         } else {
           logger.warn(`[ShipStation Batch][Order ${orderInTx.id}] Retrying in ${RETRY_DELAY_MS / 1000}s...`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS)); // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
         }
       }
     } // end while loop
+  } else if (options.dryRun && needsShipstationUpdate) {
+    // Simulate quantity check for dry run
+    const quantitiesToUpdateDryRun: Record<string, number> = {};
+    const ssOrderRespDryRun = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) }); // Fetch for comparison
+    if (ssOrderRespDryRun.orders && ssOrderRespDryRun.orders.length > 0) {
+      const ssOrderDryRun = ssOrderRespDryRun.orders[0];
+      ssOrderDryRun.items.forEach(ssItem => {
+        if (ssItem.lineItemKey && generatedTaskCounts[ssItem.lineItemKey] !== undefined) {
+          const generatedCount = generatedTaskCounts[ssItem.lineItemKey];
+          if (ssItem.quantity !== generatedCount) {
+            quantitiesToUpdateDryRun[ssItem.lineItemKey] = generatedCount;
+          }
+        }
+      });
+    }
+    logger.info(`[Dry Run][ShipStation Batch][Order ${orderInTx.id}] Would attempt batch update for options: [${Object.keys(itemsToPatch).join(', ')}] and quantities: [${Object.entries(quantitiesToUpdateDryRun).map(([k, v]) => `${k}:${v}`).join(', ')}]`);
   } // end if check
 
   logger.info(
@@ -992,6 +1020,7 @@ async function syncExistingTasksToShipstation(
 ): Promise<{ updatedCount: number; failedCount: number }> {
   logger.info(`[ShipStation Sync] Starting sync of existing tasks for order ${orderId}...`);
   const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
+  const generatedTaskCounts: Record<string, number> = {}; // Track task counts per line item key
   const patchReasons: string[] = [];
   let updatedCount = 0;
   let failedCount = 0;
@@ -1007,6 +1036,7 @@ async function syncExistingTasksToShipstation(
           select: {
             id: true,
             shipstationLineItemKey: true,
+            quantity: true, // Need original quantity
             product: {
               select: {
                 id: true,
@@ -1020,6 +1050,7 @@ async function syncExistingTasksToShipstation(
                 color_1: true,
                 color_2: true,
                 taskIndex: true,
+                quantity: true, // Need task quantity
               },
               orderBy: {
                 taskIndex: 'asc',
@@ -1099,8 +1130,11 @@ async function syncExistingTasksToShipstation(
         continue;
       }
 
-      const task = item.printTasks[0];
+      // Store task count for quantity check later
+      generatedTaskCounts[item.shipstationLineItemKey] = item.printTasks.length;
 
+      // --- Sync Options (from first task) ---
+      const task = item.printTasks[0];
       const ssOptions = [];
       if (task.custom_text !== null) {
         logger.info(
@@ -1110,14 +1144,12 @@ async function syncExistingTasksToShipstation(
       } else {
         logger.warn(`[ShipStation Sync] Item ${item.id} task ${task.id} has null custom_text`);
       }
-
       if (task.color_1 !== null) {
         logger.info(
           `[ShipStation Sync] Item ${item.id} task ${task.id} has color_1: "${task.color_1}"`
         );
         ssOptions.push({ name: 'Colour 1', value: task.color_1 });
       }
-
       if (task.color_2 !== null) {
         logger.info(
           `[ShipStation Sync] Item ${item.id} task ${task.id} has color_2: "${task.color_2}"`
@@ -1125,45 +1157,87 @@ async function syncExistingTasksToShipstation(
         ssOptions.push({ name: 'Colour 2', value: task.color_2 });
       }
 
-      if (ssOptions.length === 0) {
-        logger.warn(
-          `[ShipStation Sync] Item ${item.id} task ${task.id} has no data to sync. Skipping.`
+      if (ssOptions.length > 0) {
+        logger.info(
+          `[ShipStation Sync] Will send options for item ${item.id} (line item key: ${item.shipstationLineItemKey}): ${JSON.stringify(ssOptions)}`
         );
-        failedCount++;
-        continue;
+        itemsToPatch[item.shipstationLineItemKey] = ssOptions;
+        patchReasons.push(`${item.shipstationLineItemKey}(Options)`);
+      } else {
+        logger.warn(
+          `[ShipStation Sync] Item ${item.id} task ${task.id} has no option data to sync.`
+        );
       }
 
-      logger.info(
-        `[ShipStation Sync] Will send options for item ${item.id} (line item key: ${item.shipstationLineItemKey}): ${JSON.stringify(ssOptions)}`
-      );
+      // Quantity check moved to before batch update call
 
       if (options.dryRun) {
+        // Simulate quantity check for dry run log
+        const ssItemDryRun = ssOrder.items.find(i => i.lineItemKey === item.shipstationLineItemKey);
+        const currentSSQuantity = ssItemDryRun?.quantity ?? item.quantity; // Fallback to DB quantity if not found
+        const generatedCountDryRun = generatedTaskCounts[item.shipstationLineItemKey];
+        let quantityUpdateMsg = 'Unchanged';
+        if (generatedCountDryRun !== undefined && generatedCountDryRun !== currentSSQuantity) {
+          quantityUpdateMsg = `${generatedCountDryRun}`;
+        }
+
         logger.info(
-          `[Dry Run][ShipStation Sync] Would update ShipStation item ${item.id} with options: ${JSON.stringify(ssOptions)}`
+          `[Dry Run][ShipStation Sync] Would update ShipStation item ${item.id} with options: ${JSON.stringify(ssOptions)} and quantity: ${quantityUpdateMsg}`
         );
-        updatedCount++;
+        if (ssOptions.length > 0 || quantityUpdateMsg !== 'Unchanged') {
+          updatedCount++; // Count as updated in dry run if there's anything to sync
+        } else {
+          failedCount++; // Count as failed if nothing to sync
+        }
         continue;
       }
+    } // End loop through items
 
-      if (ssOptions.length > 0) {
-        itemsToPatch[item.shipstationLineItemKey] = ssOptions;
-        patchReasons.push(item.shipstationLineItemKey);
-      }
-    }
-
-    if (!options.dryRun && Object.keys(itemsToPatch).length > 0) {
+    if (!options.dryRun && (Object.keys(itemsToPatch).length > 0 || Object.keys(generatedTaskCounts).length > 0)) {
       try {
-        const auditNote = `Task sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
-        await updateOrderItemsOptionsBatch(ssOrder, itemsToPatch, auditNote);
-        updatedCount += Object.keys(itemsToPatch).length;
+        const ssOrderToUpdate = JSON.parse(JSON.stringify(ssOrder)); // Deep clone
+        let quantityWasUpdated = false;
+        let finalPatchReasons = [...patchReasons];
+
+        // Apply quantity updates first
+        logger.info(`[ShipStation Sync] Checking for quantity updates before batch call...`);
+        ssOrderToUpdate.items = ssOrderToUpdate.items.map((ssItem: ShipStationOrderItem) => {
+          if (ssItem.lineItemKey && generatedTaskCounts[ssItem.lineItemKey] !== undefined) {
+            const generatedCount = generatedTaskCounts[ssItem.lineItemKey];
+            if (ssItem.quantity !== generatedCount) {
+              logger.info(`[ShipStation Sync][Item ${ssItem.lineItemKey}] Updating quantity from ${ssItem.quantity} to ${generatedCount}`);
+              quantityWasUpdated = true;
+              const qtyReason = `${ssItem.lineItemKey}(Qty:${generatedCount})`;
+              if (!finalPatchReasons.includes(qtyReason)) {
+                finalPatchReasons.push(qtyReason);
+              }
+              return { ...ssItem, quantity: generatedCount };
+            }
+          }
+          return ssItem;
+        });
+
+        if (!quantityWasUpdated) {
+          logger.info(`[ShipStation Sync] No quantity updates needed.`);
+        }
+
+        // Only call batch update if there are actual changes
+        if (Object.keys(itemsToPatch).length > 0 || quantityWasUpdated) {
+          const auditNote = `Task sync (existing) ${new Date().toISOString()} -> ${finalPatchReasons.join(', ')}`;
+          await updateOrderItemsOptionsBatch(ssOrderToUpdate, itemsToPatch, auditNote); // Pass the modified order
+          updatedCount += Object.keys(itemsToPatch).length + (quantityWasUpdated ? Object.keys(generatedTaskCounts).filter(k => generatedTaskCounts[k] !== ssOrder.items.find(i => i.lineItemKey === k)?.quantity).length : 0); // More accurate count
+        } else {
+          logger.info(`[ShipStation Sync] No options or quantity changes detected. Skipping batch update call.`);
+        }
+
       } catch (batchErr) {
         logger.error(`[ShipStation Sync] Batch update error`, batchErr);
-        failedCount += Object.keys(itemsToPatch).length;
+        failedCount += Object.keys(itemsToPatch).length + Object.keys(generatedTaskCounts).length; // Count all attempted as failed
       }
     }
 
     logger.info(
-      `[ShipStation Sync] Completed sync for order ${orderId}. Updated: ${updatedCount}, Failed: ${failedCount}`
+      `[ShipStation Sync] Completed sync for order ${orderId}. Updated fields (approx): ${updatedCount}, Failed items: ${failedCount}`
     );
     return { updatedCount, failedCount };
   } catch (error) {
@@ -1357,6 +1431,7 @@ async function main() {
         `First order ID: ${ordersToProcess[0].id}, Order Number: ${ordersToProcess[0].shipstation_order_number}`
       );
     } else if (cmdOptions.orderId) {
+      logger.warn(`No orders found matching identifier: ${cmdOptions.orderId}`);
     }
 
     for (const order of ordersToProcess) {
@@ -1436,6 +1511,51 @@ async function main() {
 
         if (cmdOptions.dryRun) {
           logger.info(`[Dry Run][Order ${order.id}] Simulating task creation/upserts...`);
+          // Simulate ShipStation update check in dry run
+          const generatedTaskCountsDryRun: Record<string, number> = {};
+          const itemsToPatchDryRun: Record<string, unknown> = {};
+          for (const item of order.items) {
+            const itemResult = aiDataForTransaction.itemPersonalizations[item.id.toString()];
+            let generatedCountDryRun = 0;
+            if (itemResult && itemResult.personalizations.length > 0) {
+              generatedCountDryRun = itemResult.personalizations.length;
+              // Check options patch
+              const ssOptions = [];
+              const detail = itemResult.personalizations[0]; // Example: check first task's options
+              if (detail.customText) ssOptions.push({ name: 'Name or Text', value: detail.customText });
+              if (detail.color1) ssOptions.push({ name: 'Colour 1', value: detail.color1 });
+              if (detail.color2) ssOptions.push({ name: 'Colour 2', value: detail.color2 });
+              if (ssOptions.length > 0 && item.shipstationLineItemKey) {
+                itemsToPatchDryRun[item.shipstationLineItemKey] = ssOptions;
+              }
+            } else {
+              // Handle placeholder or non-AI case for dry run count
+              generatedCountDryRun = item.quantity; // Assume original quantity if no AI data or placeholder
+            }
+            if (item.shipstationLineItemKey) {
+              generatedTaskCountsDryRun[item.shipstationLineItemKey] = generatedCountDryRun;
+            }
+          }
+          // Simulate quantity check
+          const quantitiesToUpdateDryRun: Record<string, number> = {};
+          const ssOrderRespDryRun = await getShipstationOrders({ orderId: Number(order.shipstation_order_id) }); // Fetch for comparison
+          if (ssOrderRespDryRun.orders && ssOrderRespDryRun.orders.length > 0) {
+            const ssOrderDryRun = ssOrderRespDryRun.orders[0];
+            ssOrderDryRun.items.forEach(ssItem => {
+              if (ssItem.lineItemKey && generatedTaskCountsDryRun[ssItem.lineItemKey] !== undefined) {
+                const generatedCount = generatedTaskCountsDryRun[ssItem.lineItemKey];
+                if (ssItem.quantity !== generatedCount) {
+                  quantitiesToUpdateDryRun[ssItem.lineItemKey] = generatedCount;
+                }
+              }
+            });
+          }
+
+          if (Object.keys(itemsToPatchDryRun).length > 0 || Object.keys(quantitiesToUpdateDryRun).length > 0) {
+            logger.info(`[Dry Run][ShipStation Batch][Order ${order.id}] Would attempt batch update for options: [${Object.keys(itemsToPatchDryRun).join(', ')}] and quantities: [${Object.entries(quantitiesToUpdateDryRun).map(([k, v]) => `${k}:${v}`).join(', ')}]`);
+          } else {
+            logger.info(`[Dry Run][ShipStation Batch][Order ${order.id}] No options or quantity updates needed.`);
+          }
           orderDebugInfo.overallStatus = 'Dry Run Complete';
         } else {
           const transactionOptions: ProcessingOptions = {
@@ -1502,6 +1622,7 @@ async function main() {
       try {
         await updateRunLog(runLogId, { status: 'failed', message: errorMsg });
       } catch {
+        // Ignore errors during final logging
       }
     }
   } finally {
@@ -1529,7 +1650,7 @@ Options:
   --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
   --limit <number>          Limit orders fetched (no default; fetch all orders)
   --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
-  --openai-model <model>    OpenAI model (default: gpt-4-turbo)
+  --openai-model <model>    OpenAI model (default: gpt-4.1-mini)
   --debug                   Enable debug logging
   --verbose                 Enable verbose logging
   --log-level <level>       Set log level (default: info)
