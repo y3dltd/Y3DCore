@@ -87,6 +87,20 @@ For each item in the input `items` array:
     *   `quantityOrdered > 1`.
     *   The `productName` contains patterns like "Nx", "Set of N", "Pack of N" (where N is a number > 1).
     *   The `customerNotes` contain multiple lines (`\n`) where each line appears to represent a distinct item.
+    *     Example:
+    *     ```plaintext
+    *     Alice (Red)
+    *     Bob (Green)
+    *     Charlie (Blue)
+    *     ```
+    *     Expected split JSON:
+    *     ```json
+    *     [
+    *       {"customText":"Alice","color1":"Red","color2":null,"quantity":1,"needsReview":false,"reviewReason":null,"annotation":null},
+    *       {"customText":"Bob","color1":"Green","color2":null,"quantity":1,"needsReview":false,"reviewReason":null,"annotation":null},
+    *       {"customText":"Charlie","color1":"Blue","color2":null,"quantity":1,"needsReview":false,"reviewReason":null,"annotation":null}
+    *     ]
+    *     ```
     *   The `customerNotes` use clear separators (commas, semicolons, pipes) between parts that look like distinct names/items (use caution with multi-word names).
     *   The `customerNotes` show repeated structures or numbered/bulleted lists suggesting multiple items.
 
@@ -120,6 +134,13 @@ For each item in the input `items` array:
             *   Add context: If `name_implied_quantity` exists, add `ProductNameQty=${name_implied_quantity}.`. If `notes_line_count` exists, add `NotesLines=${notes_line_count}.`. Append any individual `reviewReason`s.
             *   **Action on Mismatch (Revised Again):**
                 *   **Scenario A (Plausible Split Despite Mismatch):** If splitting *was attempted* (Step 2) based on triggers like `notes_line_count` or `name_implied_quantity`, **YOU MUST KEEP THE SPLIT RESULTS** derived from that structure (e.g., one object per line in notes, resulting in `parsed_count` objects). Assign `quantity: 1` to each split object unless explicitly stated otherwise in its text segment. Ensure `overallNeedsReview` is `true` and the detailed `overallReviewReason` clearly reflects the discrepancy (e.g., `QUANTITY_MISMATCH: OrderQty=1, ParsedTotalQty=33, NotesLines=33. Used notes structure.`). **DO NOT revert to a single placeholder just because `parsed_total_quantity` does not equal `expected_quantity`. The structure implied by `customerNotes` (especially newlines) or `productName` takes precedence over `quantityOrdered` in this scenario.**
+
+                *   **Priority Clarification:** ALWAYS prioritize the number of non-empty lines in `customerNotes` (`notes_line_count`) over the `quantityOrdered` when splitting. For example:
+                *     ```plaintext
+                *     John Doe (Red)
+                *     Jane Smith (Blue)
+                *     ```
+                *     should produce two objects with quantity `1` each, not a single object with `quantityOrdered`.
                 *   **Scenario B (Unreliable Split or No Split Attempted):** Only if splitting was *not* triggered (Step 3 resulted in mismatch) OR if the splitting attempt (Step 2) itself failed badly (e.g., couldn't parse distinct items despite triggers like newlines), THEN discard any split results and create a *single* placeholder personalization object for the *entire* original text. Set its quantity to `expected_quantity`, mark `needsReview: true`, and include the original complex text and the mismatch details in the `reviewReason` or `annotation`.
 
 5.  **Final Review Check:** Ensure `overallNeedsReview` is `true` if any individual personalization object has `needsReview: true`, even if quantities matched. Compile all unique reasons into `overallReviewReason`.
