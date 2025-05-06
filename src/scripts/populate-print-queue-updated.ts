@@ -28,7 +28,12 @@ dotenv.config();
 let logStream: fsSync.WriteStream | null = null;
 
 // Setup logger (initialize basic, level set after parsing args)
-let logger: pino.Logger;
+let logger: pino.Logger = pino(
+  { level: process.env.LOG_LEVEL || 'info' },
+  pino.multistream([
+    { stream: process.stdout }
+  ])
+);
 
 // --- Zod Schemas ---
 const PersonalizationDetailSchema = z.object({

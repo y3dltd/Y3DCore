@@ -26,7 +26,7 @@ function extractColorFromPrintSettings(item: any): string | null {
 
   // Check for color in print settings
   if (Array.isArray(item.print_settings)) {
-    const colorSetting = item.print_settings.find(setting =>
+    const colorSetting = item.print_settings.find((setting: Prisma.JsonValue) =>
       isOptionObject(setting) &&
       (setting.name.toLowerCase().includes('color') ||
         setting.name.toLowerCase().includes('colour'))
@@ -148,7 +148,7 @@ function extractEbayPersonalizationData(
       (productVariant === '15' && block.color === 'Rose Gold') ||
       // Or check if the color is in the print settings
       (Array.isArray(item.print_settings) &&
-        item.print_settings.some(setting =>
+        item.print_settings.some((setting: Prisma.JsonValue) =>
           isOptionObject(setting) &&
           typeof setting.value === 'string' &&
           setting.value.toLowerCase() === block.color.toLowerCase()
