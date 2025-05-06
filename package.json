@@ -38,6 +38,8 @@
     "type-check": "tsc --noEmit",
     "git:reset-staging": "bash scripts/git/reset-to-staging.sh",
     "git:merge-to-main": "bash scripts/git/merge-staging-to-main.sh",
+    "git:update-staging": "bash scripts/git/update-staging-from-main.sh",
+    "git:update-alpha": "bash scripts/git/update-alpha-from-staging.sh",
     "email:test": "tsx src/scripts/sendgrid-test.ts",
     "find-orders:no-pending-tasks": "npx tsc scripts/find-pending-orders-no-print-tasks.ts && rm -f scripts/find-pending-orders-no-print-tasks.cjs && mv scripts/find-pending-orders-no-print-tasks.js scripts/find-pending-orders-no-print-tasks.cjs && node scripts/find-pending-orders-no-print-tasks.cjs"
   },
