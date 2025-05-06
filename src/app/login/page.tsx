@@ -1,10 +1,10 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { FormEvent, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+import { Loader2Icon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,7 +83,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isPending ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
               Login
             </Button>
           </form>
