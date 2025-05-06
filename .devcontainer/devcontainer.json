@@ -40,11 +40,11 @@
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [3000, 3306],
 
-  // /*  */Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "npm install && npx prisma migrate dev --name init",
+  // Use 'postCreateCommand' to run commands after the container is created.
+  "postCreateCommand": "npm install --no-fund --no-audit || (echo 'npm install failed' && exit 1) && npx prisma generate && npx prisma migrate dev --name init || (echo 'Database migration failed' && exit 1)",
 
   // Use 'initializeCommand' to copy .env.example if .env doesn't exist
-  "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
+  "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env && sed -i 's/localhost/db/g' .env; fi",
 
   // Connect as the default non-root user. See https://aka.ms/dev-containers-non-root.
   "remoteUser": "node"

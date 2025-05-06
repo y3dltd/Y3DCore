@@ -1,4 +1,4 @@
-version: '2.4'
+version: '3.8'
 
 services:
   db:
@@ -6,39 +6,38 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: secret_password
-      MYSQL_USER: node
-      MYSQL_PASSWORD: secret_password
-      MYSQL_DATABASE: myapp_dev
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: y3dhub
     volumes:
       - db_data:/var/lib/mysql
     ports:
       - '3306:3306'
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '--silent']
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psecret_password", "--silent"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   app:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: node:22-alpine
+    working_dir: /workspace
     volumes:
       - ..:/workspace:cached
       - node_modules:/workspace/node_modules
-    working_dir: /workspace
     command: sleep infinity
     env_file:
       - ../.env
     depends_on:
       db:
-        condition: service_healthy # ← only if you kept the db service
+        condition: service_healthy
     ports:
       - '3000:3000'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
+      - DATABASE_URL=mysql://user:password@db:3306/y3dhub
 
 volumes:
-  node_modules: {} # ← Declare your named node_modules volume
-  db_data: {} # ← Only if you’re running the db service
+  node_modules: {}
+  db_data: {}
