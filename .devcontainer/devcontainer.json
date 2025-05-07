@@ -16,7 +16,10 @@
         "prisma.prisma",
         "eamodio.gitlens", // Enhanced Git capabilities
         "mtxr.sqltools", // Database client
-        "mtxr.sqltools-driver-mysql" // MySQL driver for SQLTools
+        "mtxr.sqltools-driver-mysql", // MySQL driver for SQLTools
+        "mike-co.import-sorter", // TypeScript Import Sorter
+        "usernamehw.errorlens", // Error Lens
+        "Gruntfuggly.todo-tree" // Todo Tree
       ],
       "settings": {
         "cSpell.enabled": false, // Disable spell checking
@@ -32,20 +35,25 @@
         },
         "[jsonc]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
-        }
+        },
+        "git.autofetch": true // Enable automatic git fetch
       }
     }
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  "forwardPorts": [3000, 3306],
+  "forwardPorts": [3010, 3306],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "npm install --no-fund --no-audit || (echo 'npm install failed' && exit 1) && npx prisma generate && npx prisma migrate dev --name init || (echo 'Database migration failed' && exit 1)",
+  "postCreateCommand": "npm install && npx prisma migrate dev --name init && git config --local pull.ff only && echo 'cd() { builtin cd \"$@\"; if [ -d .git ]; then if git diff-index --quiet HEAD --; then echo \"Auto-pulling from remote (no uncommitted changes)...\"; git fetch && git pull --ff-only; else echo \"Skipping auto-pull: Uncommitted changes detected.\"; fi; fi; }' >> ~/.bashrc",
+
+  // Use 'postAttachCommand' to run commands after VS Code attaches to the container.
+  "postAttachCommand": "npm run dev",
 
   // Use 'initializeCommand' to copy .env.example if .env doesn't exist
-  "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env && sed -i 's/localhost/db/g' .env; fi",
+  "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
 
   // Connect as the default non-root user. See https://aka.ms/dev-containers-non-root.
+  "updateRemoteUserUID": false,
   "remoteUser": "node"
 }

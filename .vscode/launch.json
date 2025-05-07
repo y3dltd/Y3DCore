@@ -1,1 +1,17 @@
-{}
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: Attach to Node",
+      "type": "node",
+      "request": "attach",
+      "skipFiles": ["<node_internals>/**"],
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/workspace",
+      "restart": true,
+      "sourceMaps": true
+    }
+  ]
+}
