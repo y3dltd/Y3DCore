@@ -44,11 +44,12 @@ RUN npm install -g npm@10.9.2 && \
     eslint@latest \
     prettier@latest \
     vercel@latest \
-    @anthropic-ai/claude-code@latest \
-    task-master-ai@latest \
     # Testing tools mentioned in project memory
     vitest@latest \
     @playwright/test@latest
+
+# Install AI coding assistants (in a separate step to prevent build failures)
+RUN npm install -g @anthropic-ai/claude-code@latest task-master-ai@latest || echo "AI assistants installation failed but continuing build"
 
 # Switch back to non-root user
 USER node

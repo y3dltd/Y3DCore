@@ -32,6 +32,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        console.log(`[API bulk-details] Fetching details for ${ids.length} task IDs: ${ids.join(',')}`);
+        
+        // Using the correct Prisma query structure based on our schema
         const tasksWithDetails = await prisma.printOrderTask.findMany({
             where: {
                 id: {
@@ -40,22 +43,61 @@ export async function GET(request: NextRequest) {
             },
             select: {
                 id: true,
+                shorthandProductName: true, // Get the shorthand product name directly if available
                 product: {
                     select: {
                         name: true,
                         sku: true,
                     },
                 },
+                orderItem: {
+                    select: {
+                        // Only select fields that exist in the OrderItem model
+                        productId: true,
+                        product: {
+                            select: {
+                                name: true,
+                                sku: true
+                            }
+                        }
+                    }
+                }
             },
         });
 
         // Transform into the desired map format: Record<string, { productName, sku }>
         const detailsMap: Record<string, { productName: string | null; sku: string | null }> = {};
+        
+        // Log data for debugging
+        console.log(`[API bulk-details] Found ${tasksWithDetails.length} tasks`);
+        
+        // Debug the raw response
+        console.log(`[API bulk-details] Task details sample:`, 
+            tasksWithDetails.length > 0 ? JSON.stringify(tasksWithDetails[0], null, 2) : 'No tasks found');
+            
         tasksWithDetails.forEach(task => {
+            // Find the best product name using multiple fallback sources
+            const productName = 
+                task.shorthandProductName || // Try direct shorthand name first
+                task.product?.name || 
+                task.orderItem?.product?.name || 
+                `Product (${task.product?.sku || task.orderItem?.product?.sku || 'Unknown SKU'})`;
+                
+            // Get the best SKU using multiple fallback sources
+            const sku = task.product?.sku || task.orderItem?.product?.sku || null;
+            
             detailsMap[String(task.id)] = {
-                productName: task.product?.name ?? null,
-                sku: task.product?.sku ?? null,
+                productName: productName,
+                sku: sku,
             };
+            
+            // Log product name resolution for debugging
+            console.log(`[API bulk-details] Task ${task.id} product name: ${productName}`);
+            console.log(`[API bulk-details] Task sources:`, {
+                shorthandName: task.shorthandProductName,
+                productName: task.product?.name,
+                orderItemProductName: task.orderItem?.product?.name
+            });
         });
 
         return NextResponse.json({ success: true, details: detailsMap });
