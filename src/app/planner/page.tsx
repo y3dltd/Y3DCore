@@ -189,8 +189,21 @@ export default function PlannerPage(): React.ReactNode {
 
           // Prioritize fresh details, then fallback to original snapshot, then AI, then placeholder
           const sku = freshDetails?.sku || originalJobDetails?.sku || aiJob.sku || 'SKU Not Found';
+          
+          // Enhanced product name resolution with better fallbacks
+          // First try freshDetails from API, then original details, then try SKU-based naming, then default
           const productName =
-            freshDetails?.productName || originalJobDetails?.productName || 'Unknown Product'; // No fallback to SKU here
+            freshDetails?.productName || 
+            originalJobDetails?.productName || 
+            (sku !== 'SKU Not Found' ? `Product (${sku})` : 'Unknown Product');
+            
+          // Log in development to help debug
+          if (process.env.NODE_ENV === 'development' && !freshDetails?.productName) {
+            console.log(`[Planner] Using fallback for product name on task ${id}: ${productName}`);
+            console.log(`[Planner] FreshDetails:`, freshDetails);
+            console.log(`[Planner] OriginalJobDetails:`, originalJobDetails);
+          }
+          
           const quantity = aiJob.quantity;
           const color1 = aiJob.color1 || originalJobDetails?.color1 || null;
           const color2 = aiJob.color2 || originalJobDetails?.color2 || null;
