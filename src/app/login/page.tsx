@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { FormEvent, useState, useTransition } from 'react';
@@ -83,7 +83,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
               Login
             </Button>
           </form>
