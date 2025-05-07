@@ -312,9 +312,14 @@ const logoDataUrl = (() => {
     } catch { return '' }
 })();
 
+import { safeGetUrlFromRequest } from '@/lib/utils';
+
 // --- API: /api/generate-pdf/packing-slips?ids=1,2,3 ---
 export async function GET(req: Request) {
-    const url = new URL(req.url)
+    const url = safeGetUrlFromRequest(req);
+    if (!url) {
+        return new NextResponse('Invalid request URL', { status: 400 });
+    }
     const idsParam = url.searchParams.get('ids')
     if (!idsParam) {
         return new NextResponse('Query param "ids" required', { status: 400 })
@@ -375,4 +380,4 @@ export async function GET(req: Request) {
             try { await browser.close(); } catch { /* Ignore */ }
         }
     }
-} 
+}   
