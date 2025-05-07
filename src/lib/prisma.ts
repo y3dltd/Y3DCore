@@ -5,38 +5,56 @@ import { PrismaClient } from '@prisma/client';
 //
 // Learn more: https://pris.ly/d/help/next-js-best-practices
 
-// Ensure DATABASE_URL always has mysql:// prefix and is properly interpolated
-function validateDatabaseUrl() {
-  let dbUrl = process.env.DATABASE_URL || '';
+// Get a valid database URL, handling various edge cases in Vercel and other environments
+function getValidDatabaseUrl(): string {
+  // Set of known valid database URLs in order of preference
+  const possibleUrls = [
+    process.env.DATABASE_URL,
+    process.env.DATABASE_URL_FALLBACK,
+    process.env.MYSQL_URL,
+    process.env.DB_URL
+  ];
   
-  // Fix Vercel environment variable interpolation issue
-  if (dbUrl.includes('${DATABASE_URL}')) {
-    console.error('DATABASE_URL contains unresolved variable');
-    // Check if there's a DATABASE_URL_FALLBACK defined
-    if (process.env.DATABASE_URL_FALLBACK && typeof process.env.DATABASE_URL_FALLBACK === 'string') {
-      console.log('Using DATABASE_URL_FALLBACK');
-      dbUrl = process.env.DATABASE_URL_FALLBACK;
-    } else {
-      // Log error message for debugging in Vercel logs
-      console.error('No fallback database URL available. Add DATABASE_URL_FALLBACK env var.');
+  // Try each possible URL
+  for (const url of possibleUrls) {
+    if (!url) continue;
+    
+    let dbUrl = url.trim();
+    
+    // Skip URLs that contain unresolved variables
+    if (dbUrl.includes('${') || dbUrl.includes('$DATABASE_URL')) {
+      console.warn(`Skipping database URL with unresolved variable: ${dbUrl.substring(0, 10)}...`);
+      continue;
     }
-    process.env.DATABASE_URL = dbUrl;
-    return dbUrl;
+    
+    // Add mysql:// prefix if missing
+    if (!dbUrl.startsWith('mysql://')) {
+      console.info('Adding mysql:// prefix to database URL');
+      dbUrl = 'mysql://' + dbUrl;
+    }
+    
+    // Verify the URL is properly formatted
+    try {
+      // Basic validation - URL should now have mysql:// prefix and contain @
+      if (dbUrl.includes('@')) {
+        console.log(`Using database URL: ${dbUrl.substring(0, 10)}...`);
+        // Update environment variable with valid URL
+        process.env.DATABASE_URL = dbUrl;
+        return dbUrl;
+      }
+    } catch (e) {
+      console.error('Error validating database URL:', e);
+    }
   }
   
-  // Handle missing mysql:// prefix
-  if (!dbUrl.startsWith('mysql://')) {
-    console.warn('DATABASE_URL missing mysql:// prefix, attempting to fix...');
-    // If URL is completely missing protocol, add it
-    dbUrl = 'mysql://' + dbUrl;
-    process.env.DATABASE_URL = dbUrl;
-  }
-  
-  return dbUrl;
+  // If we get here, no valid URL was found
+  console.error('No valid database URL found in any environment variable');
+  // Return the original DATABASE_URL (which might be invalid) as a last resort
+  return process.env.DATABASE_URL || '';
 }
 
-// Validate DATABASE_URL before Prisma initialization
-validateDatabaseUrl();
+// Set DATABASE_URL to a valid value before Prisma initialization
+getValidDatabaseUrl();
 
 declare global {
   // allow global `var` declarations
