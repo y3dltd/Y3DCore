@@ -1,25 +1,17 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 
-// Export the middleware with potential customizations
+// Export a simplified middleware to avoid URL parsing issues
 export default withAuth(
-  // `withAuth` augments your `Request` with the `token` object.
-  function middleware(/* _ */ _req) {
-    // Example: You could potentially add checks here based on req.nextauth.token
-    // if (req.nextUrl.pathname.startsWith("/admin") && req.nextauth.token?.role !== "admin")
-    //   return NextResponse.rewrite(
-    //     new URL("/denied", req.url)
-    //   )
-
-    // By default, just proceed if authorized
+  // Skip custom middleware logic to avoid URL handling errors
+  function middleware() {
     return NextResponse.next();
   },
   {
     callbacks: {
       // Return true if the user is authorized, otherwise redirect to login
-      authorized: ({ token }) => !!token, // Checks if the JWT token exists (user is logged in)
+      authorized: ({ token }) => !!token,
     },
-    // Customize the login page URL if different from default
     pages: {
       signIn: '/login',
     },
