@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
+import { getSearchParamsFromRequest } from '@/lib/utils';
 
 // Define valid status values using Prisma enum
 const validStatuses = Object.values(PrintTaskStatus);
@@ -77,7 +78,13 @@ export async function PATCH(request: NextRequest) {
  * Expects a query parameter `ids` containing comma-separated task IDs.
  */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const { searchParams } = new URL(req.url);
+  const searchParams = getSearchParamsFromRequest(req);
+  if (!searchParams) {
+    return NextResponse.json(
+      { success: false, error: 'Invalid request URL' },
+      { status: 400 }
+    );
+  }
   const idsParam = searchParams.get('ids');
 
   if (!idsParam) {

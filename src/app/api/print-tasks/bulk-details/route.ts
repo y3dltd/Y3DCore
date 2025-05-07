@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/errors';
+import { safeGetUrlFromRequest } from '@/lib/utils';
 
 /**
  * GET /api/print-tasks/bulk-details?ids=1,2,3
  * Fetches basic product details (name, sku) for a list of PrintOrderTask IDs.
  */
 export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
-    const idsParam = searchParams.get('ids');
+    const url = safeGetUrlFromRequest(request);
+    if (!url) {
+        return NextResponse.json({ success: false, error: 'Invalid request URL' }, { status: 400 });
+    }
+    
+    const idsParam = url.searchParams.get('ids');
 
     if (!idsParam) {
         return NextResponse.json({ success: false, error: 'Missing task IDs' }, { status: 400 });
@@ -61,4 +66,4 @@ export async function GET(request: NextRequest) {
 }
 
 // Ensure the route is revalidated on every request
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';  

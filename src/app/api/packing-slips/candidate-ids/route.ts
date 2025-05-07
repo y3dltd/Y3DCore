@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 
 import { getCandidateOrderIds } from '@/lib/packing-slips';
+import { safeGetUrlFromRequest } from '@/lib/utils';
 
 // /api/packing-slips/candidate-ids?window=today&limit=50&includePrinted=false
 export async function GET(req: Request) {
-    const url = new URL(req.url);
+    const url = safeGetUrlFromRequest(req);
+    if (!url) {
+        return new NextResponse('Invalid request URL', { status: 400 });
+    }
     const windowParam = (url.searchParams.get('window') || 'remaining') as 'today' | 'tomorrow' | 'remaining';
     const limitParam = url.searchParams.get('limit') || '50';
     const includePrintedParam = url.searchParams.get('includePrinted') || 'false';
@@ -28,4 +32,4 @@ export async function GET(req: Request) {
         console.error('candidate-ids error', err);
         return new NextResponse('Server error', { status: 500 });
     }
-} 
+}  

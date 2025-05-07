@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
+import { safeGetUrlFromRequest } from '@/lib/utils';
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
+  const url = safeGetUrlFromRequest(request);
+  if (!url) {
+    return NextResponse.json({ error: 'Invalid request URL' }, { status: 400 });
+  }
+  
   const daysParam = url.searchParams.get('days') ?? '7';
   const end = new Date();
   let start: Date;
