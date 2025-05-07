@@ -17,7 +17,23 @@ export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  // Safely get and validate the callback URL
+  let callbackUrl = '/';
+  try {
+    const rawCallbackUrl = searchParams.get('callbackUrl');
+    if (rawCallbackUrl && rawCallbackUrl.trim() !== '') {
+      // Validate it's a relative URL or an absolute URL on the same domain
+      // For relative URLs, we can just use them directly
+      if (rawCallbackUrl.startsWith('/')) {
+        callbackUrl = rawCallbackUrl;
+      } else {
+        // For anything else, default to home page
+        console.warn('Invalid callbackUrl, defaulting to home:', rawCallbackUrl);
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing callbackUrl:', e);
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
