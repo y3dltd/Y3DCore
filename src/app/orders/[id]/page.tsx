@@ -175,6 +175,9 @@ async function getOrderDetails(
         shipping_tax: true,
         customerId: true,
         marketplace_notified: true,
+        is_merged: true,
+        merged_to_order_id: true,
+        merged_from_order_ids: true,
         customer: true,
         items: {
           orderBy: { id: 'asc' },

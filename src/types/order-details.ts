@@ -96,4 +96,8 @@ export interface SerializableOrderDetailsData
     items: SerializableOrderItemForDetails[];
     customer: SerializableCustomerForDetails | null; // Customer can be null
     tag_ids: Prisma.JsonValue;
+    // Merged order fields
+    is_merged: boolean;
+    merged_to_order_id: number | null;
+    merged_from_order_ids: Prisma.JsonValue;
 } 
