@@ -8,9 +8,25 @@ export function middleware(req: NextRequest) {
   // Simply use the request path information instead of URL constructor
   const pathname = req.nextUrl.pathname;
   
-  // If accessing the login page or static resources, allow access
+  // If this is the login page, check if user is already logged in
+  if (pathname === '/login') {
+    // Check for session cookie
+    const hasSession = req.cookies.has('next-auth.session-token') || 
+                       req.cookies.has('__Secure-next-auth.session-token');
+    
+    // If already authenticated and on login page, redirect to home
+    if (hasSession) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
+    
+    // Not authenticated, allow access to login page
+    return NextResponse.next();
+  }
+  
+  // If accessing static resources or API routes, allow access
   if (
-    pathname === '/login' || 
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
     pathname.includes('favicon.ico') ||

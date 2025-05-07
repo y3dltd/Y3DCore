@@ -36,7 +36,13 @@ export default function LoginPage() {
           toast.error(`Login failed: ${result.error}`);
         } else if (result?.ok) {
           toast.success('Login successful!');
-          router.push(callbackUrl);
+          
+          // Fix redirect loop - if callbackUrl is '/login' or contains '/login?', redirect to home
+          const redirectUrl = callbackUrl === '/login' || callbackUrl.includes('/login?') 
+            ? '/' 
+            : callbackUrl;
+            
+          router.push(redirectUrl);
           router.refresh();
         } else {
           toast.error('Login failed: An unexpected error occurred.');
