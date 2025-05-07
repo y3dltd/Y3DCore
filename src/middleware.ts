@@ -1,50 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 
 /**
- * Middleware for Y3DHub that handles authentication in a safe way
- * This approach avoids the URL parsing issues encountered with withAuth
+ * Simplified Y3DHub middleware that avoids NextAuth.js completely
+ * This approach prevents URL parsing errors on Vercel
  */
-export async function middleware(req: NextRequest) {
-  // Get pathname safely without URL constructor errors
-  const pathname = req.nextUrl?.pathname || '/';
+export function middleware(req: NextRequest) {
+  // Simply use the request path information instead of URL constructor
+  const pathname = req.nextUrl.pathname;
   
-  // Public paths - always accessible
+  // If accessing the login page or static resources, allow access
   if (
     pathname === '/login' || 
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    /\.(png|jpg|jpeg|gif|svg|xml|json)$/.test(pathname)
+    pathname.includes('favicon.ico') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|xml|json)$/)
   ) {
     return NextResponse.next();
   }
   
-  // Try to get token safely without throwing errors
-  try {
-    const token = await getToken({ req });
-    
-    // Authorized - proceed with the request
-    if (token) {
-      return NextResponse.next();
-    }
-    
-    // Not authorized - redirect to login
-    // Use clone() to avoid URL constructor issues
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
-  } catch (error) {
-    // On any error, log but allow the request rather than breaking the site
-    console.error('Authentication middleware error:', error);
+  // Check for session cookie directly (this avoids NextAuth's getToken which uses URL constructor)
+  const hasSession = req.cookies.has('next-auth.session-token') || 
+                     req.cookies.has('__Secure-next-auth.session-token');
+  
+  // If authenticated, proceed with the request
+  if (hasSession) {
     return NextResponse.next();
   }
+  
+  // Not authenticated, redirect to login using pathname property manipulation
+  // instead of URL constructor
+  const url = req.nextUrl.clone();
+  url.pathname = '/login';
+  url.search = `?callbackUrl=${encodeURIComponent(req.nextUrl.pathname)}`;
+  
+  return NextResponse.redirect(url);
 }
 
 // Configure which routes are protected by the middleware
 export const config = {
-  // Match all routes except for certain static/public paths
   matcher: [
+    // Match all routes except for static resources
     '/((?!_next/static|_next/image|favicon\.ico).*)',
   ],
 };
