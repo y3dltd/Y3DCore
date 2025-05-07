@@ -1,34 +1,39 @@
-import { NextResponse } from 'next/server';
-import { withAuth } from 'next-auth/middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-// Export a simplified middleware to avoid URL parsing issues
-export default withAuth(
-  // Skip custom middleware logic to avoid URL handling errors
-  function middleware() {
+// Export a completely new middleware that avoids Next-Auth's withAuth wrapper
+export async function middleware(req: NextRequest) {
+  // Try to get the token but don't throw if it fails
+  const token = await getToken({ req }).catch(() => null);
+  
+  // Get the pathname from the request URL safely
+  const pathname = req.nextUrl?.pathname || '/';
+  
+  // Login page doesn't require authentication
+  if (pathname === '/login') {
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      // Return true if the user is authorized, otherwise redirect to login
-      authorized: ({ token }) => !!token,
-    },
-    pages: {
-      signIn: '/login',
-    },
   }
-);
+  
+  // If user is not authenticated, redirect to login page
+  if (!token) {
+    // Create a safe URL for the login page
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+  
+  // User is authenticated, proceed
+  return NextResponse.next();
+}
 
 // Configure which routes are protected by the middleware
 export const config = {
   // Match all routes except for:
-  // - API routes
-  // - _next/static & _next/image
-  // - /login page
-  // - /favicon.ico
-  // - Paths ending with common static file extensions
+  // - API routes (which handle their own auth)
+  // - Next.js internals (_next)
+  // - Static files
+  // - Login page
   matcher: [
-    // Exclude API routes, Next.js internals, login page, favicon.ico, and paths with file extensions
-    '/((?!api|_next/static|_next/image|login|favicon\.ico|.*\.(?:png|jpg|jpeg|gif|svg|xml|json)$).*)',
-    // Note: Explicitly excluded favicon.ico and removed .ico from the general extension pattern.
+    '/((?!api|_next/static|_next/image|favicon\.ico|.*\.(png|jpg|jpeg|gif|svg|xml|json)$).*)',
   ],
 };
