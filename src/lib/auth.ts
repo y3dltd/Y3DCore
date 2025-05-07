@@ -8,13 +8,13 @@
 // export { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import { PrismaClient } from '@prisma/client';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 import { verifyPassword } from '@/lib/server-only/auth-password';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+// Ensure we're using the validated prisma instance from lib/prisma
 
 // Define Auth.js options centrally
 export const authOptions: NextAuthOptions = {
