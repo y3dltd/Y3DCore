@@ -26,6 +26,7 @@ services:
     volumes:
       - ..:/workspace:cached
       - node_modules:/workspace/node_modules
+      - npm_cache:/home/node/.npm
     working_dir: /workspace
     command: sleep infinity
     env_file:
@@ -34,11 +35,12 @@ services:
       db:
         condition: service_healthy # ← only if you kept the db service
     ports:
-      - '3000:3000'
+      - '3010:3010'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
 
 volumes:
   node_modules: {} # ← Declare your named node_modules volume
-  db_data: {} # ← Only if you’re running the db service
+  npm_cache: {} # ← Declare your named npm_cache volume
+  db_data: {} # ← Only if you're running the db service
