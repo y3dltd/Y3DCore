@@ -53,11 +53,11 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  "forwardPorts": [3010, 3306],
+  "forwardPorts": [3010, 3306, 4000, 5432],
 
   // Use 'postCreateCommand' to run commands after the container is created.
   // Using an external script avoids JSON escape character issues
-  "postCreateCommand": "/workspace/.devcontainer/setup.sh",
+  "postCreateCommand": "/workspace/.devcontainer/setup.sh && /workspace/.devcontainer/setup-litellm.sh",
 
   // Use 'postAttachCommand' to run commands after VS Code attaches to the container.
   "postAttachCommand": "npm run dev",

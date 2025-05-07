@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   litellm-postgres:
     image: postgres:16-alpine
@@ -11,31 +13,49 @@ services:
       - "5432:5432"  # hostPort:containerPort
     volumes:
       - litellm_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   litellm-proxy:
     image: litellm/litellm:stable  # Use the stable tag
     container_name: litellm-proxy
     restart: unless-stopped
     depends_on:
-      - litellm-postgres
+      litellm-postgres:
+        condition: service_healthy
     ports:
       - "4000:4000" # hostPort:containerPort
     environment:
       # Map the host's LITELLM_DATABASE_URL to the container's DATABASE_URL
       DATABASE_URL: ${LITELLM_DATABASE_URL}
       # Pass other required keys from the host environment (loaded from .env)
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-dummy-key-for-setup}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-sk-dummy-key-for-setup}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-dummy-key-for-setup}
       # Pass the LiteLLM key you created
-      DEFAULT_LLM_KEY: ${DEFAULT_LLM_KEY}
+      DEFAULT_LLM_KEY: ${DEFAULT_LLM_KEY:-sk-dummy-key-for-setup}
       # Pass UI credentials
-      UI_USERNAME: ${UI_USERNAME}
-      UI_PASSWORD: ${UI_PASSWORD}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD:-admin}
     volumes:
       - ./docs/configs/litellm_config.yaml:/app/config.yaml # Mount config
     command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   litellm_pg_data:
     name: litellm_pg_data
+
+# Use the same network as the main dev container
+networks:
+  default:
+    name: y3dhub_network
+    external: true
