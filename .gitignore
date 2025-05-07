@@ -153,3 +153,6 @@ dev.log
 # Playwright
 node_modules/
 /blob-report/
+
+#Misc
+.venv

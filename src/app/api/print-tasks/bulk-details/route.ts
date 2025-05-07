@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/errors';
+import { getSearchParamsFromRequest } from '@/lib/utils';
 
 /**
  * GET /api/print-tasks/bulk-details?ids=1,2,3
  * Fetches basic product details (name, sku) for a list of PrintOrderTask IDs.
  */
 export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
+    const searchParams = getSearchParamsFromRequest(request);
+
+    if (!searchParams) {
+        return NextResponse.json({ success: false, error: 'Invalid request URL or search parameters' }, { status: 400 });
+    }
+    
     const idsParam = searchParams.get('ids');
 
     if (!idsParam) {
@@ -16,10 +22,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate IDs
-    const taskIdsStr = idsParam.split(',');
-    const taskIdsNum = taskIdsStr.map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+    const ids = idsParam.split(',').map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id));
 
-    if (taskIdsNum.length === 0) {
+    if (ids.length === 0) {
         return NextResponse.json({
             success: false,
             error: 'No valid numeric task IDs provided',
@@ -30,7 +35,7 @@ export async function GET(request: NextRequest) {
         const tasksWithDetails = await prisma.printOrderTask.findMany({
             where: {
                 id: {
-                    in: taskIdsNum,
+                    in: ids,
                 },
             },
             select: {

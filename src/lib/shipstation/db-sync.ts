@@ -700,6 +700,59 @@ export const upsertOrderWithItems = async (
         });
         const dbOrderId = dbOrder.id;
 
+        // Check for order merger status in ShipStation
+        const mergedOrSplit = ssOrder.advancedOptions?.mergedOrSplit || false;
+        const mergedIds = ssOrder.advancedOptions?.mergedIds || [];
+        const parentId = ssOrder.advancedOptions?.parentId || null;
+
+        // Case 1: This order has been merged into another order
+        if (parentId) {
+          logger.info(`[Sync][Order ${ssOrder.orderNumber}] Found order merged into parent ID: ${parentId}`);
+
+          await tx.order.update({
+            where: { id: dbOrderId },
+            data: {
+              is_merged: true,
+              merged_to_order_id: Number(parentId),
+              // Don't auto-update print tasks here to avoid disrupting workflow
+            }
+          });
+        }
+
+        // Case 2: This is a destination order that contains merged orders
+        if (mergedOrSplit && mergedIds.length > 0) {
+          logger.info(`[Sync][Order ${ssOrder.orderNumber}] This is a merged order containing: ${mergedIds.join(', ')}`);
+
+          await tx.order.update({
+            where: { id: dbOrderId },
+            data: {
+              merged_from_order_ids: JSON.stringify(mergedIds)
+            }
+          });
+
+          // Update any source orders we find
+          const sourceOrders = await tx.order.findMany({
+            where: {
+              shipstation_order_id: { in: mergedIds.map(id => String(id)) }
+            },
+            select: { id: true }
+          });
+
+          if (sourceOrders.length > 0) {
+            logger.info(`[Sync][Order ${ssOrder.orderNumber}] Found ${sourceOrders.length} source orders in database`);
+
+            for (const sourceOrder of sourceOrders) {
+              await tx.order.update({
+                where: { id: sourceOrder.id },
+                data: {
+                  is_merged: true,
+                  merged_to_order_id: dbOrderId
+                }
+              });
+            }
+          }
+        }
+
         // Process Incoming Items using Upsert
         const incomingSsItems = ssOrder.items.filter(item => !item.adjustment);
         logger.info(
