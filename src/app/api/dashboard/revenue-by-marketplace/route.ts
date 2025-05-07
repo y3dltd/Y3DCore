@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { safeGetUrlFromRequest } from '@/lib/utils';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = safeGetUrlFromRequest(request);
   if (!url) {
     return NextResponse.json({ error: 'Invalid request URL' }, { status: 400 });

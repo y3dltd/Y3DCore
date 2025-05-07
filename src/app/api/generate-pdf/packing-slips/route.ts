@@ -3,7 +3,7 @@ import bwipjs from 'bwip-js'
 import fs from 'fs'
 import path from 'path'
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 import { prisma } from '@/lib/prisma'
 import { markOrdersPrinted } from '@/lib/packing-slips'
@@ -315,7 +315,7 @@ const logoDataUrl = (() => {
 import { safeGetUrlFromRequest } from '@/lib/utils';
 
 // --- API: /api/generate-pdf/packing-slips?ids=1,2,3 ---
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
     const url = safeGetUrlFromRequest(req);
     if (!url) {
         return new NextResponse('Invalid request URL', { status: 400 });

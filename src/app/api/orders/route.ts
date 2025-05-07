@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { handleApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma'; // Import the reusable Prisma client
@@ -8,7 +8,7 @@ import { getSearchParamsFromRequest } from '@/lib/utils';
  * Handles GET requests to fetch orders.
  * Supports optional pagination via query parameters `page` and `limit`.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const searchParams = getSearchParamsFromRequest(request);
   if (!searchParams) {
     return new NextResponse('Invalid request URL', { status: 400 });

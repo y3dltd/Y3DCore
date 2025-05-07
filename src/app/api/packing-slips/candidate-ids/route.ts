@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { getCandidateOrderIds } from '@/lib/packing-slips';
 import { safeGetUrlFromRequest } from '@/lib/utils';
 
 // /api/packing-slips/candidate-ids?window=today&limit=50&includePrinted=false
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
     const url = safeGetUrlFromRequest(req);
     if (!url) {
         return new NextResponse('Invalid request URL', { status: 400 });
