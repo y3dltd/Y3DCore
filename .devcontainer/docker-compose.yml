@@ -1,4 +1,4 @@
-version: '2.4'
+version: '3.8'
 
 services:
   db:
@@ -23,24 +23,44 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        # Codespaces-compatible build arguments
+        - NODE_VERSION=22
+        - USERNAME=node
     volumes:
       - ..:/workspace:cached
       - node_modules:/workspace/node_modules
       - npm_cache:/home/node/.npm
+      # Mount Docker socket for Docker-in-Docker functionality (if available)
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /workspace
     command: sleep infinity
     env_file:
       - ../.env
     depends_on:
       db:
-        condition: service_healthy # ← only if you kept the db service
+        condition: service_healthy
     ports:
       - '3010:3010'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
+      # Codespaces GitHub authentication (if available)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    # Ensure the node user exists and has proper UID/GID
+    user: node
+    # Improve Codespaces performance
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
 
 volumes:
-  node_modules: {} # ← Declare your named node_modules volume
-  npm_cache: {} # ← Declare your named npm_cache volume
-  db_data: {} # ← Only if you're running the db service
+  node_modules: {}
+  npm_cache: {}
+  db_data: {}
+
+# Codespaces networking
+networks:
+  default:
+    name: y3dhub_network

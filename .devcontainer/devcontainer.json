@@ -38,6 +38,17 @@
         },
         "git.autofetch": true // Enable automatic git fetch
       }
+    },
+    // Codespaces-specific customizations
+    "codespaces": {
+      "repositories": {
+        "y3dltd/Y3DCore": {
+          "permissions": {
+            "contents": "write",
+            "pull_requests": "write"
+          }
+        }
+      }
     }
   },
 
@@ -45,7 +56,8 @@
   "forwardPorts": [3010, 3306],
 
   // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "npm install && npx prisma migrate dev --name init && git config --local pull.ff only && echo 'cd() { builtin cd \"$@\"; if [ -d .git ]; then if git diff-index --quiet HEAD --; then echo \"Auto-pulling from remote (no uncommitted changes)...\"; git fetch && git pull --ff-only; else echo \"Skipping auto-pull: Uncommitted changes detected.\"; fi; fi; }' >> ~/.bashrc",
+  // Using an external script avoids JSON escape character issues
+  "postCreateCommand": "/workspace/.devcontainer/setup.sh",
 
   // Use 'postAttachCommand' to run commands after VS Code attaches to the container.
   "postAttachCommand": "npm run dev",
@@ -53,7 +65,14 @@
   // Use 'initializeCommand' to copy .env.example if .env doesn't exist
   "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
 
-  // Connect as the default non-root user. See https://aka.ms/dev-containers-non-root.
-  "updateRemoteUserUID": false,
-  "remoteUser": "node"
+  // Connect as node user for Codespaces compatibility
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+
+  // Codespaces-specific settings
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  }
 }
