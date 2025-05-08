@@ -40,7 +40,9 @@ const colorMap: Record<string, string> = {
 interface TaskCarouselProps {
   tasks: PrintTaskCardProps[];
   className?: string;
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
   onTaskStatusChange: (taskId: string, itemId: string, newStatus: PrintTaskStatus) => void;
+  // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
   onBulkTaskStatusChange: (taskId: string, newStatus: PrintTaskStatus) => void;
 }
 
