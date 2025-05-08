@@ -37,6 +37,7 @@ describe('fetchAndProcessAmazonCustomization', () => {
 
     (
       global.fetch as unknown as { mockResolvedValueOnce: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
         value: Record<string, unknown>
       ) => void }
     ).mockResolvedValueOnce({
@@ -62,6 +63,7 @@ describe('fetchAndProcessAmazonCustomization', () => {
 
     (
       global.fetch as unknown as { mockResolvedValueOnce: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
         value: Record<string, unknown>
       ) => void }
     ).mockResolvedValueOnce({
