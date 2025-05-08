@@ -53,8 +53,9 @@ module.exports = {
         pathGroupsExcludedImportTypes: ['builtin'],
       },
     ],
-    'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': 'off',
+    'no-unused-vars': ['warn', { vars: 'all', args: 'after-used', ignoreRestSiblings: true }],
+    '@typescript-eslint/no-unused-vars': ['warn', { vars: 'all', args: 'after-used', ignoreRestSiblings: true }],
+    // Plan: Address all unused variables flagged by these rules. If specific cases require exceptions, use inline comments or file-level overrides.
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     'prefer-const': 'warn',
