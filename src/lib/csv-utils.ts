@@ -144,12 +144,15 @@ export async function updateTaskFromCSVRow(taskData: Record<string, string>): Pr
 export async function processCSVImport(
   file: File, 
   onSuccess: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     count: number
   ) => void,
   onError: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     count: number
   ) => void,
   onComplete: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     stats: { success: number; failed: number; total: number }
   ) => void
 ): Promise<void> {
