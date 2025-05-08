@@ -296,7 +296,7 @@ async function processSingleOrder(
             try {
                 await prisma.$transaction(async (tx) => {
                     // Create/Update DB Tasks using AI results
-                    const _dbResult = await createOrUpdateTasksInTransaction(
+                    await createOrUpdateTasksInTransaction(
                         tx,
                         order, // Pass original order for DB task creation context
                         aiResult.data as AiOrderResponse, // AI data is guaranteed here
@@ -367,7 +367,6 @@ async function processSingleOrder(
  * @param prisma - Prisma client instance.
  */
 export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma: PrismaClient): Promise<void> {
-    const _SCRIPT_NAME = 'populate-print-queue-v2';
     // Logger initialization should happen in the entry script, but getLogger can be used here
     const logger = getLogger(); // Assumes logger is initialized by the calling script
     let finalMessage = 'Script finished.';
