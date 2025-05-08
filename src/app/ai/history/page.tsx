@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +13,7 @@ async function getAiLogs(): Promise<AiCallLog[]> {
   });
 }
 
-export default async function AIHistoryPage() {
+export default async function AIHistoryPage(): Promise<JSX.Element> {
   const logs = await getAiLogs();
 
   return (

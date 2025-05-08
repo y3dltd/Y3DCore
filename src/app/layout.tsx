@@ -1,14 +1,21 @@
-import type { Metadata } from 'next';
-
+// External imports
 import { Inter } from 'next/font/google';
 
-import SessionProviderWrapper from '@/app/SessionProviderWrapper'; // Import the new wrapper
-import { Footer } from '@/components/layout/footer'; // Import Footer
+// Internal imports (alphabetized)
+import SessionProviderWrapper from '@/app/SessionProviderWrapper';
+import { Footer } from '@/components/layout/footer';
 import Navbar from '@/components/layout/navbar';
-import { cn } from '@/lib/utils'; // Import cn utility
-import '../styles/color-badges.css';
-import './globals.css';
 import NextUIWrapper from '@/components/layout/NextUIWrapper';
+import { cn } from '@/lib/utils';
+
+// Parent imports
+import '../styles/color-badges.css';
+
+// Sibling imports
+import './globals.css';
+
+// Type imports
+import type { Metadata } from 'next';
 
 // Initialize Inter font
 const inter = Inter({
@@ -30,7 +37,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Remove suppressHydrationWarning
     <html lang="en" className="dark">
       <head>
         {/* Metadata will be injected here */}

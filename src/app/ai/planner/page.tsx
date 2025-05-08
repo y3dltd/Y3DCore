@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export default function PlannerRedirect() {
+export default function PlannerRedirect(): JSX.Element {
   const router = useRouter();
   
   useEffect(() => {

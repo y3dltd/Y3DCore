@@ -3,7 +3,7 @@ import path from 'path'
 
 import bwipjs from 'bwip-js'
 import { NextResponse } from 'next/server'
-import puppeteer from 'puppeteer'
+import { launch } from 'puppeteer'
 
 import { markOrdersPrinted } from '@/lib/packing-slips'
 import { prisma } from '@/lib/prisma'
@@ -340,7 +340,7 @@ export async function GET(req: Request) {
 
         // Render PDF via Puppeteer
         console.log(`Launching browser for ${ids.length} packing slips...`);
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+        browser = await launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
         const page = await browser.newPage()
         await page.setContent(html, { waitUntil: 'networkidle0' })
         console.log(`Generating PDF for orders: ${ids.join(', ')}...`);

@@ -581,7 +581,7 @@ export const upsertOrderWithItems = async (
 
           // Simulate OrderItem Upsert
           const orderItemMappedData = mapSsItemToOrderItemData(ssItem, dbProduct.id); // Use mock product ID
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
           const { productId: _ignoredProductId, ...dataForUpsert } = orderItemMappedData;
           const createData = {
             ...dataForUpsert,
@@ -789,7 +789,7 @@ export const upsertOrderWithItems = async (
 
             // Prepare Item Data
             const orderItemMappedData = mapSsItemToOrderItemData(ssItem, dbProduct.id);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
             const { productId: _ignoredProductId, ...dataForUpsert } = orderItemMappedData;
 
             // Use Upsert for the OrderItem

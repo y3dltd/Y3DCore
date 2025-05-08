@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function findOrdersWithoutPrintTasks() {
+async function findOrdersWithoutPrintTasks(): Promise<void> {
     console.log('Searching for awaiting_shipment orders without print tasks...');
 
     try {

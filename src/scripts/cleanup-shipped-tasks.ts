@@ -16,7 +16,7 @@ interface CleanupOptions {
  * that have already been shipped or cancelled, and updates their status to completed.
  * Respects dry-run flag.
  */
-async function cleanShippedOrderTasksWithDryRun(options: CleanupOptions) {
+async function cleanShippedOrderTasksWithDryRun(options: CleanupOptions): Promise<{ success: boolean; count: number; error?: string; }> {
     const { dryRun } = options;
     logger.info(`Starting cleanup task check... ${dryRun ? '(DRY RUN)' : ''}`);
     try {
@@ -81,7 +81,7 @@ async function cleanShippedOrderTasksWithDryRun(options: CleanupOptions) {
 }
 
 
-async function main() {
+async function main(): Promise<void> {
     const program = new Command();
     program
         .name('cleanup-shipped-tasks')

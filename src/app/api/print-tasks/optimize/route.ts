@@ -3,7 +3,7 @@ import path from 'path'; // Import path
 
 import { PrintTaskStatus, Prisma, AiReportRun } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 import { z } from 'zod'; // Import Zod
 
 import { prisma } from '@/lib/prisma';
@@ -62,11 +62,6 @@ const RequestSchema = z.object({
 // --- End Input Schema ---
 
 // Explicit types for task sequence validation
-interface ColorRequirements {
-  color1: string | null
-  color2: string | null
-}
-
 interface AssignedJob {
   id: string
   sku?: string | null

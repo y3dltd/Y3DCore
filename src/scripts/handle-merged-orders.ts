@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { PrismaClient } from '@prisma/client';
 
-import { getLogger } from '../lib/shared/logging';
-import { getShipstationOrders } from '../lib/shared/shipstation';
+import { getLogger } from '@lib/shared/logging';
+import { getShipstationOrders } from '@lib/shipstation';
+import { ShipStationOrder as ImportedShipStationOrder } from '@lib/shipstation/types';
 
 const logger = getLogger('handle-merged-orders');
 const prisma = new PrismaClient();
@@ -14,13 +15,7 @@ interface ScriptOptions {
     force: boolean;
 }
 
-// Define a more flexible type for ShipStation API responses
-interface ShipStationOrder {
-    advancedOptions?: Record<string, any>;
-    [key: string]: any;
-}
-
-async function main() {
+async function main(): Promise<void> {
     console.log('--- Starting Merged Order Handler ---');
     const options: ScriptOptions = {
         dryRun: process.argv.includes('--dry-run'),
@@ -86,8 +81,8 @@ async function main() {
                     continue;
                 }
 
-                const ssOrder = ssOrderResponse.orders[0] as ShipStationOrder;
-                const advancedOptions = ssOrder.advancedOptions || {};
+                const ssOrder = ssOrderResponse.orders[0] as ImportedShipStationOrder;
+                const advancedOptions = (ssOrder.advancedOptions || {}) as Record<string, unknown>;
 
                 // Use type-safe access to possibly undefined fields
                 const mergedOrSplit = Boolean(advancedOptions.mergedOrSplit);

@@ -79,7 +79,7 @@ type ArgvType = {
 
 const argv = argvBuilder.parseSync() as ArgvType;
 
-async function main(args: ArgvType) {
+async function main(args: ArgvType): Promise<void> {
   // Use the explicit type
   logger.info('Starting ShipStation sync process...');
   const startTime = Date.now();

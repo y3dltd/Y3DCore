@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
           return null;

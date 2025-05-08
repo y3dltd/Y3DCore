@@ -14,7 +14,7 @@ import {
 import debounce from 'lodash.debounce';
 import { CalendarIcon, RotateCcw, X } from 'lucide-react'; // Import icons
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useTransition, useState } from 'react';
 import { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
@@ -154,7 +154,7 @@ export function PrintQueueFilters({
   const initialShippingMethodParam = getFilterParam(currentFilters.shippingMethod) || '';
   const [shippingMethod, setShippingMethod] = useState(initialShippingMethodParam);
 
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const startStr = getFilterParam(currentFilters.shipByDateStart);
     const endStr = getFilterParam(currentFilters.shipByDateEnd);
     // Ensure dates are valid before setting
@@ -431,6 +431,7 @@ export function PrintQueueFilters({
     if (shippingMethod !== shippingMethodParam) {
       setShippingMethod(shippingMethodParam);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]); // Only run effect when searchParams change
   const statusOptions = [
     { value: 'active', label: 'Active Tasks' },

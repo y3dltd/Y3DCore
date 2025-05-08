@@ -2,7 +2,7 @@ import { PrintOrderTask, Prisma } from '@prisma/client';
 
 // Interface for the serialized Product
 export interface SerializableProductForDetails
-    extends Omit<Prisma.ProductGetPayload<{}>, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
+    extends Omit<Prisma.ProductGetPayload<Prisma.ProductDefaultArgs>, 'weight' | 'item_weight_value' | 'createdAt' | 'updatedAt'> {
     weight: string | null;
     item_weight_value: string | null;
     createdAt: string;
@@ -11,7 +11,7 @@ export interface SerializableProductForDetails
 
 // Interface for the serialized OrderItem
 export interface SerializableOrderItemForDetails
-    extends Omit<Prisma.OrderItemGetPayload<{}>, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
+    extends Omit<Prisma.OrderItemGetPayload<Prisma.OrderItemDefaultArgs>, 'unit_price' | 'created_at' | 'updated_at' | 'product' | 'printTasks'> {
     unit_price: string;
     created_at: string;
     updated_at: string | null;
@@ -26,7 +26,7 @@ export interface SerializableOrderItemForDetails
 }
 
 // Interface for the serialized Customer
-export interface SerializableCustomerForDetails extends Omit<Prisma.CustomerGetPayload<{}>, 'created_at' | 'updated_at'> {
+export interface SerializableCustomerForDetails extends Omit<Prisma.CustomerGetPayload<Prisma.CustomerDefaultArgs>, 'created_at' | 'updated_at'> {
     created_at: string;
     updated_at: string | null;
 }

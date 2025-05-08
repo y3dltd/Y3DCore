@@ -2,7 +2,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { Command } from 'commander';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 import { closeLogStream, getLogger, initializeLogger } from '../lib/order-processing-v2/logger';
 import { runOrderProcessingV2 } from '../lib/order-processing-v2/orchestrator';
@@ -16,7 +16,7 @@ dotenv.config();
 
 const SCRIPT_NAME = 'populate-print-queue-v2';
 
-async function main() {
+async function main(): Promise<void> {
     let prisma: PrismaClient | null = null;
     let scriptRunSuccess = true;
 

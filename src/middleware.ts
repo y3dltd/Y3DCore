@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Simplified Y3DHub middleware that avoids NextAuth.js completely
  * This approach prevents URL parsing errors on Vercel
  */
-export function middleware(req: NextRequest) {
+export function middleware(req: NextRequest): NextResponse {
   // Simply use the request path information instead of URL constructor
   const pathname = req.nextUrl.pathname;
   
@@ -57,6 +57,7 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Match all routes except for static resources
+    // eslint-disable-next-line no-useless-escape
     '/((?!_next/static|_next/image|favicon\.ico).*)',
   ],
 };

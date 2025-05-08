@@ -1,11 +1,10 @@
 import { PrintTaskStatus } from '@prisma/client';
 import { format } from 'date-fns';
-import Papa from 'papaparse';
-
-// Import the PrintTaskData interface directly from the component file
+import { unparse, parse } from 'papaparse';
 import { toast } from 'sonner';
 
 import type { PrintTaskData } from '@/types/print-tasks';
+// Import the PrintTaskData interface directly from the component file
 
 interface CSVExportRow {
   'Task ID': number;
@@ -64,7 +63,7 @@ export function convertToCSV(data: PrintTaskData[]): string {
   });
 
   // Use PapaParse to convert to CSV
-  return Papa.unparse(csvData as unknown as object[], {
+  return unparse(csvData as unknown as object[], {
     header: true,
     quotes: true, // Always quote fields
     quoteChar: '"',
@@ -148,7 +147,7 @@ export async function processCSVImport(
   onError: (count: number) => void,
   onComplete: (stats: { success: number; failed: number; total: number }) => void
 ): Promise<void> {
-  Papa.parse(file, {
+  parse(file, {
     header: true,
     skipEmptyLines: true,
     complete: async (results) => {

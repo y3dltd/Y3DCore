@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { NextRequest } from 'next/server';
 import { twMerge } from 'tailwind-merge';
 
-export function cn(...inputs: ClassValue[]) {
+export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
@@ -14,8 +14,8 @@ export function cn(...inputs: ClassValue[]) {
 export function safeGetUrlFromRequest(request: NextRequest): URL | null {
   try {
     // If nextUrl is available (Next.js provides an absolute URL), prefer it
-    if ((request as any).nextUrl) {
-      return (request as any).nextUrl as unknown as URL;
+    if (request.nextUrl) {
+      return request.nextUrl; // NextURL extends URL
     }
 
     const rawUrl = request.url;
@@ -48,8 +48,8 @@ export function safeGetUrlFromRequest(request: NextRequest): URL | null {
  */
 export function getSearchParamsFromRequest(request: NextRequest): URLSearchParams | null {
   // Use nextUrl.searchParams if available for efficiency
-  if ((request as any).nextUrl) {
-    return ((request as any).nextUrl as unknown as URL).searchParams;
+  if (request.nextUrl) {
+    return request.nextUrl.searchParams;
   }
   const url = safeGetUrlFromRequest(request);
   return url ? url.searchParams : null;

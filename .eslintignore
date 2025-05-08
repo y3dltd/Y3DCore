@@ -4,3 +4,4 @@
 dist
 out
 coverage
+prisma/node_modules/

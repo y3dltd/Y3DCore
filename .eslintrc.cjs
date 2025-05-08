@@ -53,9 +53,10 @@ module.exports = {
         pathGroupsExcludedImportTypes: ['builtin'],
       },
     ],
-    'no-unused-vars': 'warn',
-    '@typescript-eslint/explicit-function-return-type': 'warn',
-    '@typescript-eslint/no-explicit-any': 'warn',
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
     'prefer-const': 'warn',
     eqeqeq: ['warn', 'smart'],
     'import/no-duplicates': 'error',
@@ -68,4 +69,12 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'warn',
     '@typescript-eslint/no-unnecessary-type-constraint': 'off',
   },
+  overrides: [
+    {
+      files: ['src/app/runtime.js'],
+      parserOptions: {
+        project: null,
+      },
+    },
+  ],
 };

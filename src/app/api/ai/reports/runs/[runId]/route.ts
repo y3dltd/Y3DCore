@@ -12,7 +12,7 @@ interface RouteParams {
  * API endpoint to fetch the status and result of a specific AIReportRun.
  * GET /api/ai/reports/runs/[runId]
  */
-export async function GET(_req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams): Promise<NextResponse> {
     const { runId } = params;
 
     if (!runId) {

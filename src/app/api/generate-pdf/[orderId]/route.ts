@@ -1,9 +1,7 @@
 import { Customer, Order, OrderItem, Product } from '@prisma/client';
 import bwipjs from 'bwip-js';
-
-// import fs from 'fs/promises'; // No longer needed
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import { launch } from 'puppeteer';
 
 import { prisma } from "@/lib/prisma";
 
@@ -815,7 +813,7 @@ export async function GET(
         const fullHtml = await generatePackingSlipHTML(orderData);
 
         console.log('Launching browser...');
-        browser = await puppeteer.launch({
+        browser = await launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none']
         });

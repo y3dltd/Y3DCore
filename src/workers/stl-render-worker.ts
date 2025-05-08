@@ -19,7 +19,6 @@ const MAX_RETRIES = 10;
 const CONCURRENCY = Number(process.env.STL_WORKER_CONCURRENCY ?? '10')
 const POLL_INTERVAL_MS = Number(process.env.STL_WORKER_POLL_MS ?? '5000')
 const prisma = new PrismaClient();
-const _FORCE = process.argv.includes('--force');
 // New flag to control skipping existing files (defaults to false - overwrite by default)
 const SKIP_IF_EXISTS = process.argv.includes('--skip-if-exists');
 
@@ -67,7 +66,7 @@ function getAlphaFolder(name: string): string {
 }
 
 // Database Interaction -------------------
-async function reserveTask() {
+async function reserveTask(): Promise<TaskWithProduct | null> {
     // Transaction to find and reserve the oldest pending task for any supported SKU
     return prisma.$transaction(async tx => {
         // Updated to search for multiple SKUs and patterns
@@ -147,7 +146,7 @@ type TaskWithProduct = {
 };
 
 // Worker Logic --------------------------
-async function processTask(task: TaskWithProduct) {
+async function processTask(task: TaskWithProduct): Promise<void> {
     const taskId = task.id;
     const taskSku = task.product.sku;
     const customText = task.custom_text ?? '';
@@ -156,14 +155,14 @@ async function processTask(task: TaskWithProduct) {
     let stlPathAbsSecondary: string | null = null; // Absolute path for the secondary file (cable clips)
 
     // Helper to mark DB completed without rendering (captures taskId)
-    const completeWithoutRender = async (relativePath: string) => {
+    async function completeWithoutRender(relativePath: string): Promise<void> {
         console.log(`[${new Date().toISOString()}] STL already exists for task ${taskId} → ${relativePath}. Skipping render.`);
         await prisma.$executeRaw`
             UPDATE PrintOrderTask
             SET stl_path = ${relativePath}, stl_render_state = 'completed', annotation = NULL, render_retries = 0
             WHERE id = ${taskId}
-        `;
-    };
+        `
+    }
 
     try {
         console.log(`[${new Date().toISOString()}] Processing task ${taskId} for SKU ${taskSku}...`);
@@ -196,7 +195,7 @@ async function processTask(task: TaskWithProduct) {
             // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch { }
+            try { await fs.access(existingPath); fileExists = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${existingPath}:`, err); fileExists = false; }
             if (fileExists) {
                 if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
@@ -234,7 +233,7 @@ async function processTask(task: TaskWithProduct) {
             // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch { }
+            try { await fs.access(existingPath); fileExists = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${existingPath}:`, err); fileExists = false; }
             if (fileExists) {
                 if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
@@ -259,7 +258,7 @@ async function processTask(task: TaskWithProduct) {
             // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch { }
+            try { await fs.access(existingPath); fileExists = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${existingPath}:`, err); fileExists = false; }
             if (fileExists) {
                 if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
@@ -284,7 +283,7 @@ async function processTask(task: TaskWithProduct) {
             // Check if file exists and handle based on SKIP_IF_EXISTS flag
             const existingPath = path.join(absDir, outputFilename);
             let fileExists = false;
-            try { await fs.access(existingPath); fileExists = true; } catch { }
+            try { await fs.access(existingPath); fileExists = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${existingPath}:`, err); fileExists = false; }
             if (fileExists) {
                 if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
@@ -311,8 +310,8 @@ async function processTask(task: TaskWithProduct) {
             const abs35 = path.join(absDir, outputFilename35);
             const abs40 = path.join(absDir, outputFilename40);
             let exist35 = false, exist40 = false;
-            try { await fs.access(abs35); exist35 = true; } catch { }
-            try { await fs.access(abs40); exist40 = true; } catch { }
+            try { await fs.access(abs35); exist35 = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${abs35}:`, err); exist35 = false; }
+            try { await fs.access(abs40); exist40 = true; } catch (err) { console.error(`[${new Date().toISOString()}] Error checking file existence for ${abs40}:`, err); exist40 = false; }
             if (exist35 && exist40) {
                 if (SKIP_IF_EXISTS) {
                     await completeWithoutRender(stlRelativePath);
@@ -353,7 +352,7 @@ async function processTask(task: TaskWithProduct) {
                 annotation = NULL,
                 render_retries = 0
             WHERE id = ${taskId}
-        `;
+        `
 
         console.log(`✓ STL rendered successfully for task ${taskId} → ${stlRelativePath}`);
         if (stlPathAbsSecondary) {
@@ -396,7 +395,7 @@ async function processTask(task: TaskWithProduct) {
 }
 
 // Helper to fix invalid stl_render_state values
-async function fixInvalidStlRenderStates() {
+async function fixInvalidStlRenderStates(): Promise<number> {
     try {
         // Find and update records whose state is not one of the known valid states,
         // but ONLY if they haven't already been successfully rendered (i.e., stl_path is not set).
@@ -421,7 +420,7 @@ async function fixInvalidStlRenderStates() {
 }
 
 // Helper to reset eligible tasks back to pending
-async function resetAllTasksToPending() {
+async function resetAllTasksToPending(): Promise<void> {
     console.log(`[${new Date().toISOString()}] Refresh mode: Resetting eligible tasks to pending...`);
     const supportedStaticSKUs = ['PER-KEY3D-STY3-Y3D', 'Y3D-NKC-002', 'N9-93VU-76VK', 'Y3D-REGKEY-STL1'];
     const supportedPrefix = 'PER-2PER-';
@@ -461,7 +460,7 @@ async function resetAllTasksToPending() {
 
 // Main Loop --------------------------
 // Simple version to run and process a single task batch (exported for testing)
-export async function runTaskBatch() {
+export async function runTaskBatch(): Promise<void> {
     console.log(`[${new Date().toISOString()}] Checking for tasks to process...`);
 
     // First, fix any invalid stl_render_state values
@@ -491,10 +490,10 @@ export async function runTaskBatch() {
 // Track active in-flight tasks to respect the configured concurrency
 let activeTasks = 0;
 
-async function workerLoop() {
+async function workerLoop(): Promise<void> {
 
     // Function to handle a single iteration of the worker loop
-    async function iteration() {
+    async function iteration(): Promise<void> {
         console.log(`[${new Date().toISOString()}] Checking for pending STL render tasks...`);
 
         // Fix any invalid stl_render_state values at the start of each iteration
@@ -514,7 +513,7 @@ async function workerLoop() {
     } // End of iteration function
 
     // Function to schedule the next iteration using setTimeout
-    const scheduleNextIteration = () => {
+    const scheduleNextIteration = (): void => {
         // console.log(`[${new Date().toISOString()}] Scheduling next iteration in ${POLL_INTERVAL_MS}ms`);
         setTimeout(() => {
             iterationWrapper(); // Call the wrapper which includes error handling and rescheduling
@@ -522,7 +521,7 @@ async function workerLoop() {
     };
 
     // Wrapper around iteration to handle errors and ensure rescheduling
-    const iterationWrapper = async () => {
+    const iterationWrapper = async (): Promise<void> => {
         try {
             await iteration();
         } catch (err) {
@@ -542,7 +541,7 @@ async function workerLoop() {
 } // End of workerLoop function
 
 /** Manual render of a specific task when script is run with --task=<ID> */
-async function runManualTask(taskId: number) {
+async function runManualTask(taskId: number): Promise<void> {
     console.log(`[${new Date().toISOString()}] Manual mode: rendering task ${taskId}`);
     const task = await prisma.printOrderTask.findUnique({
         where: { id: taskId },

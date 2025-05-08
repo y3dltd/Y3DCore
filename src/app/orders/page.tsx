@@ -5,9 +5,9 @@ import {
   Package, // Example icon for orders/items
   TrendingUp, // Example icon for weekly revenue
   Copy, // For copy to clipboard functionality
+  CheckCircle, // Added CheckCircle here
   // Users    // Example icon (replace if needed)
 } from 'lucide-react'; // Import icons
-import { CheckCircle } from 'lucide-react'; // Import CheckCircle icon
 import Link from 'next/link'; // Import Link
 import { toast } from 'sonner'; // Import toast for copy feedback
 
