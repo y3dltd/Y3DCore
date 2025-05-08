@@ -6,12 +6,13 @@ import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 
-import type { PrintOrderTask as PrintTask } from '@prisma/client';
 import { PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client';
 // REMOVED: import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pino from 'pino';
 import z from 'zod';
+
+import type { PrintOrderTask as PrintTask } from '@prisma/client';
 
 // --- !!! DEFINE TARGET ORDERS HERE !!! ---
 // Add the Order IDs or ShipStation Order Numbers you want to process in this array.

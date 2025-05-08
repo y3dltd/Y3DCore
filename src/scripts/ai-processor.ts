@@ -1,5 +1,5 @@
-import { logger } from '../lib/shared/logging';
 import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../lib/email/system-notifications';
+import { logger } from '../lib/shared/logging';
 
 /**
  * Monitor and process AI-related tasks

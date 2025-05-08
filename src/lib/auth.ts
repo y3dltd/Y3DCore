@@ -11,8 +11,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-import { verifyPassword } from '@/lib/server-only/auth-password';
 import { prisma } from '@/lib/prisma';
+import { verifyPassword } from '@/lib/server-only/auth-password';
 
 // Ensure we're using the validated prisma instance from lib/prisma
 

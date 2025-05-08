@@ -1,12 +1,12 @@
-import puppeteer from 'puppeteer'
-import bwipjs from 'bwip-js'
 import fs from 'fs'
 import path from 'path'
 
+import bwipjs from 'bwip-js'
 import { NextResponse } from 'next/server'
+import puppeteer from 'puppeteer'
 
-import { prisma } from '@/lib/prisma'
 import { markOrdersPrinted } from '@/lib/packing-slips'
+import { prisma } from '@/lib/prisma'
 
 // -----------------------------------------------------------------------------
 //  Data Models

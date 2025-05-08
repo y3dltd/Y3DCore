@@ -1,6 +1,7 @@
+import { createSecureApiClient } from '../api/secure-client';
+
 import type { AxiosInstance } from 'axios';
 
-import { createSecureApiClient } from '../api/secure-client';
 
 // Lazy‑initialised ShipStation client
 // – avoids crashing the build when creds are absent –

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
+import { Select } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Select } from '@nextui-org/react';
 
 // import { TaskTimeline } from './TaskTimeline'; // Temporarily commented out
 import TaskPage from '@/components/planner/TaskPage';

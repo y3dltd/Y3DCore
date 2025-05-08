@@ -2,19 +2,21 @@
 import { Prisma, Customer, Product, Order, OrderItem, PrintTaskStatus } from '@prisma/client';
 
 // Use relative import instead of path alias to fix module resolution
-import { prisma } from '../prisma';
-import type { ShipStationOrder, ShipStationOrderItem, ShipStationTag } from './types';
 import logger from '../logger';
+import { prisma } from '../prisma';
+import { extractStringValue } from '../prisma/utils';
+import { generateSecureMockId } from '../utils/crypto'; // Import secure crypto utils
+
 import { listTags } from './api';
-import type { SyncOptions } from './index'; // Import SyncOptions
 import {
   mapAddressToCustomerFields,
   mapSsItemToProductData,
   mapSsItemToOrderItemData,
   mapOrderToPrisma,
 } from './mappers';
-import { extractStringValue } from '../prisma/utils';
-import { generateSecureMockId } from '../utils/crypto'; // Import secure crypto utils
+
+import type { SyncOptions } from './index'; // Import SyncOptions
+import type { ShipStationOrder, ShipStationOrderItem, ShipStationTag } from './types';
 
 // Define the type based on Prisma schema and usage
 type OrderWithItemsAndProduct = Order & {

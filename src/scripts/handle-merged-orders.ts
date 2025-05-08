@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { PrismaClient } from '@prisma/client';
-import { getShipstationOrders } from '../lib/shared/shipstation';
+
 import { getLogger } from '../lib/shared/logging';
+import { getShipstationOrders } from '../lib/shared/shipstation';
 
 const logger = getLogger('handle-merged-orders');
 const prisma = new PrismaClient();

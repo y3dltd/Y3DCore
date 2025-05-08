@@ -3,6 +3,7 @@
 import { Loader2, Printer } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 
 // Allowed options mirrored from `getCandidateOrderIds`
 const WINDOW_OPTIONS = [
