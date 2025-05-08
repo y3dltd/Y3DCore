@@ -4,7 +4,7 @@ import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { pino } from 'pino';
+import pino from 'pino';
 
 import type { ProcessingOptionsV2 } from './types';
 
