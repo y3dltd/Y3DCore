@@ -52,7 +52,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 import { cn } from '@/lib/utils';
 import { ClientPrintTaskData } from '@/types/print-tasks';
 
@@ -765,6 +764,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 export interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
   onSelectTask?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     task: ClientPrintTaskData
   ) => void;
 }
