@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     if (!searchParams) {
         return NextResponse.json({ success: false, error: 'Invalid request URL or search parameters' }, { status: 400 });
     }
-    
+
     const idsParam = searchParams.get('ids');
 
     if (!idsParam) {
