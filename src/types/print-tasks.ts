@@ -95,7 +95,12 @@ export interface PrintTaskCardProps {
   orderId: string;
   status: PrintTaskStatus;
   items: PrintItem[]; // List of items included in the task (now with item-specific details)
-  onStatusChange?: (_taskId: string, _newStatus: PrintTaskStatus) => void;
+  onStatusChange?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    taskId: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    newStatus: PrintTaskStatus
+  ) => void;
   // New: colours explicitly loaded for this plate (from AI optimiser)
   colorsLoaded?: string[];
 }

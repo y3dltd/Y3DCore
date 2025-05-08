@@ -5,9 +5,9 @@
 import fs from 'fs/promises';
 
 import { PrintOrderTask, PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client'; // <-- Fix: Add PrintOrderTask and PrintTaskStatus
-import dotenv from 'dotenv';
-import pino from 'pino';
-import z from 'zod';
+import { config } from 'dotenv';
+import { pino } from 'pino';
+import { z } from 'zod';
 
 // --- Add ShipStation Imports ---
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
@@ -126,7 +126,7 @@ type OrderWithItemsTasksAndProduct = Prisma.OrderGetPayload<{
 
 // --- Globals ---
 const prisma = new PrismaClient();
-dotenv.config();
+config();
 let logger: pino.Logger;
 
 // --- Helper Functions (Copied from populate-print-queue) ---
@@ -562,7 +562,6 @@ async function applyAiUpdatesToTasks(
 // --- Main Execution ---
 async function main() {
     console.log("--- DEBUG: main() function started ---");
-    const _SCRIPT_NAME = 'update-discrepant-tasks';
     let cmdOptions: UpdateOptions;
 
     try {

@@ -52,7 +52,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 import { cn } from '@/lib/utils';
 import { ClientPrintTaskData } from '@/types/print-tasks';
 
@@ -75,7 +74,7 @@ export interface PrintTaskData extends PrintOrderTask {
 }
 
 // Helper function for single task status update
-async function updateTaskStatus(taskId: number, status: PrintTaskStatus) {
+async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promise<any> {
   const response = await fetch(`/api/print-tasks/${taskId}/status`, {
     method: 'PATCH',
     headers: {
@@ -96,7 +95,7 @@ async function updateTaskStatus(taskId: number, status: PrintTaskStatus) {
 }
 
 // Helper function for bulk task status update
-async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus) {
+async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus): Promise<any> {
   const response = await fetch(`/api/print-tasks/bulk-status`, {
     method: 'PATCH',
     headers: {
@@ -125,7 +124,7 @@ async function handleBulkStatusUpdateOutside(
   setIsBulkUpdating: React.Dispatch<React.SetStateAction<boolean>>,
   router: ReturnType<typeof useRouter>,
   bulkUpdateHelper: typeof bulkUpdateTaskStatus // Pass the helper function
-) {
+): Promise<void> {
   if (numSelected === 0) {
     toast.warning('No tasks selected.');
     return;
@@ -239,10 +238,10 @@ const getColorInfo = (
 
 // Marketplace styles are defined at the bottom of the file
 
-// Helper function to format dates
-const formatRelativeDate = (date: Date | null): string => {
+// Helper function to format dates - Modified to accept string or Date
+const formatRelativeDate = (date: Date | string | null): string => {
   if (!date) return 'N/A';
-  const dateObj = new Date(date);
+  const dateObj = date instanceof Date ? date : new Date(date);
   if (isToday(dateObj)) return 'Today';
   if (isTomorrow(dateObj)) return 'Tomorrow';
   if (isYesterday(dateObj)) return 'Yesterday';
@@ -251,7 +250,10 @@ const formatRelativeDate = (date: Date | null): string => {
 
 // Define interfaces for table meta
 interface TableMeta {
-  openModal: (task: ClientPrintTaskData) => void;
+  openModal: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    _task: ClientPrintTaskData
+  ) => void;
 }
 interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
@@ -264,7 +266,7 @@ function ActionCellComponent({
 }: {
   row: Row<ClientPrintTaskData>;
   table: TTable<ClientPrintTaskData>;
-}) {
+}): JSX.Element {
   const meta = table.options.meta as ExtendedTableMeta;
   const { openModal } = meta;
   const task = row.original;
@@ -272,7 +274,7 @@ function ActionCellComponent({
   const [isPending, startTransition] = useTransition(); // Hooks are safe here
   const currentStatus = task.status;
 
-  const handleStatusUpdate = (newStatus: PrintTaskStatus) => {
+  const handleStatusUpdate = (newStatus: PrintTaskStatus): void => {
     startTransition(async () => {
       try {
         await updateTaskStatus(task.id, newStatus);
@@ -286,7 +288,7 @@ function ActionCellComponent({
     });
   };
 
-  const handleCopyId = () => {
+  const handleCopyId = (): void => {
     navigator.clipboard
       .writeText(task.id.toString())
       .then(() => toast.success(`Task ID ${task.id} copied!`))
@@ -294,7 +296,7 @@ function ActionCellComponent({
   };
 
   // Quick action button based on current status
-  const renderQuickActionButton = () => {
+  const renderQuickActionButton = (): React.ReactNode => {
     if (currentStatus === PrintTaskStatus.pending) {
       return (
         <Button
@@ -498,369 +500,107 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const quantity = row.getValue('quantity') as number;
-      const isMultiple = quantity > 1;
-      return (
-        <div className="text-center">
-          <Badge
-            variant="secondary"
-            className={cn(
-              'text-xs px-2 py-0.5 text-primary-foreground',
-              isMultiple ? 'bg-blue-500 hover:bg-blue-600' : 'bg-primary/20 hover:bg-primary/30'
-            )}
-          >
-            {quantity}
-          </Badge>
-        </div>
-      );
+      const quantity = row.original.quantity;
+      return <div className="text-center">{quantity}</div>;
     },
   },
   {
     accessorKey: 'color_1',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Color 1 <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
+    header: 'Color 1',
     cell: ({ row }) => {
-      const color = row.getValue('color_1') as string | null;
-      if (!color) return <span className="text-xs text-muted-foreground">-</span>;
+      const color = row.original.color_1;
+      if (!color) return <div className="text-center">-</div>;
+
       const { bgClass, textClass } = getColorInfo(color);
-      const colorClass = `color-${color.toLowerCase().replace(/\s+/g, '-')}`;
       return (
-        <div className="flex items-center">
-          <span
-            className={cn(
-              'px-2 py-1 rounded-md text-xs font-medium inline-block w-[100px] text-center',
-              bgClass,
-              textClass,
-              colorClass,
-              color?.toLowerCase() === 'white'
-                ? 'border-2 border-gray-400'
-                : 'border border-gray-700'
-            )}
-            title={color}
+        <div className="flex justify-center">
+          <Badge
+            className={`${bgClass} ${textClass} border border-gray-300 shadow-sm`}
+            variant="outline"
           >
             {color}
-          </span>
+          </Badge>
         </div>
       );
     },
   },
   {
     accessorKey: 'color_2',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Color 2 <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
+    header: 'Color 2',
     cell: ({ row }) => {
-      const color = row.getValue('color_2') as string | null;
-      if (!color) return <span className="text-xs text-muted-foreground">-</span>;
+      const color = row.original.color_2;
+      if (!color) return <div className="text-center">-</div>;
+
       const { bgClass, textClass } = getColorInfo(color);
-      const colorClass = `color-${color.toLowerCase().replace(/\s+/g, '-')}`;
       return (
-        <div className="flex items-center">
-          <span
-            className={cn(
-              'px-2 py-1 rounded-md text-xs font-medium inline-block w-[100px] text-center',
-              bgClass,
-              textClass,
-              colorClass,
-              color?.toLowerCase() === 'white'
-                ? 'border-2 border-gray-400'
-                : 'border border-gray-700'
-            )}
-            title={color}
+        <div className="flex justify-center">
+          <Badge
+            className={`${bgClass} ${textClass} border border-gray-300 shadow-sm`}
+            variant="outline"
           >
             {color}
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'custom_text',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Custom Text <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: function CustomTextCell({ row }) {
-      const text = row.getValue('custom_text') as string | null;
-      const task = row.original;
-      const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
-
-      const handleOpenModal = () => {
-        setSelectedTask(task);
-        setIsModalOpen(true);
-      };
-      const handleCopy = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (text) {
-          navigator.clipboard
-            .writeText(text)
-            .then(() => toast.success('Custom text copied!'))
-            .catch(() => toast.error('Failed to copy text'));
-        }
-      };
-
-      return (
-        <div
-          className="flex items-center gap-1 min-w-[150px] max-w-[200px] group cursor-pointer"
-          onClick={handleOpenModal}
-          title={text || 'View Details'}
-        >
-          <span className="break-words whitespace-normal flex-grow font-mono text-xs leading-tight min-h-[2.5em] overflow-y-auto max-h-[4em]">
-            {text || '-'}
-          </span>
-          {text && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-              onClick={handleCopy}
-              aria-label="Copy custom text"
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'status',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Status <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: function StatusCell({ row }) {
-      const status = row.getValue('status') as PrintTaskStatus;
-
-      // Use custom styling for status badges
-      let badgeClass = '';
-      if (status === PrintTaskStatus.pending) {
-        badgeClass =
-          'bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 min-w-[100px] text-center';
-      } else if (status === PrintTaskStatus.in_progress) {
-        badgeClass = 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 min-w-[100px] text-center';
-      } else if (status === PrintTaskStatus.completed) {
-        badgeClass =
-          'bg-green-600 hover:bg-green-700 text-white px-3 py-1 min-w-[100px] text-center';
-      } else if (status === PrintTaskStatus.cancelled) {
-        badgeClass = 'bg-red-600 hover:bg-red-700 text-white px-3 py-1 min-w-[100px] text-center';
-      }
-
-      return (
-        <div className="flex justify-center items-center status-cell">
-          <Badge className={cn('font-medium', badgeClass)}>{status}</Badge>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'needs_review',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Review? <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const needsReview = row.getValue('needs_review') as boolean;
-      const reviewReason = row.original.review_reason;
-      if (!needsReview)
-        return (
-          <div className="flex justify-center">
-            <span className="text-muted-foreground text-xs">No</span>
-          </div>
-        );
-      const indicator = (
-        <div className="flex justify-center">
-          <div className="bg-red-100 border border-red-500 rounded p-1 w-6 h-6 flex items-center justify-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-red-500"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-        </div>
-      );
-      if (reviewReason) {
-        return (
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>{indicator}</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs break-words">{reviewReason}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      }
-      return indicator;
-    },
-  },
-  {
-    accessorKey: 'ship_by_date',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Ship By <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: ({ row }) => <div>{formatRelativeDate(row.getValue('ship_by_date') as Date | null)}</div>,
-  },
-  {
-    accessorKey: 'marketplace_order_number',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Order # <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const task = row.original;
-      return task.orderLink ? (
-        <a
-          href={task.orderLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-foreground/90 hover:text-foreground hover:underline w-full inline-block text-xs"
-          title={task.marketplace_order_number || ''}
-        >
-          {task.marketplace_order_number}
-        </a>
-      ) : (
-        <span className="w-full inline-block text-xs" title={task.marketplace_order_number || ''}>
-          {task.marketplace_order_number}
-        </span>
-      );
-    },
-  },
-  {
-    accessorKey: 'order.marketplace',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Marketplace <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const marketplace = row.original.order?.marketplace;
-      const alias = getMarketplaceAlias(marketplace);
-      const style = marketplaceStyles[alias] || marketplaceStyles['N/A'];
-
-      return (
-        <div className="text-center">
-          <Badge
-            className={cn(
-              'px-3 py-1 text-xs font-medium rounded-md min-w-[80px] inline-block',
-              style.bg,
-              style.text
-            )}
-          >
-            {alias}
           </Badge>
         </div>
       );
     },
   },
   {
-    accessorKey: 'order.requested_shipping_service',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Shipping <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
+    accessorKey: 'status',
+    header: 'Status',
     cell: ({ row }) => {
-      const shippingService = row.original.order?.requested_shipping_service;
-      const alias = getShippingAlias(shippingService);
+      const status = row.original.status;
+      let indicator;
 
-      // Determine icon and styling based on shipping method
-      let icon = null;
-      let className = 'px-3 py-1 text-xs font-medium inline-flex items-center gap-1.5 rounded';
-
-      if (alias === 'Special Delivery') {
-        // Special Delivery - Blue with red text
-        className += ' bg-blue-600 text-red-500 border border-blue-700 font-bold';
-        icon = (
-          <span className="w-3 h-3 bg-blue-700 border border-blue-800 rounded-sm flex items-center justify-center text-[8px] font-bold text-white">
-            1
-          </span>
-        );
-      } else if (alias === 'Tracked24') {
-        // Tracked24 - Red with yellow text
-        className += ' bg-red-600 text-yellow-300 border border-red-700 font-bold';
-        icon = <span className="w-3 h-3 bg-red-700 rounded-sm"></span>;
-      } else if (alias === '1st Class') {
-        // 1st Class - Black with white text
-        className += ' bg-black text-white border border-gray-700 font-bold';
-      } else {
-        // Default styling
-        className += ' bg-gray-100 text-gray-700 border border-gray-200';
+      switch (status) {
+        case PrintTaskStatus.pending:
+          indicator = (
+            <Badge
+              variant="outline"
+              className="bg-gray-100 text-gray-800 border-gray-300 font-medium"
+            >
+              Pending
+            </Badge>
+          );
+          break;
+        case PrintTaskStatus.in_progress:
+          indicator = (
+            <Badge
+              variant="outline"
+              className="bg-blue-100 text-blue-800 border-blue-300 font-medium"
+            >
+              In Progress
+            </Badge>
+          );
+          break;
+        case PrintTaskStatus.completed:
+          indicator = (
+            <Badge
+              variant="outline"
+              className="bg-green-100 text-green-800 border-green-300 font-medium"
+            >
+              Completed
+            </Badge>
+          );
+          break;
+        case PrintTaskStatus.cancelled:
+          indicator = (
+            <Badge
+              variant="outline"
+              className="bg-red-100 text-red-800 border-red-300 font-medium"
+            >
+              Cancelled
+            </Badge>
+          );
+          break;
+        default:
+          indicator = (
+            <Badge variant="outline" className="bg-gray-100 text-gray-800">
+              {status}
+            </Badge>
+          );
       }
 
-      return (
-        <div className="text-center">
-          <span className={className}>
-            {icon && <span className="flex-shrink-0">{icon}</span>}
-            <span>{alias}</span>
-          </span>
-        </div>
-      );
+      return <div className="flex justify-center status-cell">{indicator}</div>;
     },
   },
   {
@@ -876,25 +616,145 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const date = row.getValue('created_at') as Date;
-      // Use a fixed format instead of relative time to avoid hydration errors
-      const formattedDate = format(new Date(date), 'dd/MM/yy HH:mm');
-      const absoluteTime = date.toLocaleString();
-
+      const date = row.original.created_at;
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="text-center text-xs">{formattedDate}</div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{absoluteTime}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="text-center text-xs">
+          <div>{formatRelativeDate(date)}</div>
+          <div className="text-gray-500">
+            {date ? format(new Date(date), 'HH:mm') : 'N/A'}
+          </div>
+        </div>
       );
     },
-    enableSorting: true,
+  },
+  {
+    accessorKey: 'order.requested_shipping_service',
+    header: 'Shipping',
+    cell: ({ row }) => {
+      const shippingService = row.original.order?.requested_shipping_service;
+      const shippingAlias = getShippingAlias(shippingService);
+
+      // Determine icon based on shipping method
+      let icon = null;
+      if (shippingAlias === 'Special Delivery') {
+        icon = (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Special Delivery - Priority</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      } else if (shippingAlias === 'Tracked24') {
+        icon = (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Tracked 24 - Priority</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+
+      return (
+        <div className="flex items-center justify-center text-xs">
+          {icon}
+          <span>{shippingAlias}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'order.marketplace',
+    header: 'Marketplace',
+    cell: ({ row }) => {
+      const marketplace = row.original.order?.marketplace;
+      const marketplaceAlias = getMarketplaceAlias(marketplace);
+
+      // Get style for marketplace badge
+      const style = marketplaceStyles[marketplaceAlias] || marketplaceStyles['N/A'];
+
+      return (
+        <div className="flex justify-center">
+          <Badge className={`${style.bg} ${style.text}`} variant="default">
+            {marketplaceAlias}
+          </Badge>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    cell: ({ row }) => {
+      const id = row.original.id;
+      const text = `${id}`;
+
+      const handleCopy = (e: React.MouseEvent): void => {
+        e.stopPropagation();
+        if (text) {
+          navigator.clipboard
+            .writeText(text)
+            .then(() => toast.success(`Copied: ${text}`))
+            .catch(() => toast.error('Failed to copy'));
+        }
+      };
+
+      return (
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-xs text-gray-500">{text}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 rounded-full"
+            onClick={handleCopy}
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
+        </div>
+      );
+    },
+  },
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <div className="flex justify-center">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          checked={
+            table.getIsAllPageRowsSelected() 
+              ? true 
+              : table.getIsSomePageRowsSelected() 
+                ? false 
+                : false
+          }
+          onChange={e => table.toggleAllPageRowsSelected(!!e.target.checked)}
+          aria-label="Select all"
+        />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="flex justify-center select-cell">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          checked={row.getIsSelected()}
+          onChange={e => row.toggleSelected(!!e.target.checked)}
+          aria-label="Select row"
+        />
+      </div>
+    ),
+    enableSorting: false,
+    enableHiding: false,
   },
   {
     id: 'actions',
@@ -906,14 +766,17 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 // Define Props Interface
 export interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
-  onSelectTask?: (task: ClientPrintTaskData) => void;
+  onSelectTask?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    task: ClientPrintTaskData
+  ) => void;
 }
 
 // Main Component
-export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
+export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): JSX.Element {
   const router = useRouter();
 
-  const onTaskClick = (task: ClientPrintTaskData) => {
+  const onTaskClick = (task: ClientPrintTaskData): void => {
     if (onSelectTask) {
       onSelectTask(task);
     }
@@ -1141,8 +1004,8 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
                 // Check for priority shipping methods
                 const isSpecialDelivery = shippingAlias === 'Special Delivery';
                 const isTracked24 = shippingAlias === 'Tracked24';
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const isPriority = isSpecialDelivery || isTracked24;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+                const _isPriority = isSpecialDelivery || isTracked24;
 
                 // Row styling based on status and shipping method
                 const rowClassName = cn(

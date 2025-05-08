@@ -108,8 +108,9 @@ export function PrintQueueFilters({
   availableProductNames = [],
   availableShippingMethods = [],
 }: PrintQueueFiltersProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const productNames = availableProductNames; // Will be used in future implementation
+  // Will be used in future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+  const _availableProductNames = availableProductNames;
   const shippingMethods = availableShippingMethods; // Use the passed prop
   const router = useRouter();
   const pathname = usePathname();
@@ -169,11 +170,6 @@ export function PrintQueueFilters({
   // Check if any filter is currently active
   const isAnyFilterActive = useMemo(() => {
     return (
-      query !== '' ||
-      status !== 'all' ||
-      needsReview !== 'all' ||
-      dateRange?.from !== undefined ||
-      dateRange?.to !== undefined ||
       query !== '' ||
       status !== 'all' ||
       needsReview !== 'all' ||
@@ -286,77 +282,25 @@ export function PrintQueueFilters({
     handleDateRangeSelect(range);
   };
 
-  // Handler for color1 input change
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleColor1Change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setColor1(value);
-    updateSearchParams({ color1: value || undefined });
-  };
-
-  // Handler for color2 input change
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleColor2Change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setColor2(value);
-    updateSearchParams({ color2: value || undefined });
-  };
-
-  // Handler for color select change
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleColorChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedColor = event.target.value;
-    setColor(selectedColor);
-    updateSearchParams({ color: selectedColor || undefined });
-  };
-
-  // Clear color1 input - not used with new Select component
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const clearColor1 = () => {
-    setColor1('');
-    updateSearchParams({ color1: undefined });
-  };
-
-  // Clear color2 input - not used with new Select component
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const clearColor2 = () => {
-    setColor2('');
-    updateSearchParams({ color2: undefined });
-  };
-
-  // Clear color select
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const clearColor = () => {
-    setColor('');
-    updateSearchParams({ color: undefined });
-  };
-
   // Handler for shipping method select change
-  const handleShippingMethodChange = (value: string) => {
+  const handleShippingMethodChange = (value: string): void => {
     setShippingMethod(value);
     updateSearchParams({ shippingMethod: value || undefined });
   };
 
-  // Clear shipping method - not used with new Select component
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const clearShippingMethod = () => {
-    setShippingMethod('');
-    updateSearchParams({ shippingMethod: undefined });
-  };
-
   // Clear search input
-  const clearSearch = () => {
+  const clearSearch = (): void => {
     setQuery('');
     updateSearchParams({ query: undefined }); // Pass undefined to clear
   };
 
   // Clear date range
-  const clearDateRange = () => {
+  const clearDateRange = (): void => {
     handleDateRangeSelect(undefined); // Reuse existing handler
   };
 
   // Clear All Filters
-  const handleClearAllFilters = () => {
+  const handleClearAllFilters = (): void => {
     setQuery('');
     setStatus('all');
     setNeedsReview('all');

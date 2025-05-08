@@ -12,9 +12,9 @@ interface PrintQueueTaskTotalsProps {
   tasks: ClientPrintTaskData[]; // Use client-safe type
 }
 
-export function PrintQueueTaskTotals({ tasks }: PrintQueueTaskTotalsProps) {
+export function PrintQueueTaskTotals({ tasks }: PrintQueueTaskTotalsProps): JSX.Element {
   // Helper function to sum quantities
-  const sumQuantity = (filteredTasks: ClientPrintTaskData[]) =>
+  const sumQuantity = (filteredTasks: ClientPrintTaskData[]): number =>
     filteredTasks.reduce((sum, task) => sum + (task.quantity || 0), 0);
 
   // Calculate totals based on item quantity
@@ -26,8 +26,8 @@ export function PrintQueueTaskTotals({ tasks }: PrintQueueTaskTotalsProps) {
   const completedItems = sumQuantity(
     tasks.filter(task => task.status === PrintTaskStatus.completed)
   );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const cancelledItems = sumQuantity(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+  const _cancelledItems = sumQuantity(
     tasks.filter(task => task.status === PrintTaskStatus.cancelled)
   );
   const needsReviewItems = sumQuantity(tasks.filter(task => task.needs_review));

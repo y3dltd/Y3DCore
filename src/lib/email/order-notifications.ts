@@ -37,13 +37,16 @@ interface OrderNotificationOptions {
     // Whether to filter for just premium/prime orders
     onlyPremiumOrders?: boolean
     // Format currency values
-    formatCurrency?: (value: number) => string
+    formatCurrency?: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+        value: number
+    ) => string
 }
 
 const DEFAULT_OPTIONS: OrderNotificationOptions = {
     adminEmails: [],
     onlyPremiumOrders: false,
-    formatCurrency: (value: number) => `$${value.toFixed(2)}`
+    formatCurrency: (value: number): string => `$${value.toFixed(2)}`
 }
 
 /**
@@ -83,7 +86,7 @@ export async function sendNewOrderNotification(
 
         // Prepare order details for the notification
         const orderDate = new Date(order.orderDate).toLocaleDateString()
-        const formatCurrency = options.formatCurrency || ((value: number) => `$${value.toFixed(2)}`)
+        const formatCurrency = options.formatCurrency || ((value: number): string => `$${value.toFixed(2)}`)
         const formattedTotal = formatCurrency(order.orderTotal || 0)
         const items = order.items?.map((item: OrderItem) => `${item.quantity}x ${item.name}`).join('\n') || 'No items found'
 
@@ -156,4 +159,4 @@ View order: [Your admin URL]/orders/${order.orderId}
         logger.error(`Failed to send order notification for #${order.orderNumber}:`, { error })
         return false
     }
-} 
+}

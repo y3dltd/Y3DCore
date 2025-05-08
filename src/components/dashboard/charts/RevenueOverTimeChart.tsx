@@ -13,7 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 
-import type { ChartOptions, Tick, ScriptableContext } from 'chart.js';
+import type { ChartOptions, ScriptableContext } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -21,7 +21,7 @@ type DataPoint = { time: string; revenue: number };
 type ApiResponse = { data: DataPoint[]; total: number };
 interface Props { defaultDays?: string }
 
-export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
+export default function RevenueOverTimeChart({ defaultDays = '7' }: Props): JSX.Element {
   const [days, setDays] = useState<string>(defaultDays);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,7 +93,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
     scales: {
       y: {
         ticks: {
-          callback: (value: number | string, _index: number, _ticks: Tick[]) => `£${value}`,
+          callback: (value: number | string): string => `£${value}`,
         },
       },
     },

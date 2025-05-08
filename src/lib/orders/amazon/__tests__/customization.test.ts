@@ -36,7 +36,10 @@ describe('fetchAndProcessAmazonCustomization', () => {
     const buf = await zip.generateAsync({ type: 'arraybuffer' });
 
     (
-      global.fetch as unknown as { mockResolvedValueOnce: (value: Record<string, unknown>) => void }
+      global.fetch as unknown as { mockResolvedValueOnce: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+        value: Record<string, unknown>
+      ) => void }
     ).mockResolvedValueOnce({
       body: Buffer.from(buf),
       ok: true,
@@ -59,7 +62,10 @@ describe('fetchAndProcessAmazonCustomization', () => {
     const buf = await zip.generateAsync({ type: 'arraybuffer' });
 
     (
-      global.fetch as unknown as { mockResolvedValueOnce: (value: Record<string, unknown>) => void }
+      global.fetch as unknown as { mockResolvedValueOnce: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+        value: Record<string, unknown>
+      ) => void }
     ).mockResolvedValueOnce({
       body: Buffer.from(buf),
       ok: true,

@@ -14,7 +14,10 @@ export interface Metric {
 
 // Interface for a metrics collector service
 export interface MetricsCollector {
-  recordMetric: (_metric: Metric) => Promise<void>;
+  recordMetric: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    metric: Metric
+  ) => Promise<void>;
   // Add more specific metric recording methods as needed
   // e.g., recordApiCall(service: string, endpoint: string, durationMs: number, success: boolean): Promise<void>;
 }

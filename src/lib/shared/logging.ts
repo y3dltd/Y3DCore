@@ -4,10 +4,30 @@
 // TODO: Consider using a more robust library like pino or winston if needed
 
 export interface Logger {
-  info: (_message: string, _context?: Record<string, unknown>) => void;
-  warn: (_message: string, _context?: Record<string, unknown>) => void;
-  error: (_message: string, _context?: Record<string, unknown>) => void;
-  debug: (_message: string, _context?: Record<string, unknown>) => void;
+  info: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    context?: Record<string, unknown>
+  ) => void;
+  warn: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    context?: Record<string, unknown>
+  ) => void;
+  error: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    context?: Record<string, unknown>
+  ) => void;
+  debug: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    context?: Record<string, unknown>
+  ) => void;
 }
 
 const createLogger = (component: string): Logger => {
@@ -45,10 +65,22 @@ const createLogger = (component: string): Logger => {
   };
 
   return {
-    info: (message, context) => log('info', message, context),
-    warn: (message, context) => log('warn', message, context),
-    error: (message, context) => log('error', message, context),
-    debug: (message, context) => log('debug', message, context),
+    info: (
+      message, 
+      context
+    ): void => log('info', message, context),
+    warn: (
+      message, 
+      context
+    ): void => log('warn', message, context),
+    error: (
+      message, 
+      context
+    ): void => log('error', message, context),
+    debug: (
+      message, 
+      context
+    ): void => log('debug', message, context),
   };
 };
 

@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { ArrowPathIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/outline';
 import {
-  Card,
-  CardBody,
   Button,
   Spinner,
   Tooltip,
@@ -42,7 +39,10 @@ interface TaskPageProps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   recentRuns?: { id: string; finishedAt: string }[];
   selectedRunId?: string | null;
-  onSelectRun?: (id: string | null) => void;
+  onSelectRun?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    id: string | null
+  ) => void;
 }
 
 const TaskPage: React.FC<TaskPageProps> = ({

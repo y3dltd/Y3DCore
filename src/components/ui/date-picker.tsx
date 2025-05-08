@@ -12,7 +12,10 @@ interface DatePickerProps {
   name: string; // For form submission
   value?: string; // ISO String date from URL param (YYYY-MM-DD)
   placeholder?: string; // Optional placeholder text
-  onSelect?: (date: Date | undefined) => void; // Optional callback on select
+  onSelect?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    date: Date | undefined
+  ) => void; // Optional callback on select
 }
 
 export function DatePicker({
@@ -20,7 +23,7 @@ export function DatePicker({
   value,
   placeholder = 'Pick a date',
   onSelect,
-}: DatePickerProps) {
+}: DatePickerProps): JSX.Element {
   // Attempt to parse the incoming value (YYYY-MM-DD string)
   // Ensure we handle timezone correctly - parse as UTC if it's just a date string
   const initialDate =
@@ -40,7 +43,7 @@ export function DatePicker({
     setHiddenValue(value);
   }, [value]);
 
-  const handleSelect = (selectedDate: Date | undefined) => {
+  const handleSelect = (selectedDate: Date | undefined): void => {
     setDate(selectedDate);
     // Format date for hidden input (YYYY-MM-DD)
     const formattedDate = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
@@ -53,10 +56,10 @@ export function DatePicker({
   };
 
   // Handlers for preset buttons
-  const setToday = () => handleSelect(startOfToday());
-  const setTomorrow = () => handleSelect(addDays(startOfToday(), 1));
-  const setNextWeek = () => handleSelect(addDays(startOfToday(), 7));
-  const clearDate = () => handleSelect(undefined);
+  const setToday = (): void => handleSelect(startOfToday());
+  const setTomorrow = (): void => handleSelect(addDays(startOfToday(), 1));
+  const setNextWeek = (): void => handleSelect(addDays(startOfToday(), 7));
+  const clearDate = (): void => handleSelect(undefined);
 
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>

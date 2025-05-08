@@ -20,7 +20,7 @@ type DataPoint = { marketplace: string; count: number };
 type ApiResponse = { data: DataPoint[]; total: number };
 interface Props { defaultDays?: string }
 
-export default function OrdersByMarketplaceChart({ defaultDays = '7' }: Props) {
+export default function OrdersByMarketplaceChart({ defaultDays = '7' }: Props): JSX.Element {
   const [days, setDays] = useState<string>(defaultDays);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,12 +35,12 @@ export default function OrdersByMarketplaceChart({ defaultDays = '7' }: Props) {
   }, [days]);
 
   // Filter out 'Unknown' marketplace from display
-  const filteredDataPoints = dataPoints.filter(d => d.marketplace.toLowerCase() !== 'unknown');
+  const filteredDataPoints = dataPoints.filter((d): boolean => d.marketplace.toLowerCase() !== 'unknown');
   
   // Get formatted labels and matching color scheme
-  const formattedLabels = filteredDataPoints.map(d => formatMarketplaceName(d.marketplace));
-  const filteredCounts = filteredDataPoints.map(d => d.count);
-  const backgroundColors = filteredDataPoints.map(d => {
+  const formattedLabels = filteredDataPoints.map((d): string => formatMarketplaceName(d.marketplace));
+  const filteredCounts = filteredDataPoints.map((d): number => d.count);
+  const backgroundColors = filteredDataPoints.map((d): string => {
     const info = MARKETPLACE_DISPLAY[d.marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
     // Extract color from Tailwind class by getting the general color family
     const colorClass = info.badgeColor.split('-')[1];
