@@ -24,7 +24,7 @@ const getStatusColor = (status: PrintTaskStatus): string => {
 interface TaskTimelineProps {
   tasks: PrintTaskCardProps[];
   activeTaskId: string | null;
-  onTaskSelect?: (_taskId: string) => void;
+  onTaskSelect?: (taskId: string) => void;
 }
 
 export const TaskTimeline = ({ tasks, activeTaskId, onTaskSelect }: TaskTimelineProps) => {

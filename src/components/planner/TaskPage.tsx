@@ -39,7 +39,7 @@ interface TaskPageProps {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   recentRuns?: { id: string; finishedAt: string }[];
   selectedRunId?: string | null;
-  onSelectRun?: (_id: string | null) => void;
+  onSelectRun?: (id: string | null) => void;
 }
 
 const TaskPage: React.FC<TaskPageProps> = ({

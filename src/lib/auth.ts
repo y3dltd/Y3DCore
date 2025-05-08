@@ -11,10 +11,11 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { NextAuthOptions } from 'next-auth';
 import type { RequestInternal } from 'next-auth';
 import CredentialsProviderModule from 'next-auth/providers/credentials';
-const CredentialsProvider = CredentialsProviderModule;
 
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/server-only/auth-password';
+
+const CredentialsProvider = CredentialsProviderModule;
 
 // Ensure we're using the validated prisma instance from lib/prisma
 
@@ -28,7 +29,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials: Record<"email" | "password", string> | undefined, req: Pick<RequestInternal, "query" | "body" | "headers" | "method">): Promise<{ id: string; email: string | null } | null> {
+      async authorize(credentials: Record<"email" | "password", string> | undefined, _req: Pick<RequestInternal, "query" | "body" | "headers" | "method">): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
           return null;
