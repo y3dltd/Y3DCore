@@ -11,7 +11,10 @@ export { prisma, Prisma };
 
 // Optional: Add transaction helper function if needed frequently
 export async function runInTransaction<T>(
-  fn: (tx: Prisma.TransactionClient) => Promise<T>
+  fn: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    tx: Prisma.TransactionClient
+  ) => Promise<T>
 ): Promise<T> {
   return prisma.$transaction(fn);
 }
