@@ -92,12 +92,25 @@ For each item in the input `items` array:
 
 2.  **Attempt Splitting/Parsing (If Triggered in Step 1):**
     *   If a trigger condition was met, attempt to split the text (primarily from `customerNotes`, but consider `print_settings` value if notes are empty) into individual items based on the detected structure (newlines are the primary separator).
-    *   For each potential item identified:
-        *   Extract `customText`. Apply formatting rules (see "Field Formatting" below).
-        *   Extract `color1` and `color2` if possible *from the item's specific text segment* (e.g., `(Blue >Jack)` -> color1="Blue"). If not specified per item, use the overall item context (separate `print_settings` Color option, product name variation, REGKEY rules). Apply the *same* context color(s) to all split items unless specified otherwise. Apply color mapping/validation (see "Field Formatting" below). Set to `null` if no color info is found.
-        *   Determine `quantity`. Default to `1` for each split item, unless the text explicitly states a quantity for that specific item (e.g., `2x Name`).
-        *   Create a separate personalization object in the output array `itemPersonalizations.<itemId>.personalizations`.
-        *   Set `needsReview` to `false` initially for this sub-item (unless specific issues arise during parsing).
+    *   Common patterns for splitting `customerNotes`:
+        *   Each line is a separate personalization.
+        *   Bulleted/numbered lists.
+        *   Blank lines separate personalizations.
+        *   Phrases like "Item 1:", "Person 2:", etc.
+    *   **Special Handling for "Personalisation:" blocks (e.g., from Etsy) - CRITICAL & OVERRIDING:**
+        *   If `customerNotes` (or a similar field representing buyer-provided personalization) contain a clear section indicative of multiple distinct items (e.g., starting with a keyword like "Personalisation:", "Details:", or simply multiple lines of text when `quantityOrdered > 1`) AND subsequent lines clearly appear to be `Name Color` pairs (e.g., "Layan Magenta", "Ava Red") or `Name` on one line and `Color` on the next for that name:
+            *   **You MUST treat each such identified `Name Color` pair (or Name and its associated Color) as a distinct sub-item.**
+            *   For `customText`, extract the Name part (e.g., "Layan").
+            *   For `color1`, extract the Color part (e.g., "Magenta") directly associated with that name from the *same line or context block*.
+            *   This line-specific or block-specific `color1` **MUST take precedence** over any general 'Colour:' field found at the item/SKU level or elsewhere in the notes for this sub-item's `color1`.
+            *   **The `quantity` for EACH such created personalization object MUST be set to `1`.**
+            *   If a line within such a block does not clearly fit the `Name Color` (or Name/Color) pattern, or if a color is missing for a name, you should still attempt to create a sub-item for the name, use `null` for the missing color, and set `needsReview: true`, `reviewReason: "Incomplete Name/Color pair in multi-item block"` for that sub-item.
+            *   **Override for Quantity Validation:** If this "Personalisation:" block splitting logic is triggered and results in a number of personalization objects equal to `quantityOrdered`, then this is considered a successful split, even if other quantity validation rules might conflict. The primary goal here is to capture each distinct personalized item.
+    *   For each identified sub-item/personalization (after applying any special handling above):
+        *   Extract `customText`, `color1`, `color2` using the standard field extraction rules (Notes first, then Print Settings) but scoped to the text relevant to *this sub-item*, unless already determined by special handling (like the 'Name Color' line rule).
+    *   Determine `quantity`. Default to `1` for each split item, unless the text explicitly states a quantity for that specific item (e.g., `2x Name`).
+    *   Create a separate personalization object in the output array `itemPersonalizations.<itemId>.personalizations`.
+    *   Set `needsReview` to `false` initially for this sub-item (unless specific issues arise during parsing).
 
 3.  **No Splitting Attempted (If Not Triggered in Step 1):**
     *   If no trigger condition was met in Step 1, process the available text (from notes or print settings) as a *single* personalization object.

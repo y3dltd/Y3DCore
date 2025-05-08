@@ -437,25 +437,27 @@ export async function updateOrderItemsOptionsBatch(
 
   const sparkleLine = `🌟 Y3D AI – Happy ${new Date().toLocaleDateString('en', { weekday: 'long' })}!`
 
-  const newNotesLines = [
-    sparkleLine,
-    vibeLine,
-    summaryBlock,
-    auditNote ?? '',
-  ]
-    .filter(Boolean)
-    .map(l => l.trim())
-
-  // Prevent duplicates if note already exists
-  const existingLines = (fetchedOrder.internalNotes ?? '').split(/\r?\n/)
-  const mergedNotes = [...existingLines, ...newNotesLines].filter(
-    (line, idx, arr) => line && arr.indexOf(line) === idx
-  )
+  let finalInternalNotes: string;
+  if (auditNote) {
+    // If auditNote is provided (e.g., our detailed packing list from populate-print-queue),
+    // use it directly. This will overwrite previous internalNotes.
+    finalInternalNotes = auditNote.trim();
+  } else {
+    // Fallback to constructing a default note if auditNote is not provided
+    const defaultNoteLines = [
+      sparkleLine,
+      vibeLine,
+      summaryBlock,
+    ]
+      .filter(Boolean)
+      .map(l => l.trim());
+    finalInternalNotes = defaultNoteLines.join('\n');
+  }
 
   const payload: ShipStationOrder = {
     ...fetchedOrder,
     items: updatedItems,
-    internalNotes: mergedNotes.join('\n'),
+    internalNotes: finalInternalNotes, // Use the determined finalInternalNotes
   }
 
   // Inject Custom Field 1 when only one summary line

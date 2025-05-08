@@ -34,7 +34,6 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-// Remove context dependencies completely
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,27 +53,26 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { ClientPrintTaskData } from '@/types/print-tasks';
+import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
 
 import { PrintTaskDetailModal } from './print-task-detail-modal';
 
-// Define a product type suitable for client components (Decimals as strings)
 interface SerializableProduct extends Omit<PrismaProduct, 'weight' | 'item_weight_value'> {
   weight: string | null;
   item_weight_value: string | null;
 }
 
-// Update PrintTaskData to use the serializable product type
 export interface PrintTaskData extends PrintOrderTask {
   product: SerializableProduct;
   orderLink?: string;
   order?: {
     requested_shipping_service: string | null;
-    marketplace?: string | null; // Add marketplace here
+    marketplace?: string | null;
+    marketplace_order_number?: string | null;
   };
 }
 
-// Helper function for single task status update
-async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promise<any> {
+async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promise<{message?: string; count?: number}> {
   const response = await fetch(`/api/print-tasks/${taskId}/status`, {
     method: 'PATCH',
     headers: {
@@ -94,8 +92,7 @@ async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promis
   return response.json();
 }
 
-// Helper function for bulk task status update
-async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus): Promise<any> {
+async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus): Promise<{message?: string; count?: number}> {
   const response = await fetch(`/api/print-tasks/bulk-status`, {
     method: 'PATCH',
     headers: {
@@ -115,15 +112,13 @@ async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus):
   return response.json();
 }
 
-// Moved handleBulkStatusUpdate outside the component
-// It now accepts necessary state and functions as arguments
 async function handleBulkStatusUpdateOutside(
   newStatus: PrintTaskStatus,
   numSelected: number,
   selectedRowIds: number[],
   setIsBulkUpdating: React.Dispatch<React.SetStateAction<boolean>>,
   router: ReturnType<typeof useRouter>,
-  bulkUpdateHelper: typeof bulkUpdateTaskStatus // Pass the helper function
+  bulkUpdateHelper: typeof bulkUpdateTaskStatus
 ): Promise<void> {
   if (numSelected === 0) {
     toast.warning('No tasks selected.');
@@ -132,7 +127,7 @@ async function handleBulkStatusUpdateOutside(
   const idsToUpdate = selectedRowIds;
   setIsBulkUpdating(true);
   try {
-    const result = await bulkUpdateHelper(idsToUpdate, newStatus); // Use the passed helper
+    const result = await bulkUpdateHelper(idsToUpdate, newStatus);
     toast.success(
       `${result.message || `Successfully marked ${result.count} tasks as ${newStatus}.`}`
     );
@@ -146,20 +141,19 @@ async function handleBulkStatusUpdateOutside(
   }
 }
 
-// Comprehensive color mapping
 const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
   black: { bg: 'bg-black', textColor: 'text-white' },
   grey: { bg: 'bg-gray-400', textColor: 'text-white' },
   gray: { bg: 'bg-gray-400', textColor: 'text-white' },
-  'light blue': { bg: 'bg-blue-400', textColor: 'text-white' }, // Lighter blue
+  'light blue': { bg: 'bg-blue-400', textColor: 'text-white' },
   blue: { bg: 'bg-blue-500', textColor: 'text-white' },
-  'dark blue': { bg: 'bg-blue-900', textColor: 'text-white' }, // Darker blue
+  'dark blue': { bg: 'bg-blue-900', textColor: 'text-white' },
   brown: { bg: 'bg-yellow-800', textColor: 'text-white' },
   orange: { bg: 'bg-orange-500', textColor: 'text-white' },
   'matt orange': { bg: 'bg-orange-600', textColor: 'text-white' },
   'silk orange': { bg: 'bg-orange-400', textColor: 'text-black' },
-  red: { bg: 'bg-red-600', textColor: 'text-white' }, // Brighter red
-  'fire engine red': { bg: 'bg-red-700', textColor: 'text-white' }, // Darker red
+  red: { bg: 'bg-red-600', textColor: 'text-white' },
+  'fire engine red': { bg: 'bg-red-700', textColor: 'text-white' },
   'rose gold': { bg: 'bg-pink-300', textColor: 'text-black' },
   magenta: { bg: 'bg-fuchsia-700', textColor: 'text-white' },
   white: { bg: 'bg-white', textColor: 'text-black' },
@@ -176,7 +170,7 @@ const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
   'silk pink': { bg: 'bg-pink-300', textColor: 'text-black' },
   gold: { bg: 'bg-yellow-500', textColor: 'text-black' },
   skin: { bg: 'bg-orange-200', textColor: 'text-black' },
-  'peak green': { bg: 'bg-green-400', textColor: 'text-white' }, // Lighter green
+  'peak green': { bg: 'bg-green-400', textColor: 'text-white' },
   green: { bg: 'bg-green-500', textColor: 'text-white' },
   'olive green': { bg: 'bg-green-700', textColor: 'text-white' },
   'pine green': { bg: 'bg-green-800', textColor: 'text-white' },
@@ -186,7 +180,6 @@ const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
   turquoise: { bg: 'bg-teal-400', textColor: 'text-black' },
 };
 
-// Helper to get Tailwind classes for color - Corrected return type
 const getColorInfo = (
   colorName: string | null | undefined
 ): { bgClass: string; textClass: string } => {
@@ -195,7 +188,6 @@ const getColorInfo = (
 
   const lowerColorName = colorName.toLowerCase();
 
-  // Handle special cases first
   if (lowerColorName.includes('peak green'))
     return {
       bgClass: colorMapInternal['peak green'].bg,
@@ -219,11 +211,9 @@ const getColorInfo = (
       textClass: colorMapInternal.white.textColor,
     };
 
-  // Try exact match
   const exactMatch = colorMapInternal[lowerColorName];
   if (exactMatch) return { bgClass: exactMatch.bg, textClass: exactMatch.textColor };
 
-  // Try partial match
   const entries = Object.entries(colorMapInternal).sort((a, b) => b[0].length - a[0].length);
   for (const [key, value] of entries) {
     if (lowerColorName.includes(key)) return { bgClass: value.bg, textClass: value.textColor };
@@ -232,13 +222,6 @@ const getColorInfo = (
   return defaultColor;
 };
 
-// Helper function for shipping alias is defined at the bottom of the file
-
-// Helper function for marketplace alias is defined at the bottom of the file
-
-// Marketplace styles are defined at the bottom of the file
-
-// Helper function to format dates - Modified to accept string or Date
 const formatRelativeDate = (date: Date | string | null): string => {
   if (!date) return 'N/A';
   const dateObj = date instanceof Date ? date : new Date(date);
@@ -248,10 +231,8 @@ const formatRelativeDate = (date: Date | string | null): string => {
   return format(dateObj, 'dd/MM/yyyy');
 };
 
-// Define interfaces for table meta
 interface TableMeta {
   openModal: (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     _task: ClientPrintTaskData
   ) => void;
 }
@@ -259,7 +240,6 @@ interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
 }
 
-// --- Extracted Action Cell Component ---
 function ActionCellComponent({
   row,
   table,
@@ -268,11 +248,12 @@ function ActionCellComponent({
   table: TTable<ClientPrintTaskData>;
 }): JSX.Element {
   const meta = table.options.meta as ExtendedTableMeta;
-  const { openModal } = meta;
+  const openModal = meta?.openModal || ((_task: ClientPrintTaskData) => {
+    console.warn('No openModal function provided');
+  });
   const task = row.original;
-  const router = useRouter(); // Hooks are safe here
-  const [isPending, startTransition] = useTransition(); // Hooks are safe here
-  const currentStatus = task.status;
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const handleStatusUpdate = (newStatus: PrintTaskStatus): void => {
     startTransition(async () => {
@@ -295,9 +276,8 @@ function ActionCellComponent({
       .catch(() => toast.error('Failed to copy ID'));
   };
 
-  // Quick action button based on current status
   const renderQuickActionButton = (): React.ReactNode => {
-    if (currentStatus === PrintTaskStatus.pending) {
+    if (task.status === PrintTaskStatus.pending) {
       return (
         <Button
           variant="ghost"
@@ -310,7 +290,7 @@ function ActionCellComponent({
           <PlayCircle className="h-5 w-5" />
         </Button>
       );
-    } else if (currentStatus === PrintTaskStatus.in_progress) {
+    } else if (task.status === PrintTaskStatus.in_progress) {
       return (
         <Button
           variant="ghost"
@@ -323,7 +303,7 @@ function ActionCellComponent({
           <CheckCircle2 className="h-5 w-5" />
         </Button>
       );
-    } else if (currentStatus === PrintTaskStatus.completed) {
+    } else if (task.status === PrintTaskStatus.completed) {
       return (
         <Button
           variant="ghost"
@@ -358,14 +338,23 @@ function ActionCellComponent({
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={handleCopyId}>Copy Task ID</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => openModal(task)}>View Details</DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (typeof openModal === 'function') {
+                openModal(task);
+              }
+            }}
+          >
+            View Details
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs text-muted-foreground">
             Status Actions
           </DropdownMenuLabel>
 
-          {/* Status change options */}
-          {currentStatus !== PrintTaskStatus.pending && (
+          {task.status !== PrintTaskStatus.pending && (
             <DropdownMenuItem
               onClick={() => handleStatusUpdate(PrintTaskStatus.pending)}
               disabled={isPending}
@@ -379,7 +368,7 @@ function ActionCellComponent({
               Mark Pending
             </DropdownMenuItem>
           )}
-          {currentStatus !== PrintTaskStatus.in_progress && (
+          {task.status !== PrintTaskStatus.in_progress && (
             <DropdownMenuItem
               onClick={() => handleStatusUpdate(PrintTaskStatus.in_progress)}
               disabled={isPending}
@@ -393,7 +382,7 @@ function ActionCellComponent({
               Mark In Progress
             </DropdownMenuItem>
           )}
-          {currentStatus !== PrintTaskStatus.completed && (
+          {task.status !== PrintTaskStatus.completed && (
             <DropdownMenuItem
               onClick={() => handleStatusUpdate(PrintTaskStatus.completed)}
               disabled={isPending}
@@ -413,8 +402,6 @@ function ActionCellComponent({
   );
 }
 
-// Define Table Columns
-// Reordering columns to ensure critical columns are always visible
 export const columns: ColumnDef<ClientPrintTaskData>[] = [
   {
     accessorKey: 'product.sku',
@@ -430,7 +417,6 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     ),
     cell: ({ row }) => {
       const sku = row.original.product?.sku || 'N/A';
-      // Use direct text output without any truncation or special styling
       return (
         <div
           style={{
@@ -466,7 +452,6 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     ),
     cell: ({ row }) => {
       const productName = row.original.product?.name || 'N/A';
-      // Use direct text output without any truncation or special styling
       return (
         <div
           style={{
@@ -543,6 +528,50 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+  },
+  {
+    accessorKey: 'custom_text',
+    header: () => <div className="text-left">Custom Text</div>,
+    cell: ({ row }) => {
+      const customText = row.getValue('custom_text') as string | null;
+      const fullText = customText || '';
+      const truncatedText =
+        fullText.length > 50 ? `${fullText.substring(0, 50)}...` : fullText;
+
+      const handleCopyCustomText = () => {
+        if (fullText) {
+          navigator.clipboard.writeText(fullText);
+          toast.success('Custom text copied!');
+        }
+      };
+
+      return fullText ? (
+        <div className="flex items-center justify-between">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-left font-medium truncate max-w-[180px] hover:whitespace-normal hover:overflow-visible">
+                  {truncatedText}
+                </div>
+              </TooltipTrigger>
+              {fullText.length > 50 && <TooltipContent>{fullText}</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopyCustomText}
+            className="h-6 w-6 p-1 text-gray-500 hover:text-gray-700 ml-1 flex-shrink-0"
+            title="Copy Custom Text"
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : (
+        <span className="text-gray-400">-</span>
+      );
+    },
+    enableSorting: true,
   },
   {
     accessorKey: 'status',
@@ -634,7 +663,6 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const shippingService = row.original.order?.requested_shipping_service;
       const shippingAlias = getShippingAlias(shippingService);
 
-      // Determine icon based on shipping method
       let icon = null;
       if (shippingAlias === 'Special Delivery') {
         icon = (
@@ -679,7 +707,6 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const marketplace = row.original.order?.marketplace;
       const marketplaceAlias = getMarketplaceAlias(marketplace);
 
-      // Get style for marketplace badge
       const style = marketplaceStyles[marketplaceAlias] || marketplaceStyles['N/A'];
 
       return (
@@ -692,15 +719,15 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     },
   },
   {
-    accessorKey: 'id',
-    header: 'ID',
+    accessorKey: 'marketplace_order_number',
+    header: () => <div className="font-medium text-center">Marketplace ID</div>,
     cell: ({ row }) => {
-      const id = row.original.id;
-      const text = `${id}`;
+      const marketplaceId = row.original.marketplace_order_number || 'N/A';
+      const text = `${marketplaceId}`;
 
       const handleCopy = (e: React.MouseEvent): void => {
         e.stopPropagation();
-        if (text) {
+        if (text && text !== 'N/A') {
           navigator.clipboard
             .writeText(text)
             .then(() => toast.success(`Copied: ${text}`))
@@ -709,16 +736,18 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       };
 
       return (
-        <div className="flex items-center justify-center space-x-1">
-          <span className="text-xs text-gray-500">{text}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 rounded-full"
-            onClick={handleCopy}
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
+        <div className="flex items-center justify-center space-x-2 px-2">
+          <span className="text-sm font-medium">{text}</span>
+          {text !== 'N/A' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full"
+              onClick={handleCopy}
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       );
     },
@@ -763,30 +792,27 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
   },
 ];
 
-// Define Props Interface
-export interface PrintQueueTableProps {
+interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
-  onSelectTask?: (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
-    task: ClientPrintTaskData
-  ) => void;
+  onSelectTask?: (task: ClientPrintTaskData) => void;
 }
 
-// Main Component
 export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): JSX.Element {
   const router = useRouter();
-
-  const onTaskClick = (task: ClientPrintTaskData): void => {
-    if (onSelectTask) {
-      onSelectTask(task);
-    }
-  };
-
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
+
+  const handleOpenModal = (task: ClientPrintTaskData) => {
+    if (onSelectTask) {
+      onSelectTask(task);
+    }
+    setSelectedTask(task); 
+    setIsModalOpen(true);  
+  };
 
   const table = useReactTable<ClientPrintTaskData>({
     data,
@@ -804,13 +830,19 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           value: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
         },
       ],
-      sorting: [{ id: 'created_at', desc: true }], // Sort by newest first
+      sorting: [{ id: 'created_at', desc: true }],
+      columnVisibility: {
+        'custom_text': true,
+        'marketplace_order_number': true,
+        'product.sku': true,
+        'product.name': true
+      }
     },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: { sorting, columnFilters, columnVisibility, rowSelection },
     enableRowSelection: true,
-    meta: { openModal: onTaskClick, router } as ExtendedTableMeta,
+    meta: { openModal: handleOpenModal, router } as ExtendedTableMeta,
   });
 
   const selectedRowIds = Object.keys(rowSelection)
@@ -818,7 +850,6 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
     .filter((id): id is number => typeof id === 'number');
   const numSelected = selectedRowIds.length;
 
-  // handleBulkStatusUpdate is now defined outside the component
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
@@ -910,7 +941,6 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
         className="rounded-md border overflow-x-auto w-full mx-auto relative"
         style={{ minWidth: '100%', overflowX: 'auto' }}
       >
-        {/* Custom styles for table cells */}
         <style jsx global>{`
           .print-queue-table td {
             padding: 0.75rem 0.5rem;
@@ -928,13 +958,30 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           }
 
           /* Specific column widths */
-          .sku-cell {
-            min-width: 300px !important;
-            width: 300px !important;
+          .status-cell {
+            position: sticky;
+            right: 0;
+            z-index: 10;
+            background-color: var(--background);
           }
           .product-name-cell {
-            min-width: 350px !important;
-            width: 350px !important;
+            min-width: 220px;
+            max-width: 300px;
+          }
+          .sku-cell {
+            min-width: 130px;
+          }
+          .marketplace-id-cell {
+            min-width: 150px;
+            width: 150px;
+          }
+          .custom-text-cell {
+            min-width: 200px;
+            max-width: 300px;
+          }
+          /* Add a bit more spacing to all cells */
+          .tanstack-table td, .tanstack-table th {
+            padding: 8px 12px;
           }
 
           /* Fix cell content display */
@@ -967,27 +1014,19 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           .print-queue-table tr.priority-special-delivery {
             border-left: 4px solid #ef4444;
           }
-
-          .print-queue-table tr.priority-tracked24 {
-            border-left: 4px solid #2563eb;
           }
         `}</style>
-        <Table className="print-queue-table data-table w-full">
+        <Table className="min-w-full table-fixed">
           <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
+            {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead
-                    key={header.id}
-                    className={cn(
-                      header.id === 'select' ? 'sticky left-0 z-10 bg-background' : '',
-                      header.id === 'status' ? 'sticky right-0 z-10 bg-background' : '',
-                      header.id === 'actions' ? 'sticky right-0 z-10 bg-background' : ''
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan} className="px-3 py-2">
+                    {header.isPlaceholder ? null : (
+                      <div>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </div>
                     )}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -995,28 +1034,20 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => {
+              table.getRowModel().rows.map((row) => {
                 const task = row.original;
                 const isInProgress = task.status === PrintTaskStatus.in_progress;
                 const shippingService = task.order?.requested_shipping_service;
                 const shippingAlias = getShippingAlias(shippingService);
 
-                // Check for priority shipping methods
                 const isSpecialDelivery = shippingAlias === 'Special Delivery';
                 const isTracked24 = shippingAlias === 'Tracked24';
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
                 const _isPriority = isSpecialDelivery || isTracked24;
 
-                // Row styling based on status and shipping method
                 const rowClassName = cn(
-                  // Status styling
                   isInProgress && 'in-progress-row bg-gray-800/10',
-
-                  // Shipping method styling - make priority shipping stand out
                   isSpecialDelivery && 'font-medium priority-special-delivery bg-blue-50/30',
                   isTracked24 && 'font-medium priority-tracked24 bg-red-50/30',
-
-                  // Zebra striping for normal rows - removed for consistent dark hover
                   ''
                 );
 
@@ -1026,10 +1057,11 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                     data-state={row.getIsSelected() ? 'selected' : undefined}
                     className={rowClassName}
                   >
-                    {row.getVisibleCells().map(cell => (
+                    {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
                         className={cn(
+                          'px-3 py-2',
                           cell.column.id === 'status'
                             ? 'status-cell sticky right-0 z-10 bg-background'
                             : '',
@@ -1038,7 +1070,9 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                             : '',
                           cell.column.id === 'select' ? 'select-cell' : '',
                           cell.column.id === 'product.sku' ? 'sku-cell' : '',
-                          cell.column.id === 'product.name' ? 'product-name-cell' : ''
+                          cell.column.id === 'product.name' ? 'product-name-cell whitespace-normal' : '',
+                          cell.column.id === 'marketplace_order_number' ? 'marketplace-id-cell' : '',
+                          cell.column.id === 'custom_text' ? 'custom-text-cell' : ''
                         )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1057,81 +1091,58 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           </TableBody>
         </Table>
       </div>
-      <PrintTaskDetailModal /> {/* Reverted back to self-closing */}
+      <PrintTaskDetailModal />
     </div>
   );
 }
 
-// --- Shipping Name Mapping ---
 const shippingMapping: Record<string, string> = {
-  // Next Day and Special Delivery
   'NextDay UK Next': 'Special Delivery',
   'Next Day': 'Special Delivery',
   NextDay: 'Special Delivery',
   'Next Day UK': 'Special Delivery',
 
-  // International
   UK_RoyalMailAirmailInternational: 'International',
   'International Tracked – 3-5 Working Days Delivery': 'International Tracked',
 
-  // Standard
   UK_RoyalMailSecondClassStandard: 'Standard',
   UK_RoyalMail48: 'Standard',
   'Standard Std UK Dom_1': 'Standard',
   'Standard Std UK Dom_2': 'Standard',
   'Standard Std UK Dom_3': 'Standard',
 
-  // Tracked
   'SecondDay UK Second': 'Tracked24',
   '2-Day Shipping – 1-2 Working Days Delivery': 'Tracked24',
   'Tracked 24': 'Tracked24',
   UK_RoyalMail1stClassLetterLargeLetter: '1st Class',
 };
 
-// Shipping method styles - commented out as we're not using backgrounds anymore
-// const shippingStyles: Record<string, { bg: string; text: string }> = {
-//   "Special Delivery": { bg: "bg-red-600", text: "text-white" },
-//   "Tracked24": { bg: "bg-blue-600", text: "text-white" },
-//   "1st Class": { bg: "bg-blue-500", text: "text-white" },
-//   "Standard": { bg: "bg-gray-800", text: "text-white" }, // Deeper black
-//   "International": { bg: "bg-teal-600", text: "text-white" },
-//   "International Tracked": { bg: "bg-teal-700", text: "text-white" },
-//   "N/A": { bg: "bg-gray-800", text: "text-white" }, // Deeper black
-// };
-
-function getShippingAlias(originalName?: string | null): string {
-  if (!originalName) {
-    return 'N/A'; // Handle null or undefined
-  }
-  return shippingMapping[originalName] || originalName; // Return alias or original if no match
-}
-// --- End Temporary Shipping Name Mapping ---
-
-// --- Temporary Marketplace Name Mapping ---
 const marketplaceMapping: Record<string, string> = {
-  ebay_v2: 'eBay', // Keep keys lowercase
+  ebay_v2: 'eBay',
   amazon: 'Amazon',
   etsy: 'Etsy',
   web: 'Shopify',
 };
 
-function getMarketplaceAlias(originalName?: string | null): string {
-  if (!originalName) {
-    return 'N/A'; // Handle null or undefined
-  }
-  // Convert input to lowercase AND trim whitespace
-  const lowerCaseName = originalName.toLowerCase().trim();
-  // Lookup using lowercase key, return display alias or original name if no match
-  return marketplaceMapping[lowerCaseName] || originalName;
-}
-
-// Marketplace Styles (Keys should match the *output* of getMarketplaceAlias, e.g., "eBay")
 const marketplaceStyles: Record<string, { bg: string; text: string }> = {
   Shopify: { bg: 'bg-green-600', text: 'text-white' },
   Amazon: { bg: 'bg-yellow-600', text: 'text-white' },
   eBay: { bg: 'bg-red-600', text: 'text-white' },
   Etsy: { bg: 'bg-orange-600', text: 'text-white' },
-  'N/A': { bg: 'bg-gray-500', text: 'text-white' }, // Default/Unknown
+  'N/A': { bg: 'bg-gray-500', text: 'text-white' },
 };
 
-// --- End Temporary Marketplace Name Mapping ---
+function getShippingAlias(originalName?: string | null): string {
+  if (!originalName) {
+    return 'N/A';
+  }
+  return shippingMapping[originalName] || originalName;
+}
+
+function getMarketplaceAlias(originalName?: string | null): string {
+  if (!originalName) {
+    return 'N/A';
+  }
+  const lowerCaseName = originalName.toLowerCase().trim();
+  return marketplaceMapping[lowerCaseName] || originalName;
+}
