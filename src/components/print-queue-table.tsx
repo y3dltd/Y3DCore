@@ -906,7 +906,9 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 // Define Props Interface
 export interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
-  onSelectTask?: (task: ClientPrintTaskData) => void;
+  onSelectTask?: (
+    task: ClientPrintTaskData
+  ) => void;
 }
 
 // Main Component
