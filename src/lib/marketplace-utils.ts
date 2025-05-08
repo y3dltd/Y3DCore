@@ -1,5 +1,3 @@
-import { cn } from './utils';
-
 // Marketplace types with both display name and color information
 export type MarketplaceInfo = {
   displayName: string;

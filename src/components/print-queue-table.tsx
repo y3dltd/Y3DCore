@@ -913,7 +913,7 @@ export interface PrintQueueTableProps {
 export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
   const router = useRouter();
 
-  const onTaskClick = (task: ClientPrintTaskData) => {
+  const onTaskClick = (task: ClientPrintTaskData): void => {
     if (onSelectTask) {
       onSelectTask(task);
     }
