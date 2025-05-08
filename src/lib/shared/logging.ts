@@ -57,10 +57,22 @@ const createLogger = (component: string): Logger => {
   };
 
   return {
-    info: (message, context): void => log('info', message, context),
-    warn: (message, context): void => log('warn', message, context),
-    error: (message, context): void => log('error', message, context),
-    debug: (message, context): void => log('debug', message, context),
+    info: (
+      message, 
+      context
+    ): void => log('info', message, context),
+    warn: (
+      message, 
+      context
+    ): void => log('warn', message, context),
+    error: (
+      message, 
+      context
+    ): void => log('error', message, context),
+    debug: (
+      message, 
+      context
+    ): void => log('debug', message, context),
   };
 };
 
