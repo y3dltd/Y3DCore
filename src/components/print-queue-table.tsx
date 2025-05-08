@@ -606,11 +606,11 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const task = row.original;
       const { setSelectedTask, setIsModalOpen } = usePrintQueueModal();
 
-      const handleOpenModal = () => {
+      const handleOpenModal = (): void => {
         setSelectedTask(task);
         setIsModalOpen(true);
       };
-      const handleCopy = (e: React.MouseEvent) => {
+      const handleCopy = (e: React.MouseEvent): void => {
         e.stopPropagation();
         if (text) {
           navigator.clipboard

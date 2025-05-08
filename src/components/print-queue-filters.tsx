@@ -108,6 +108,7 @@ export function PrintQueueFilters({
   availableProductNames = [],
   availableShippingMethods = [],
 }: PrintQueueFiltersProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _availableProductNames = availableProductNames; // Will be used in future implementation
   const shippingMethods = availableShippingMethods; // Use the passed prop
   const router = useRouter();
@@ -287,18 +288,18 @@ export function PrintQueueFilters({
   };
 
   // Clear search input
-  const clearSearch = () => {
+  const clearSearch = (): void => {
     setQuery('');
     updateSearchParams({ query: undefined }); // Pass undefined to clear
   };
 
   // Clear date range
-  const clearDateRange = () => {
+  const clearDateRange = (): void => {
     handleDateRangeSelect(undefined); // Reuse existing handler
   };
 
   // Clear All Filters
-  const handleClearAllFilters = () => {
+  const handleClearAllFilters = (): void => {
     setQuery('');
     setStatus('all');
     setNeedsReview('all');
