@@ -105,8 +105,7 @@ export default function PlannerPage(): React.ReactNode {
     completedTasks: 0,
     lastUpdated: new Date().toISOString(),
   });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
-  const [_optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
+  const [, setOptimizingRunId] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [savedRuns, setSavedRuns] = useState<{ id: string; finishedAt: string }[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
