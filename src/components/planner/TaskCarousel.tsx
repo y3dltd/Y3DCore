@@ -40,8 +40,8 @@ const colorMap: Record<string, string> = {
 interface TaskCarouselProps {
   tasks: PrintTaskCardProps[];
   className?: string;
-  onTaskStatusChange: (_taskId: string, _itemId: string, _newStatus: PrintTaskStatus) => void;
-  onBulkTaskStatusChange: (_taskId: string, _newStatus: PrintTaskStatus) => void;
+  onTaskStatusChange: (taskId: string, itemId: string, newStatus: PrintTaskStatus) => void;
+  onBulkTaskStatusChange: (taskId: string, newStatus: PrintTaskStatus) => void;
 }
 
 // Helper function to generate a gradient from colors - Simplified Logic
