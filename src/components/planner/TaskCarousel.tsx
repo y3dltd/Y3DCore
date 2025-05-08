@@ -117,7 +117,7 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
   className,
   onTaskStatusChange,
   onBulkTaskStatusChange,
-}) => {
+}): JSX.Element => {
   if (!tasks || tasks.length === 0) {
     return (
       <div className={`h-full flex items-center justify-center text-gray-500 ${className}`}>
