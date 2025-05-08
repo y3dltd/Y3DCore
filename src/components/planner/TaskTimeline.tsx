@@ -25,6 +25,7 @@ interface TaskTimelineProps {
   tasks: PrintTaskCardProps[];
   activeTaskId: string | null;
   onTaskSelect?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     taskId: string
   ) => void;
 }
