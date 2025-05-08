@@ -1,6 +1,7 @@
+import { createSecureApiClient } from '../api/secure-client';
+
 import type { AxiosInstance } from 'axios';
 
-import { createSecureApiClient } from '../api/secure-client';
 
 // Lazy‑initialised ShipStation client
 // – avoids crashing the build when creds are absent –
@@ -29,7 +30,7 @@ function createClient(): AxiosInstance {
 // Export a Proxy so existing `shipstationApi.get(...)` calls still work.
 // The proxy delegates property access to the real client created on first use.
 export const shipstationApi = new Proxy({} as AxiosInstance, {
-  get(_target, prop) {
+  get(_target, prop): AxiosInstance[keyof AxiosInstance] {
     // Ensure the real client exists
     const client = createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic proxy forwarding

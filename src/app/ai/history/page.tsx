@@ -1,9 +1,9 @@
-import type { AiCallLog } from '@prisma/client';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { prisma } from '@/lib/prisma';
+
+import type { AiCallLog } from '@prisma/client';
 
 async function getAiLogs(): Promise<AiCallLog[]> {
   // Fetch latest 100 logs, ordered by creation date descending
@@ -13,7 +13,7 @@ async function getAiLogs(): Promise<AiCallLog[]> {
   });
 }
 
-export default async function AIHistoryPage() {
+export default async function AIHistoryPage(): Promise<JSX.Element> {
   const logs = await getAiLogs();
 
   return (

@@ -1,12 +1,8 @@
 import { Customer, Prisma, Product } from '@prisma/client';
 import axios from 'axios';
 
-import {
-  mapAddressToCustomerFields,
-  mapOrderToPrisma,
-  mapSsItemToOrderItemData,
-  mapSsItemToProductData,
-} from './mappers';
+import { sendNewOrderNotification } from '../email/order-notifications';
+import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
 import { prisma } from '../shared/database'; // Use relative path
 import { logger } from '../shared/logging'; // Import logger
 // --- Imports ---
@@ -28,8 +24,13 @@ import {
   markSyncCompleted,
   updateSyncProgress,
 } from '../shipstation/sync-progress'; // Import progress functions
-import { sendNewOrderNotification } from '../email/order-notifications';
-import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
+
+import {
+  mapAddressToCustomerFields,
+  mapOrderToPrisma,
+  mapSsItemToOrderItemData,
+  mapSsItemToProductData,
+} from './mappers';
 
 // Removed unused import: format from 'date-fns-tz'
 

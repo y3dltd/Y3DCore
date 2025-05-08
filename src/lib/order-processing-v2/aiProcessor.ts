@@ -3,12 +3,13 @@
 import { PrismaClient } from '@prisma/client';
 
 import { getLogger } from './logger';
+import { AiOrderResponseSchema } from './types'; // Import Zod schema for validation
+
 import type {
     AiOrderResponse,
     PreProcessedOrderForAI,
     ProcessingOptionsV2,
 } from './types';
-import { AiOrderResponseSchema } from './types'; // Import Zod schema for validation
 
 // Assume prisma client is initialized elsewhere and passed or imported
 // For simplicity, let's assume it's passed in or we get an instance

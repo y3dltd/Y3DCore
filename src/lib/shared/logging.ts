@@ -4,10 +4,10 @@
 // TODO: Consider using a more robust library like pino or winston if needed
 
 export interface Logger {
-  info: (message: string, context?: Record<string, unknown>) => void;
-  warn: (message: string, context?: Record<string, unknown>) => void;
-  error: (message: string, context?: Record<string, unknown>) => void;
-  debug: (message: string, context?: Record<string, unknown>) => void;
+  info: (_message: string, _context?: Record<string, unknown>) => void;
+  warn: (_message: string, _context?: Record<string, unknown>) => void;
+  error: (_message: string, _context?: Record<string, unknown>) => void;
+  debug: (_message: string, _context?: Record<string, unknown>) => void;
 }
 
 const createLogger = (component: string): Logger => {
@@ -15,7 +15,7 @@ const createLogger = (component: string): Logger => {
     level: 'info' | 'warn' | 'error' | 'debug',
     message: string,
     context?: Record<string, unknown>
-  ) => {
+  ): void => {
     const timestamp = new Date().toISOString();
     const logEntry = {
       timestamp,

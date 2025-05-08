@@ -11,8 +11,9 @@ import { useSession } from 'next-auth/react'; // Import useSession
 // Remove unused auth-client import
 // import { checkAuthStatus, hasSessionCookie } from '@/lib/auth-client';
 
-import LogoutButton from './logout-button'; // Import the client component
 import { Button } from '../ui/button';
+
+import LogoutButton from './logout-button'; // Import the client component
 
 // Mocked Navbar - Assumes user is always logged in
 export default function Navbar() {

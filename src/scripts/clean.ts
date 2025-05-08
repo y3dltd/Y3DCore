@@ -29,7 +29,7 @@ program
 
 const options = program.opts();
 
-async function main() {
+async function main(): Promise<void> {
   try {
     logger.info('Starting cleanup process with options:', options);
 

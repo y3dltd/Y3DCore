@@ -1,9 +1,10 @@
 // Barrel file for ShipStation integration
+import logger from '../logger'; // Import logger (adjust path)
+
 import { getShipstationOrders } from './api'; // Import getShipstationOrders
 import { shipstationApi } from './client';
 // Import DB functions including syncShipStationTags
 import { getLastSyncTimestamp, upsertOrderWithItems, syncShipStationTags } from './db-sync';
-import logger from '../logger'; // Import logger (adjust path)
 import { MetricsCollector } from './metrics';
 import {
   createSyncProgress,
@@ -13,6 +14,7 @@ import {
   incrementFailedOrders,
   updateLastProcessedOrder,
 } from './sync-progress';
+
 import type { ShipStationOrder } from './types'; // Import ShipStationOrder type
 
 export * from './types';

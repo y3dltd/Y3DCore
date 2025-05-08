@@ -1,15 +1,15 @@
 import { PrismaClient, PrintOrderTask, OrderItem, Order } from '@prisma/client';
 import { Command } from 'commander';
-import dotenv from 'dotenv';
-import pino from 'pino';
+import { config as dotenvConfig } from 'dotenv';
 
-import { getShipstationOrders, updateOrderItemOptions } from '../lib/shared/shipstation'; // Assuming these are correctly exported
+import { getLogger } from '@lib/shared/logging';
+import { getShipstationOrders, updateOrderItemOptions } from '@lib/shipstation';
 
 // Load environment variables
-dotenv.config();
+dotenvConfig();
 
 // Setup logger
-const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const logger = getLogger('manual-shipstation-update');
 
 const prisma = new PrismaClient();
 
@@ -125,7 +125,7 @@ async function runManualUpdate(options: ScriptOptions): Promise<void> {
         continue;
       }
 
-      logger.debug(`Constructed options for ${lineItemKey}:`, ssOptions);
+      logger.debug(`Constructed options for ${lineItemKey}: ${JSON.stringify(ssOptions)}`);
 
       // 5. Call update function
       if (options.dryRun) {
@@ -152,7 +152,7 @@ async function runManualUpdate(options: ScriptOptions): Promise<void> {
         } catch (updateError) {
           logger.error(
             `Error calling updateOrderItemOptions for LineItemKey ${lineItemKey}:`,
-            updateError
+            { error: updateError }
           );
           // Consider adding to a list of failed items
         }
@@ -163,7 +163,7 @@ async function runManualUpdate(options: ScriptOptions): Promise<void> {
   } catch (error) {
     logger.error(
       `An unexpected error occurred during manual update for Order ID ${options.orderId}:`,
-      error
+      { error: error }
     );
   } finally {
     await prisma.$disconnect();
@@ -172,7 +172,7 @@ async function runManualUpdate(options: ScriptOptions): Promise<void> {
 }
 
 // --- Main Execution ---
-async function main() {
+async function main(): Promise<void> {
   const program = new Command();
   program
     .name('manual-shipstation-update')
@@ -192,7 +192,7 @@ async function main() {
   try {
     await program.parseAsync(process.argv);
   } catch (error) {
-    logger.error('Error parsing command line arguments:', error);
+    logger.error('Error parsing command line arguments:', { error: error });
     process.exit(1);
   }
 }

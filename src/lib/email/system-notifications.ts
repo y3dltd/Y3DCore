@@ -1,5 +1,6 @@
-import { sendEmail } from './send-email'
 import { logger } from '../shared/logging'
+
+import { sendEmail } from './send-email'
 
 export enum ErrorSeverity {
     CRITICAL = 'CRITICAL',

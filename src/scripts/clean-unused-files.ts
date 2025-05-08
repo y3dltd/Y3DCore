@@ -23,7 +23,7 @@ const unusedFiles = unusedFilesContent
   .map(file => join(projectRoot, file.trim()));
 
 // Remove the unused files
-async function removeUnusedFiles() {
+async function removeUnusedFiles(): Promise<void> {
   logger.info(`Found ${unusedFiles.length} unused files to remove`);
   
   let removedCount = 0;

@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { shipstationApi } from './client';
 import { upsertOrderWithItems } from './db-sync';
+
 import type {
   ShipStationApiParams,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type is used implicitly in loop
@@ -423,7 +424,7 @@ export async function updateOrderItemsOptionsBatch(
   });
 
   // Build human‑friendly summaries for Internal Notes / Custom Field 1
-  const summaryLines = Object.entries(itemsToPatch).map(([_, opts]) => {
+  const summaryLines = Object.values(itemsToPatch).map((opts) => {
     const text = opts.find(o => o.name === 'Name or Text')?.value ?? '-'
     const colour1 = opts.find(o => o.name === 'Colour 1')?.value ?? null
     const colour2 = opts.find(o => o.name === 'Colour 2')?.value ?? null

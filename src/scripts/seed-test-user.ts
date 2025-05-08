@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 
 import { hashPassword } from '../lib/server-only/auth-password';
 
-async function main() {
+async function main(): Promise<void> {
   const prisma = new PrismaClient();
   // You can override these via env vars: SEED_TEST_EMAIL, SEED_TEST_PASSWORD
   const email = process.env.SEED_TEST_EMAIL || 'test@example.com';

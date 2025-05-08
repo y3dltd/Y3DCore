@@ -51,22 +51,6 @@ const AiOrderResponseSchema = z.object({
 });
 
 // --- Types ---
-interface OrderExtractionSuccess {
-  success: true;
-  data: z.infer<typeof AiOrderResponseSchema>;
-  promptUsed: string;
-  rawResponse: string;
-  modelUsed: string | null;
-}
-
-interface OrderExtractionError {
-  success: false;
-  error: string;
-  promptUsed: string | null;
-  rawResponse: string | null;
-  modelUsed: string | null;
-}
-
 interface OrderDebugInfo {
   orderId: number;
   orderNumber: string;
@@ -87,7 +71,6 @@ interface OrderDebugInfo {
   }>;
 }
 
-// Simplified options with OpenAI as primary provider
 interface ProcessingOptions {
   orderId?: string;
   limit?: number;
@@ -106,12 +89,6 @@ interface ProcessingOptions {
   dryRun?: boolean;
   preserveText?: boolean;
   shipstationSyncOnly?: boolean;
-}
-
-// Define a specific type for print setting options
-interface PrintSettingOption {
-  name: string;
-  value: Prisma.JsonValue;
 }
 
 // --- Helper Functions ---
@@ -190,10 +167,6 @@ function extractCustomizationUrl(item: OrderItem): string | null {
 }
 
 // --- NEW HELPER FUNCTIONS ---
-const isOptionObject = (opt: Prisma.JsonValue): opt is { name: string; value: Prisma.JsonValue } =>
-  opt !== null && typeof opt === 'object' && !Array.isArray(opt) &&
-  'name' in opt && typeof opt.name === 'string' && 'value' in opt;
-
 // MODIFIED: Remove all marketplace-specific logic to force AI fallback
 async function extractCustomizationData(
   order: Prisma.OrderGetPayload<{ include: { items: { include: { product: true } } } }>,
@@ -1182,7 +1155,7 @@ async function main() {
         'Only sync existing DB tasks to ShipStation without changing DB',
         false
       )
-      .option('--debug-file <path>', 'Path for detailed debug log file (requires --order-id)');
+      .option('--debug-file <path>', 'Path for detailed debug log file (requires --order-id)', String);
 
     logger.info({ argv: process.argv }, 'Raw process.argv before commander parse');
 
@@ -1308,6 +1281,7 @@ async function main() {
         `First order ID: ${ordersToProcess[0].id}, Order Number: ${ordersToProcess[0].shipstation_order_number}`
       );
     } else if (cmdOptions.orderId) {
+      logger.warn(`No processable orders found for specified Order ID: ${cmdOptions.orderId}`);
     }
 
     for (const order of ordersToProcess) {
@@ -1452,7 +1426,8 @@ async function main() {
     if (runLogId !== null) {
       try {
         await updateRunLog(runLogId, { status: 'failed', message: errorMsg });
-      } catch {
+      } catch (updateError) {
+        logger.error('Failed to update runLog with failure status during main error handling:', updateError);
       }
     }
   } finally {

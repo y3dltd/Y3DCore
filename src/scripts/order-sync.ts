@@ -11,7 +11,7 @@ import {
 import { logger } from '@/lib/shared/logging';
 
 // Helper function to handle async commands and logging
-async function runCommand(commandName: string, handler: () => Promise<unknown>) {
+async function runCommand(commandName: string, handler: () => Promise<unknown>): Promise<void> {
   logger.info(`[${commandName}] Starting command...`);
   try {
     await handler();
@@ -114,11 +114,12 @@ const cli = yargs(hideBin(process.argv))
             // Pass options and forceStartDate to syncAllPaginatedOrders
             result = await syncAllPaginatedOrders(options, argv.forceStartDate);
             break;
-          case 'recent':
+          case 'recent': {
             const lookbackDays = argv.hours ? argv.hours / 24 : argv.daysBack;
             // Pass options to syncRecentOrders
             result = await syncRecentOrders(lookbackDays, options);
             break;
+          }
           case 'single':
             // Pass options to syncSingleOrder - convert orderId to number if needed
             result = await syncSingleOrder(argv.orderId as string, options);

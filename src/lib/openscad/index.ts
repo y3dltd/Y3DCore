@@ -54,14 +54,14 @@ export async function renderScadToStl(
             // Serialize arrays as OpenSCAD-compatible lists (e.g., ["A", "B"])
             const arr = value.map(v =>
                 typeof v === 'string'
-                    ? `\"${String(v).replace(/\\/g, '\\\\').replace(/\"/g, '\\\"')}\"`
+                    ? `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` // Keep surrounding quotes, fix inner if needed
                     : String(v)
             );
             formatted = `[${arr.join(', ')}]`;
         } else if (typeof value === 'string') {
             // Escape embedded double quotes and backslashes
-            const safe = value.replace(/\\/g, '\\\\').replace(/\"/g, '\\\"');
-            formatted = `\"${safe}\"`;
+            const safe = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            formatted = `"${safe}"`; // Keep surrounding quotes
         } else {
             formatted = String(value);
         }

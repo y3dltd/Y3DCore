@@ -1,7 +1,11 @@
 # ---
+
 # title: Linting Guide
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Y3DHub Linting Guide
@@ -13,6 +17,7 @@ This guide outlines our approach to code quality for the Y3DHub project.
 We've implemented a balanced approach to linting that allows builds to succeed while maintaining code quality standards:
 
 1. **Build without linting**: Our main build process skips linting to ensure successful deployments
+
    ```json
    "build": "NEXT_TELEMETRY_DISABLED=1 next build --no-lint"
    ```
@@ -36,6 +41,7 @@ We've implemented a balanced approach to linting that allows builds to succeed w
 2. **Fixing common issues**:
 
    a) **Missing return types** (in application code):
+
    ```typescript
    // Before
    export async function getData() {
@@ -49,6 +55,7 @@ We've implemented a balanced approach to linting that allows builds to succeed w
    ```
 
    b) **Named imports from packages with default exports**:
+
    ```typescript
    // Before
    import pino from 'pino';
@@ -62,6 +69,7 @@ We've implemented a balanced approach to linting that allows builds to succeed w
    ```
 
    c) **Line-specific disabling** (when necessary):
+
    ```typescript
    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
    export async function complexFunction() {
@@ -80,6 +88,7 @@ As the codebase matures, consider:
 ## Path Aliases
 
 Remember that our codebase supports two formats of path aliases:
+
 - `@components/...` - Standard format
 - `@/components/...` - Alternative format (both work)
 

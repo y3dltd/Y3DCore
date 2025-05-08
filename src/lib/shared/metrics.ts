@@ -14,7 +14,7 @@ export interface Metric {
 
 // Interface for a metrics collector service
 export interface MetricsCollector {
-  recordMetric: (metric: Metric) => Promise<void>;
+  recordMetric: (_metric: Metric) => Promise<void>;
   // Add more specific metric recording methods as needed
   // e.g., recordApiCall(service: string, endpoint: string, durationMs: number, success: boolean): Promise<void>;
 }

@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
  * Returns a default JSON payload to pre-fill the report input textarea.
  * Specialised for the 'sequential-task-planner' report.
  */
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   const reportId = req.nextUrl.searchParams.get('reportId');
   if (!reportId) {
     return NextResponse.json({ error: 'reportId missing' }, { status: 400 });

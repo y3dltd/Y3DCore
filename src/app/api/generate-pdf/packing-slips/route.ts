@@ -1,12 +1,12 @@
-import puppeteer from 'puppeteer'
-import bwipjs from 'bwip-js'
 import fs from 'fs'
 import path from 'path'
 
+import bwipjs from 'bwip-js'
 import { NextResponse } from 'next/server'
+import { launch } from 'puppeteer'
 
-import { prisma } from '@/lib/prisma'
 import { markOrdersPrinted } from '@/lib/packing-slips'
+import { prisma } from '@/lib/prisma'
 
 // -----------------------------------------------------------------------------
 //  Data Models
@@ -340,7 +340,7 @@ export async function GET(req: Request) {
 
         // Render PDF via Puppeteer
         console.log(`Launching browser for ${ids.length} packing slips...`);
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+        browser = await launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] })
         const page = await browser.newPage()
         await page.setContent(html, { waitUntil: 'networkidle0' })
         console.log(`Generating PDF for orders: ${ids.join(', ')}...`);

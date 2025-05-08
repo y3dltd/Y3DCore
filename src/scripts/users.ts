@@ -6,7 +6,7 @@ import { hideBin } from 'yargs/helpers';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/server-only/auth-password';
 
-async function createUser(email: string, password: string) {
+async function createUser(email: string, password: string): Promise<void> {
   const hashed = await hashPassword(password);
   const user = await prisma.user.create({
     data: { email, password: hashed },
@@ -14,7 +14,7 @@ async function createUser(email: string, password: string) {
   console.log('User created:', user);
 }
 
-async function changePassword(email: string, password: string) {
+async function changePassword(email: string, password: string): Promise<void> {
   const hashed = await hashPassword(password);
   const user = await prisma.user.update({
     where: { email },
@@ -23,12 +23,12 @@ async function changePassword(email: string, password: string) {
   console.log('Password changed for:', user.email);
 }
 
-async function deleteUser(email: string) {
+async function deleteUser(email: string): Promise<void> {
   await prisma.user.delete({ where: { email } });
   console.log('Deleted user:', email);
 }
 
-async function listUsers() {
+async function listUsers(): Promise<void> {
   const users = await prisma.user.findMany();
   users.forEach(u => {
     console.log(`${u.id} | ${u.email}`);
