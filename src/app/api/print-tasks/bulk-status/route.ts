@@ -19,7 +19,7 @@ const bulkUpdateStatusSchema = z.object({
   status: z.enum([validStatuses[0], ...validStatuses.slice(1)]),
 });
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: NextRequest): Promise<NextResponse> {
   // --- Get Session --- 
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {

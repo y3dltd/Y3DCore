@@ -1,8 +1,10 @@
 // src/lib/order-processing-v2/shipstationSync.ts
 
-import { getLogger } from './logger';
-import type { OrderDebugInfoV2, ProcessingOptionsV2, ShipstationUpdatePayload } from './types';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../shared/shipstation'; // Use existing functions
+
+import { getLogger } from './logger';
+
+import type { OrderDebugInfoV2, ProcessingOptionsV2, ShipstationUpdatePayload } from './types';
 
 /**
  * Updates ShipStation item options based on successfully extracted Amazon data.

@@ -1,8 +1,11 @@
 import crypto from 'crypto';
+
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+
 import { sendNewOrderNotification } from '@/lib/email/order-notifications';
 import type { OrderData } from '@/lib/email/order-notifications';
+
+import type { NextRequest } from 'next/server';
 
 /**
  * Verify ShipStation webhook HMAC-SHA256 signature (base64).

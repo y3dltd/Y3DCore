@@ -13,7 +13,7 @@ interface ScriptOptions {
     verbose: boolean;
 }
 
-async function checkAndFixStatus(options: ScriptOptions) {
+async function checkAndFixStatus(options: ScriptOptions): Promise<{ ordersChecked: number; ordersUpdated: number; tasksUpdated: number; }> {
     const { orderId, fix, verbose } = options;
 
     // Query for the order
@@ -181,7 +181,7 @@ async function checkAndFixStatus(options: ScriptOptions) {
     };
 }
 
-async function main() {
+async function main(): Promise<void> {
     const program = new Command();
 
     program

@@ -14,7 +14,7 @@ interface ReportDef {
   description: string;
 }
 
-export default function AIReportsPage() {
+export default function AIReportsPage(): JSX.Element {
   const [definitions, setDefinitions] = useState<ReportDef[]>([]);
   const [selected, setSelected] = useState<ReportDef | null>(null);
   const [input, setInput] = useState<string>('');
@@ -51,7 +51,7 @@ export default function AIReportsPage() {
       });
   }, [selected]);
 
-  async function runReport() {
+  async function runReport(): Promise<void> {
     if (!selected) return;
     setLoading(true);
     try {
@@ -74,7 +74,7 @@ export default function AIReportsPage() {
     }
   }
 
-  async function autoFillInput() {
+  async function autoFillInput(): Promise<void> {
     if (!selected) return;
     try {
       const res = await fetch(`/api/ai/reports/default-input?reportId=${selected.id}`); // Use hyphenated path
@@ -85,7 +85,7 @@ export default function AIReportsPage() {
     }
   }
 
-  function loadRun(runId: string) {
+  function loadRun(runId: string): void {
     setSelectedRunId(runId);
     fetch(`/api/ai/reports/run/${runId}`)
       .then(r => r.json())
@@ -131,7 +131,7 @@ export default function AIReportsPage() {
     requires: string[];
   }
 
-  function ReportView({ data }: { data: Record<string, unknown> | string | null }) {
+  function ReportView({ data }: { data: Record<string, unknown> | string | null }): JSX.Element | null {
     if (!data) return null;
 
     // If raw message string

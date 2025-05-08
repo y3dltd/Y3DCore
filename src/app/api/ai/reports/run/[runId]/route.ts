@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 
-export async function GET(_req: NextRequest, { params }: { params: { runId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { runId: string } }): Promise<NextResponse> {
   const { runId } = params;
   if (!runId) {
     return NextResponse.json({ error: 'runId missing' }, { status: 400 });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   const reportId = req.nextUrl.searchParams.get('reportId');
   if (!reportId) return NextResponse.json({ error: 'reportId missing' }, { status: 400 });
   const runs = await prisma.aiReportRun.findMany({

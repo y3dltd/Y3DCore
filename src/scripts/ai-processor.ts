@@ -1,11 +1,11 @@
-import { logger } from '../lib/shared/logging';
 import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../lib/email/system-notifications';
+import { logger } from '../lib/shared/logging';
 
 /**
  * Monitor and process AI-related tasks
  * This script will integrate with an AI processing system and send notifications for issues
  */
-async function main() {
+async function main(): Promise<void> {
     try {
         logger.info('Starting AI processor monitoring');
 
@@ -36,7 +36,7 @@ async function main() {
  * Monitor AI tasks for failures or issues
  * This is a placeholder implementation
  */
-async function monitorAITasks() {
+async function monitorAITasks(): Promise<void> {
     // Example: Check for tasks needing review
     const tasksNeedingReview = await getTasksNeedingReview();
 
@@ -87,7 +87,7 @@ async function monitorAITasks() {
  * Mock function to get tasks needing review
  * In a real implementation, this would query the database
  */
-async function getTasksNeedingReview() {
+async function getTasksNeedingReview(): Promise<Array<{ id: number; orderNumber: string; reason: string }>> {
     // Placeholder for actual implementation
     return [
         // This is just mock data
@@ -102,7 +102,7 @@ async function getTasksNeedingReview() {
  * Mock function to check rate limits
  * In a real implementation, this would query the API provider
  */
-async function checkRateLimits() {
+async function checkRateLimits(): Promise<{ limit: number; remaining: number; approaching: boolean; exceeded: boolean; resetTime: string; }> {
     // Placeholder for actual implementation
     return {
         limit: 1000,
@@ -116,7 +116,7 @@ async function checkRateLimits() {
 /**
  * Format a list of tasks for display in notifications
  */
-function formatTaskList(tasks: Array<{ id: number, orderNumber: string, reason: string }>) {
+function formatTaskList(tasks: Array<{ id: number, orderNumber: string, reason: string }>): string {
     return tasks.map(task =>
         `Task ID: ${task.id} (Order #${task.orderNumber})\nReason: ${task.reason}`
     ).join('\n\n');

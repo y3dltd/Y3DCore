@@ -1,7 +1,11 @@
 # ---
+
 # title: Cleanup Utilities
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Cleanup Utilities
@@ -83,6 +87,7 @@ A daily cleanup is scheduled in the crontab configuration:
 The cleanup functionality is implemented in `src/lib/utils/cleanup.ts`, which provides a modular and extensible approach to cleaning different types of files and directories.
 
 The implementation uses:
+
 - `globby` for pattern matching
 - `fs/promises` for file operations
 - Proper error handling and reporting

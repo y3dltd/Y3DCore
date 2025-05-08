@@ -8,6 +8,6 @@ interface Props {
 }
 
 // Client component to wrap the SessionProvider
-export default function SessionProviderWrapper({ children }: Props) {
+export default function SessionProviderWrapper({ children }: Props): JSX.Element {
   return <SessionProvider>{children}</SessionProvider>;
 }

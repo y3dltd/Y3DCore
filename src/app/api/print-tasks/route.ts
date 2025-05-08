@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
  * API endpoint to fetch print tasks for planner optimization
  * GET /api/print-tasks?status=pending
  */
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;

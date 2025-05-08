@@ -11,8 +11,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-import { verifyPassword } from '@/lib/server-only/auth-password';
 import { prisma } from '@/lib/prisma';
+import { verifyPassword } from '@/lib/server-only/auth-password';
 
 // Ensure we're using the validated prisma instance from lib/prisma
 
@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
           return null;

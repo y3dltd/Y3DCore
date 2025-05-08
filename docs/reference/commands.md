@@ -24,4 +24,4 @@ This document enumerates all CLI entry points available in **Y3DHub**. Each comm
 
 1. Create your script in `src/scripts/<my-command>.ts` and export a `builder` from **yargs**.  
 2. Add an npm script alias in *package.json* if it should be user‑facing.  
-3. Run `npm run docs:gen-commands` and commit the updated table. 
+3. Run `npm run docs:gen-commands` and commit the updated table.

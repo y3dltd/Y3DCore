@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { sendEmail } from '../../lib/email/send-email';
 import minimist from 'minimist';
+
+import { sendEmail } from '../../lib/email/send-email';
 
 async function main() {
     const args = minimist(process.argv.slice(2));

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function AIPlaygroundPage() {
+export default function AIPlaygroundPage(): JSX.Element {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">AI Playground</h1>

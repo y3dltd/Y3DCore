@@ -17,7 +17,7 @@ const argv = yargs(hideBin(process.argv))
   .alias('help', 'h')
   .parseSync(); // Use synchronous parsing for simplicity in script
 
-async function findCustomizationUrl(orderId: string) {
+async function findCustomizationUrl(orderId: string): Promise<void> {
   console.log(`--- Fetching customization for Order ID: ${orderId} ---`);
   try {
     const orderItemsResponse = await getOrderItems(orderId);

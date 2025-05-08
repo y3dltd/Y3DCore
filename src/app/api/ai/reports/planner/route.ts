@@ -2,7 +2,7 @@ import fs from 'fs/promises'; // Import fs/promises for async file operations
 import path from 'path'; // Import path for constructing file paths
 
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 import { z } from 'zod'; // Import zod for schema validation (optional but recommended)
 
 // --- Logging Setup ---
@@ -10,7 +10,7 @@ const logDirectory = path.resolve(process.cwd(), 'logs');
 const logFilePath = path.join(logDirectory, 'planner-api.log');
 
 // Ensure log directory exists
-const ensureLogDirectory = async () => {
+const ensureLogDirectory = async (): Promise<void> => {
   try {
     await fs.access(logDirectory); // Check if directory exists
   } catch (error) {
@@ -25,7 +25,7 @@ const ensureLogDirectory = async () => {
 };
 
 // Helper function to append logs to the file
-async function logToFile(logData: object) {
+async function logToFile(logData: object): Promise<void> {
   await ensureLogDirectory(); // Make sure the directory exists before logging
   const timestamp = new Date().toISOString();
   // Create a log entry object with timestamp and data
@@ -55,7 +55,6 @@ const InputSchema = z.object({
     maxTaskItems: z.number().int(),
   }).optional(), // Make constraints optional if they might not always be present
 });
-
 
 // Define the JSON schema for the function call (Corrected Syntax)
 const plannerFunctionSchema = {
@@ -132,8 +131,10 @@ const plannerFunctionSchema = {
   }
 };
 
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Log the start of the request handling
+  await logToFile({ type: 'request_start', method: req.method, url: req.url });
 
-export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     // Log error state if desired, before returning
@@ -222,7 +223,6 @@ and no JSON taskSequence.
 - 'colorsLoaded' exactly matches its jobs' non-null colours (from colorRequirements).
 - 'estimatedItemsOnPlate' equals sum of quantities.
 - Each task has only one SKU.`;
-
 
   const openai = new OpenAI({ apiKey });
   let response;

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
+import { Select } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Select } from '@nextui-org/react';
 
 // import { TaskTimeline } from './TaskTimeline'; // Temporarily commented out
 import TaskPage from '@/components/planner/TaskPage';
@@ -124,12 +124,12 @@ export default function PlannerPage(): React.ReactNode {
     }, 1000);
   };
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, []); // Empty dependency array as it has no external dependencies
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -146,7 +146,7 @@ export default function PlannerPage(): React.ReactNode {
       stopTimer();
       stopPolling();
     };
-  }, [stopPolling]);
+  }, [stopPolling, stopTimer]);
 
   const transformOptimizedTasks = useCallback(
     (
@@ -264,8 +264,8 @@ export default function PlannerPage(): React.ReactNode {
             // Try to parse as Partial<LatestRunData> to get error message
             const errorData = JSON.parse(runRawResponseText) as Partial<LatestRunData>;
             errorBody = errorData.message || errorData.error || runResponse.statusText;
-          } catch (e) {
-            // Ignore JSON parse errors and continue with default error message
+          } catch (parseError) {
+            console.error('Failed to parse error response JSON:', parseError);
           }
           throw new Error(`${runResponse.status} ${errorBody}`);
         }
@@ -551,7 +551,9 @@ export default function PlannerPage(): React.ReactNode {
         try {
           const errorData = await response.json();
           errorBody = errorData.error || response.statusText;
-        } catch {}
+        } catch (parseError) {
+          console.error('Failed to parse error response JSON:', parseError);
+        }
         throw new Error(`${response.status} ${errorBody}`);
       }
 
@@ -612,7 +614,9 @@ export default function PlannerPage(): React.ReactNode {
         try {
           const errorData = await response.json();
           errorBody = errorData.error || response.statusText;
-        } catch {}
+        } catch (parseError) {
+          console.error('Failed to parse error response JSON for today optimization:', parseError);
+        }
         throw new Error(`${response.status} ${errorBody}`);
       }
 
@@ -671,7 +675,9 @@ export default function PlannerPage(): React.ReactNode {
         try {
           const errorData = await response.json();
           errorBody = errorData.error || response.statusText;
-        } catch {}
+        } catch (parseError) {
+          console.error('Failed to parse error response JSON for today/tomorrow optimization:', parseError);
+        }
         throw new Error(`${response.status} ${errorBody}`);
       }
 

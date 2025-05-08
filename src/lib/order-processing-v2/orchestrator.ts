@@ -9,6 +9,7 @@ import { appendToDebugLog } from './debugLogger'; // Assuming debugLogger utilit
 import { getLogger } from './logger';
 import { loadPrompts } from './prompts';
 import { syncAmazonDataToShipstation } from './shipstationSync';
+
 import type {
     AiOrderResponse,
     AmazonExtractionResult,
@@ -295,7 +296,7 @@ async function processSingleOrder(
             try {
                 await prisma.$transaction(async (tx) => {
                     // Create/Update DB Tasks using AI results
-                    const dbResult = await createOrUpdateTasksInTransaction(
+                    const _dbResult = await createOrUpdateTasksInTransaction(
                         tx,
                         order, // Pass original order for DB task creation context
                         aiResult.data as AiOrderResponse, // AI data is guaranteed here
@@ -366,10 +367,9 @@ async function processSingleOrder(
  * @param prisma - Prisma client instance.
  */
 export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma: PrismaClient): Promise<void> {
-    const SCRIPT_NAME = 'populate-print-queue-v2';
+    const _SCRIPT_NAME = 'populate-print-queue-v2';
     // Logger initialization should happen in the entry script, but getLogger can be used here
     const logger = getLogger(); // Assumes logger is initialized by the calling script
-    let scriptRunSuccess = true;
     let finalMessage = 'Script finished.';
     let totalOrdersProcessed = 0;
     let totalOrdersFailed = 0;
@@ -404,7 +404,7 @@ export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma:
                         },
                     });
                     logger.info(`[Orchestrator][Order ${order.id}] Deleted ${deleteResult.count} existing print tasks.`);
-                } catch (deleteError: any) {
+                } catch (deleteError: unknown) {
                     const errorMsg = deleteError instanceof Error ? deleteError.message : String(deleteError);
                     logger.error(`[Orchestrator][Order ${order.id}] Failed to delete existing print tasks: ${errorMsg}`, deleteError);
                     // Decide if deletion failure should stop processing this order.
@@ -422,7 +422,6 @@ export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma:
         }
 
         // Final summary
-        scriptRunSuccess = totalOrdersFailed === 0;
         finalMessage = `Processed ${totalOrdersProcessed} orders. Succeeded: ${totalOrdersProcessed - totalOrdersFailed}, Failed: ${totalOrdersFailed}.`;
         if (totalOrdersFailed > 0) {
             finalMessage += ` Failed Order IDs: [${failedOrderIds.join(', ')}]`;
@@ -432,7 +431,6 @@ export async function runOrderProcessingV2(options: ProcessingOptionsV2, prisma:
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logger.error(`[Orchestrator] SCRIPT FAILED (Unhandled Exception): ${errorMsg}`, error);
-        scriptRunSuccess = false;
         finalMessage = `Script failed fatally: ${errorMsg}`;
     } finally {
         logger.info(`--- [Orchestrator] Script End ---`);

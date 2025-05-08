@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, Dispatch, SetStateAction } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, Dispatch, SetStateAction } from 'react';
 
 import { ClientPrintTaskData } from '@/types/print-tasks';
 
@@ -18,7 +18,7 @@ export const PrintQueueModalProvider = ({ children }: { children: ReactNode }) =
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Automatically close modal if selected task is cleared elsewhere
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedTask) {
       setIsModalOpen(false);
     }

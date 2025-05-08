@@ -1,6 +1,7 @@
-import { sendEmail } from './send-email'
-import { logger } from '../shared/logging'
 import { prisma } from '../shared/database'
+import { logger } from '../shared/logging'
+
+import { sendEmail } from './send-email'
 
 // Define types based on ShipStation API structure
 interface ShipToAddress {

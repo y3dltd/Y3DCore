@@ -1,7 +1,11 @@
 # ---
+
 # title: Code Structure
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Code Structure
@@ -60,7 +64,7 @@ src/
 
 The orders module handles order synchronization with ShipStation and related data mapping.
 
-#### Key Files:
+#### Key Files
 
 - **`sync.ts`**: Core order synchronization logic.
   - `syncAllPaginatedOrders(options)`: Synchronizes all orders from ShipStation based on modification date, handling pagination and retries. Uses `upsertOrderWithItems`.
@@ -97,7 +101,7 @@ Handles fetching and processing Amazon-specific customization data.
 
 Handles print task creation and potentially other task-related logic.
 
-#### Key Files:
+#### Key Files
 
 - **`creation.ts`**: (To be created) Will contain the core logic moved from `populate-print-queue.ts` for creating tasks, including AI extraction and database interaction.
   - `extractOrderPersonalization(...)`: (To be moved here) Handles AI call for personalization.
@@ -111,7 +115,7 @@ Handles print task creation and potentially other task-related logic.
 
 (Placeholder/TBD) Intended for general utility functions for system maintenance and diagnostics.
 
-#### Key Files (Examples):
+#### Key Files (Examples)
 
 - **`check.ts`**: System verification.
 - **`fix.ts`**: Issue remediation.
@@ -122,7 +126,7 @@ Handles print task creation and potentially other task-related logic.
 
 Provides utilities used across multiple modules.
 
-#### Key Files:
+#### Key Files
 
 - **`shipstation.ts`**: ShipStation API client (Axios instance, helper functions like `listTags`).
 - **`database.ts`**: Prisma client wrapper/instance.
@@ -156,10 +160,10 @@ Provides a command-line interface for generating print tasks.
 
 The modules interact with each other in a structured manner:
 
-1.  **Scripts** act as entry points, parse arguments, and call functions within **lib modules**.
-2.  **`lib/orders/sync.ts`** interacts with **ShipStation API** (via `lib/shared/shipstation.ts`) and the **database** (via `lib/shared/database.ts` and mappers) to sync order data.
-3.  **`scripts/populate-print-queue.ts`** uses **`lib/order-processing.ts`** to find orders, **`lib/orders/amazon/customization.ts`** to fetch Amazon data, its own internal AI logic (`extractOrderPersonalization`), and database logic (`createOrUpdateTasksInTransaction`) to manage print tasks.
-4.  **All modules** utilize **shared utilities** (`lib/shared/`) for common operations like logging, metrics, and date handling.
+1. **Scripts** act as entry points, parse arguments, and call functions within **lib modules**.
+2. **`lib/orders/sync.ts`** interacts with **ShipStation API** (via `lib/shared/shipstation.ts`) and the **database** (via `lib/shared/database.ts` and mappers) to sync order data.
+3. **`scripts/populate-print-queue.ts`** uses **`lib/order-processing.ts`** to find orders, **`lib/orders/amazon/customization.ts`** to fetch Amazon data, its own internal AI logic (`extractOrderPersonalization`), and database logic (`createOrUpdateTasksInTransaction`) to manage print tasks.
+4. **All modules** utilize **shared utilities** (`lib/shared/`) for common operations like logging, metrics, and date handling.
 
 ```
 [scripts/order-sync.ts] ---> [lib/orders/sync.ts] ---> [lib/shared/*] ---> [ShipStation API]
@@ -180,11 +184,11 @@ The modules interact with each other in a structured manner:
 
 The codebase implements a consistent error handling strategy:
 
-1.  **Try-catch blocks** in key functions.
-2.  **Retries** for transient errors in ShipStation API calls (`getShipstationOrders`).
-3.  **Transaction rollbacks** for database operations using `prisma.$transaction`.
-4.  **Detailed error logging** using Pino, including context.
-5.  **Graceful degradation** (e.g., creating placeholder tasks on failure).
+1. **Try-catch blocks** in key functions.
+2. **Retries** for transient errors in ShipStation API calls (`getShipstationOrders`).
+3. **Transaction rollbacks** for database operations using `prisma.$transaction`.
+4. **Detailed error logging** using Pino, including context.
+5. **Graceful degradation** (e.g., creating placeholder tasks on failure).
 
 ## Global Options
 
@@ -201,6 +205,7 @@ For more details on specific aspects of the system, see:
 - [API_REFERENCE.md](./API_REFERENCE.md) for documentation on API endpoints
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for help with common issues
 - [TESTING.md](./TESTING.md) for information on testing strategies and test coverage
+
 # Code Structure Guide
 
 This document provides an overview of the key directories and files in the Y3DHub project.

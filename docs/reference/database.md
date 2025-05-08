@@ -1,7 +1,11 @@
 # ---
+
 # title: Database Schema and Standards
+
 # last-reviewed: 2025-04-18
+
 # maintainer: TBD
+
 # ---
 
 # Database Schema and Standards

@@ -3,7 +3,6 @@
 // Import from the correct location
 
 // Import sync functions
-import type { SyncOptions } from '../orders/sync'; // Import as type
 import {
   syncAllPaginatedOrders,
   syncRecentOrders,
@@ -12,6 +11,8 @@ import {
 } from '../orders/sync'; // Import from orders/sync
 import { getShipstationOrders, listTags, updateOrderItemOptions, updateOrderItemsOptionsBatch } from '../shipstation/api'; // Import from api.ts
 import { shipstationApi } from '../shipstation/client'; // Import from client.ts
+
+import type { SyncOptions } from '../orders/sync'; // Import as type
 import type {
   ShipStationAddress,
   ShipStationApiParams,

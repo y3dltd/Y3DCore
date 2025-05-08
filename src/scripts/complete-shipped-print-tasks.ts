@@ -3,14 +3,12 @@ import readline from 'readline/promises';
 import { PrintTaskStatus, PrismaClient } from '@prisma/client'; 
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'; 
 import { Command } from 'commander';
-import dotenv from 'dotenv';
-import pino from 'pino';
 
-// Load environment variables
-dotenv.config()
+import 'dotenv/config'; // Side-effect import for dotenv
+import { getLogger } from '@lib/shared/logging';
 
 // Setup logger
-const logger = pino({ level: 'info' })
+const logger = getLogger('complete-shipped-print-tasks');
 
 // Initialize database connection
 const prisma = new PrismaClient()
@@ -22,7 +20,131 @@ async function confirmExecution(promptMessage: string): Promise<boolean> {
     return answer.toLowerCase() === 'yes'
 }
 
-async function main() {
+async function run(options: {
+    dryRun: boolean
+    confirm: boolean
+    verbose: boolean
+    shippedStatuses: string[] // Array of strings
+    targetTaskStatuses: string[] // Array of strings
+}): Promise<void> {
+    logger.info(`Starting task completion process for shipped orders.`);
+    logger.info(`Identifying orders with local status(es): ${options.shippedStatuses.join(', ')}`);
+    logger.info(`Targeting tasks with status(es): ${options.targetTaskStatuses.join(', ')}`);
+    if (options.dryRun) {
+        logger.info('--- DRY RUN MODE ---');
+    }
+
+    try {
+        await prisma.$connect();
+        logger.info('Database connected.');
+
+        // 1. Find orders in the local DB marked as shipped
+        logger.info('Finding locally shipped orders...');
+        const shippedLocalOrders = await prisma.order.findMany({
+            where: {
+                // Query the string field 'order_status'
+                order_status: { in: options.shippedStatuses },
+            },
+            select: {
+                id: true,
+                shipstation_order_number: true,
+                order_status: true, // Select the correct field
+            },
+        })
+
+        if (shippedLocalOrders.length === 0) {
+            logger.info('No local orders found with specified shipped status(es).');
+            return;
+        }
+
+        const shippedLocalOrderIds = shippedLocalOrders.map(o => o.id);
+        logger.info(`Found ${shippedLocalOrders.length} local orders marked as shipped.`);
+        logger.debug('Local Shipped Orders', { 
+            shippedOrders: shippedLocalOrders.map(o => ({ id: o.id, number: o.shipstation_order_number, status: o.order_status })) 
+        });
+
+        // 2. Find Print Tasks associated with these shipped orders that are pending/needs_review
+        logger.info('Finding associated print tasks to mark as completed...');
+        const tasksToUpdate = await prisma.printOrderTask.findMany({
+            where: {
+                orderId: { in: shippedLocalOrderIds },
+                // Use the provided target status list
+                status: { in: options.targetTaskStatuses as PrintTaskStatus[] }, // Cast to PrintTaskStatus[]
+            },
+            select: {
+                id: true,
+                orderId: true, // Added for logging context
+                status: true, // Added for logging context
+            },
+        })
+
+        if (tasksToUpdate.length === 0) {
+            logger.info('No print tasks found needing update for these orders.');
+            return;
+        }
+
+        const taskIdsToUpdate = tasksToUpdate.map(t => t.id);
+        logger.info(`Found ${tasksToUpdate.length} tasks to update.`);
+        logger.debug('Task Details', { 
+            taskIdsToUpdate,
+            taskDetails: tasksToUpdate.map(t => ({ id: t.id, orderId: t.orderId, status: t.status }))
+        });
+
+        if (options.confirm) {
+            const confirmed = await confirmExecution(
+                `Found ${tasksToUpdate.length} tasks to mark as '${PrintTaskStatus.completed}'. Proceed?`
+            );
+            if (!confirmed) {
+                logger.info('Execution aborted by user.');
+                return;
+            }
+        }
+
+        if (!options.dryRun) {
+            logger.info(`Updating ${taskIdsToUpdate.length} tasks to '${PrintTaskStatus.completed}'...`);
+            const updateResult = await prisma.printOrderTask.updateMany({
+                where: {
+                    id: { in: taskIdsToUpdate },
+                },
+                data: {
+                    status: PrintTaskStatus.completed,
+                },
+            });
+            logger.info(`Successfully updated ${updateResult.count} tasks.`);
+        } else {
+            logger.info(`DRY RUN: Would have updated ${taskIdsToUpdate.length} tasks.`);
+        }
+
+    } catch (err: unknown) {
+        if (err instanceof PrismaClientKnownRequestError) {
+            // Prisma specific error
+            logger.error('A Prisma database error occurred',
+                {
+                    code: err.code,
+                    meta: err.meta,
+                    stack: err.stack,
+                }
+            );
+        } else if (err instanceof Error) {
+            // Generic error
+            logger.error('An unexpected error occurred',
+                {
+                    errorName: err.name,
+                    errorMessage: err.message,
+                    stack: err.stack,
+                }
+            );
+        } else {
+            // Fallback for unknown error types
+            logger.error('An unknown error occurred', { error: err });
+        }
+    } finally {
+        await prisma.$disconnect();
+        logger.info('Database disconnected.');
+    }
+}
+
+async function main(): Promise<void> {
     const program = new Command()
     program
         .name('complete-shipped-print-tasks')
@@ -46,7 +168,7 @@ async function main() {
         )
         .parse(process.argv)
 
-    const options = program.opts<{
+    const commanderOptions = program.opts<{
         dryRun: boolean
         confirm: boolean
         verbose: boolean
@@ -54,109 +176,16 @@ async function main() {
         targetTaskStatuses: string[] // Array of strings
     }>()
 
-    if (options.verbose) {
-        logger.level = 'debug'
-    }
-
-    logger.info(`Starting task completion process for shipped orders.`)
-    logger.info(`Identifying orders with local status(es): ${options.shippedStatuses.join(', ')}`)
-    logger.info(`Targeting tasks with status(es): ${options.targetTaskStatuses.join(', ')}`)
-    if (options.dryRun) {
-        logger.info('--- DRY RUN MODE ---')
-    }
-
-    try {
-        await prisma.$connect()
-        logger.info('Database connected.')
-
-        // 1. Find orders in the local DB marked as shipped
-        logger.info('Finding locally shipped orders...')
-        const shippedLocalOrders = await prisma.order.findMany({
-            where: {
-                // Query the string field 'order_status'
-                order_status: { in: options.shippedStatuses },
-            },
-            select: {
-                id: true,
-                shipstation_order_number: true,
-                order_status: true, // Select the correct field
-            },
-        })
-
-        if (shippedLocalOrders.length === 0) {
-            logger.info('No local orders found with specified shipped status(es).')
-            return
-        }
-
-        const shippedLocalOrderIds = shippedLocalOrders.map(o => o.id)
-        logger.info(`Found ${shippedLocalOrders.length} local orders marked as shipped.`)
-        logger.debug({ shippedOrders: shippedLocalOrders.map(o => ({ id: o.id, number: o.shipstation_order_number, status: o.order_status })) }, 'Local Shipped Orders')
-
-        // 2. Find Print Tasks associated with these shipped orders that are pending/needs_review
-        logger.info('Finding associated print tasks to mark as completed...')
-        const tasksToUpdate = await prisma.printOrderTask.findMany({
-            where: {
-                orderId: { in: shippedLocalOrderIds },
-                // Use the provided target status list
-                status: { in: options.targetTaskStatuses as PrintTaskStatus[] }, // Cast to PrintTaskStatus[]
-            },
-            select: {
-                id: true,
-                orderId: true,
-                status: true,
-            },
-        })
-
-        if (tasksToUpdate.length === 0) {
-            logger.info('No tasks found needing completion for these shipped orders.')
-            return
-        }
-
-        logger.info(`Identified ${tasksToUpdate.length} print tasks to mark as COMPLETED.`)
-        logger.debug({ taskIdsToUpdate: tasksToUpdate.map(t => t.id), taskDetails: tasksToUpdate }, 'Tasks to Update')
-
-        // 3. Confirm and Update
-        if (!options.confirm && !options.dryRun) {
-            if (!(await confirmExecution(`Update ${tasksToUpdate.length} print tasks to COMPLETED?`))) {
-                logger.info('Aborted by user.')
-                return
-            }
-        }
-
-        if (options.dryRun) {
-            logger.info(`[Dry Run] Would update ${tasksToUpdate.length} print tasks to status COMPLETED.`)
-        } else {
-            logger.info(`Updating ${tasksToUpdate.length} print tasks to COMPLETED...`)
-            const updateResult = await prisma.printOrderTask.updateMany({
-                where: {
-                    id: { in: tasksToUpdate.map(t => t.id) },
-                },
-                data: {
-                    status: PrintTaskStatus.completed, // Use PrintTaskStatus enum directly
-                },
-            })
-            logger.info(`Successfully updated ${updateResult.count} print tasks.`) // updateMany returns count
-        }
-
-    } catch (error) {
-        // Log specific Prisma errors if possible
-        if (error instanceof PrismaClientKnownRequestError) { // Use the specific Prisma error type
-            // Now TypeScript knows 'error' has code, meta, message, stack
-            logger.error({ err: { code: error.code, meta: error.meta, message: error.message, stack: error.stack } }, 'A Prisma error occurred during the process.');
-        } else {
-            // Handle unknown error type more safely
-            const errDetails = error instanceof Error ? { message: error.message, stack: error.stack } : { error: String(error) };
-            logger.error({ err: errDetails }, 'An error occurred during the process.');
-        }
-        process.exitCode = 1
-    } finally {
-        await prisma.$disconnect()
-        logger.info('Database disconnected.')
-        logger.info('Task completion script finished.')
-    }
+    await run({
+        dryRun: commanderOptions.dryRun,
+        confirm: commanderOptions.confirm,
+        verbose: commanderOptions.verbose,
+        shippedStatuses: commanderOptions.shippedStatuses,
+        targetTaskStatuses: commanderOptions.targetTaskStatuses
+    });
 }
 
 main().catch((e) => {
-    logger.error({ err: e }, 'Unhandled error in main function')
-    process.exit(1)
-}) 
+    logger.error('Unhandled error in main execution', { error: e });
+    process.exit(1);
+});

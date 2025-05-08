@@ -10,7 +10,6 @@ The dev container is configured to:
 2. Add required LiteLLM environment variables to your `.env` file (if they don't exist)
 3. Create a helper script to easily start the LiteLLM services
 
-
 ## Starting LiteLLM
 
 To start the LiteLLM proxy and its PostgreSQL database in your Codespaces environment:
@@ -19,13 +18,11 @@ To start the LiteLLM proxy and its PostgreSQL database in your Codespaces enviro
 ./scripts/start-litellm.sh
 ```
 
-
 This will:
 
 - Start a PostgreSQL database on port 5432
 - Start the LiteLLM proxy on port 4000
 - Configure all necessary environment variables
-
 
 ## Accessing the LiteLLM UI
 
@@ -34,14 +31,12 @@ Once started, you can access the LiteLLM UI at:
 - URL: [http://localhost:4000/ui/](http://localhost:4000/ui/)
 - Default credentials: admin/admin
 
-
 ## Configuration
 
 LiteLLM is configured using:
 
 - `docker-compose.litellm.yml` - Container configuration
 - `docs/configs/litellm_config.yaml` - LiteLLM proxy configuration
-
 
 ## Important Environment Variables
 
@@ -54,7 +49,6 @@ DEFAULT_LLM_KEY=sk-litellm-default-XXXXXXXXXXXX
 UI_USERNAME=admin
 UI_PASSWORD=admin
 ```
-
 
 ## Using LiteLLM in Your Code
 
@@ -87,13 +81,11 @@ To add your actual OpenAI API key:
    OPENROUTER_API_KEY=sk-your-actual-openrouter-key
    ```
 
-
 2. Restart the LiteLLM service:
 
    ```bash
    ./scripts/start-litellm.sh
    ```
-
 
 ## Troubleshooting
 
@@ -105,13 +97,11 @@ If you encounter issues:
    docker logs litellm-proxy
    ```
 
-
 2. Check the PostgreSQL logs:
 
    ```bash
    docker logs litellm-postgres
    ```
-
 
 3. Make sure the ports aren't already in use:
 
@@ -119,11 +109,9 @@ If you encounter issues:
    netstat -tuln | grep '4000\|5432'
    ```
 
-
 4. Restart both services:
 
    ```bash
    docker-compose -f docker-compose.litellm.yml down
    docker-compose -f docker-compose.litellm.yml up -d
    ```
-
