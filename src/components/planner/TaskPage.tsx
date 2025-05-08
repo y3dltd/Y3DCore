@@ -40,6 +40,7 @@ interface TaskPageProps {
   recentRuns?: { id: string; finishedAt: string }[];
   selectedRunId?: string | null;
   onSelectRun?: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     id: string | null
   ) => void;
 }
