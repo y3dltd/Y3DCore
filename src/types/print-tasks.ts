@@ -93,9 +93,14 @@ export interface PrintItem {
 // Props specifically for the PrintTaskCard UI component
 export interface PrintTaskCardProps {
   taskId: string;
-  orderId: string;
+  orderId: string; // This seems to be more like a batch ID in the planner context
   status: PrintTaskStatus;
   items: PrintItem[]; // List of items included in the task (now with item-specific details)
+  order?: { // Added optional order details
+    marketplace_order_number?: string | null;
+    requested_shipping_service?: string | null;
+    marketplace?: string | null;
+  };
   onStatusChange?: (
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     taskId: string, 

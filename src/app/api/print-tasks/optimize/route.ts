@@ -41,13 +41,17 @@ async function logToFile(logData: object) {
 const InputSchema = z.object({
   jobList: z.array(z.object({
     id: z.string(),
-    sku: z.string().nullable().optional(), // Original SKU for reference
-    groupingSku: z.string(), // Effective SKU used for grouping
+    sku: z.string().nullable().optional(),
+    groupingSku: z.string(),
+    order: z.object({
+      marketplace: z.string().nullable().optional(),
+      marketplace_order_number: z.string().nullable().optional(), // Changed to snake_case
+      requested_shipping_service: z.string().nullable().optional(), 
+    }).nullable().optional(),
     color1: z.string().nullable().optional(),
     color2: z.string().nullable().optional(),
     customText: z.string().nullable().optional(),
     quantity: z.number().int().optional(),
-    order: z.string().optional(),
     shipByDate: z.string().nullable().optional(), // Keep this if used elsewhere, otherwise optional
   })),
   constraints: z.object({
@@ -434,7 +438,12 @@ export async function POST(req: NextRequest) {
       where: whereClause,
       include: {
         product: true,
-        order: { select: { marketplace: true } },
+        order: { 
+          select: { 
+            marketplace: true,
+            requested_shipping_service: true, // Corrected to snake_case for select
+          }
+        },
       },
       orderBy: {
         ship_by_date: 'asc',
@@ -456,7 +465,11 @@ export async function POST(req: NextRequest) {
         id: `${task.id}`,
         sku: originalSku,
         groupingSku: groupingSku,
-        order: `Order-${task.orderId}`,
+        order: { 
+          marketplace: task.order?.marketplace,
+          marketplace_order_number: task.marketplace_order_number, // Directly from task (snake_case as per schema for direct field)
+          requested_shipping_service: task.order?.requested_shipping_service, // From related order (snake_case via client)
+        },
         quantity: task.quantity,
         color1: task.color_1,
         color2: task.color_2,
@@ -486,7 +499,11 @@ export async function POST(req: NextRequest) {
     const jobListForAi = inputData.jobList.map(job => ({
       id: job.id,
       sku: job.groupingSku, // *** Send the groupingSku to AI as the sku ***
-      order: job.order,
+      order: job.order ? { // Ensure job.order exists before accessing its properties
+        marketplace: job.order.marketplace,
+        marketplace_order_number: job.order.marketplace_order_number, // Key is now snake_case
+        requested_shipping_service: job.order.requested_shipping_service, // Corrected to snake_case
+      } : undefined, // Pass undefined if job.order is not present
       quantity: job.quantity,
       color1: job.color1,
       color2: job.color2,

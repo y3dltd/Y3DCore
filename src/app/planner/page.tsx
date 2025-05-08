@@ -178,7 +178,7 @@ export default function PlannerPage(): React.ReactNode {
       const mappedTasks = tasks.map(task => {
         const items = (task.assignedJobs || []).map(aiJob => {
           const id = aiJob.id || 'Unknown ID';
-          const originalJobDetails = jobDetailsMap.get(id);
+          const originalJobDetails = jobDetailsMap.get(id) as OriginalJobData & { order?: { marketplace_order_number?: string | null; requested_shipping_service?: string | null; marketplace?: string | null } } | undefined;
           const freshDetails = freshDetailsMap.get(id);
 
           // Get current status from the map, default to pending if somehow missing
@@ -226,12 +226,22 @@ export default function PlannerPage(): React.ReactNode {
         });
         const colorsLoadedArray = Array.from(calculatedColors).sort();
 
-        const mappedTaskData = {
+        // Get order details from the first item's originalJobDetails, assuming all items in a batch share the same high-level order info for this purpose.
+        // This is a simplification for the planner context. The PrintQueueTable will have more granular data.
+        const firstJobId = task.assignedJobs?.[0]?.id;
+        const firstOriginalJobDetails = firstJobId ? jobDetailsMap.get(firstJobId) as OriginalJobData & { order?: { marketplace_order_number?: string | null; requested_shipping_service?: string | null; marketplace?: string | null } } | undefined : undefined;
+
+        const mappedTaskData: PrintTaskCardProps = {
           taskId: String(task.taskNumber),
-          orderId: 'Optimized Batch',
-          status: PrintTaskStatus.pending, // Overall plate status is less relevant now
+          orderId: 'Optimized Batch', // Remains as batch identifier
+          status: PrintTaskStatus.pending, // Overall plate status
           items: items,
           colorsLoaded: colorsLoadedArray,
+          order: firstOriginalJobDetails?.order ? { // Populate order details
+            marketplace_order_number: firstOriginalJobDetails.order.marketplace_order_number, // Reverted to snake_case
+            requested_shipping_service: firstOriginalJobDetails.order.requested_shipping_service,
+            marketplace: firstOriginalJobDetails.order.marketplace,
+          } : undefined,
         };
         return mappedTaskData;
       });

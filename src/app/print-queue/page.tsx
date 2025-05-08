@@ -326,6 +326,7 @@ async function getPrintTasks({
         ? {
             requested_shipping_service: task.order.requested_shipping_service,
             marketplace: task.order.marketplace, // Pass marketplace through
+            marketplace_order_number: task.marketplace_order_number, // Added marketplace_order_number
           }
         : undefined,
       // Convert product fields and dates

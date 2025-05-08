@@ -73,7 +73,10 @@ export interface PrintTaskData extends PrintOrderTask {
   };
 }
 
-async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promise<{message?: string; count?: number}> {
+async function updateTaskStatus(
+  taskId: number,
+  status: PrintTaskStatus
+): Promise<{ message?: string; count?: number }> {
   const response = await fetch(`/api/print-tasks/${taskId}/status`, {
     method: 'PATCH',
     headers: {
@@ -93,7 +96,10 @@ async function updateTaskStatus(taskId: number, status: PrintTaskStatus): Promis
   return response.json();
 }
 
-async function bulkUpdateTaskStatus(taskIds: number[], status: PrintTaskStatus): Promise<{message?: string; count?: number}> {
+async function bulkUpdateTaskStatus(
+  taskIds: number[],
+  status: PrintTaskStatus
+): Promise<{ message?: string; count?: number }> {
   const response = await fetch(`/api/print-tasks/bulk-status`, {
     method: 'PATCH',
     headers: {
@@ -233,9 +239,7 @@ const formatRelativeDate = (date: Date | string | null): string => {
 };
 
 interface TableMeta {
-  openModal: (
-    _task: ClientPrintTaskData
-  ) => void;
+  openModal: (_task: ClientPrintTaskData) => void;
 }
 interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
@@ -249,9 +253,11 @@ function ActionCellComponent({
   table: TTable<ClientPrintTaskData>;
 }): JSX.Element {
   const meta = table.options.meta as ExtendedTableMeta;
-  const openModal = meta?.openModal || ((_task: ClientPrintTaskData) => {
-    console.warn('No openModal function provided');
-  });
+  const openModal =
+    meta?.openModal ||
+    ((_task: ClientPrintTaskData) => {
+      console.warn('No openModal function provided');
+    });
   const task = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -339,8 +345,8 @@ function ActionCellComponent({
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={handleCopyId}>Copy Task ID</DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={(e) => {
+          <DropdownMenuItem
+            onClick={e => {
               e.preventDefault();
               e.stopPropagation();
               if (typeof openModal === 'function') {
@@ -409,10 +415,11 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
         }
-        onCheckedChange={(value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!value)}
+        onCheckedChange={(value: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!value)
+        }
         aria-label="Select all"
         className="border-gray-400 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
       />
@@ -448,9 +455,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="truncate font-mono text-xs max-w-[80px] cursor-default">
-                {sku}
-              </div>
+              <div className="truncate font-mono text-xs max-w-[80px] cursor-default">{sku}</div>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start">
               <p className="text-sm font-semibold">{product.name}</p>
@@ -480,10 +485,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const name = row.getValue('product_name') as string;
       const productName = name || 'N/A';
       return (
-        <div
-          title={productName}
-          className="truncate max-w-[200px] whitespace-normal text-sm"
-        >
+        <div title={productName} className="truncate max-w-[200px] whitespace-normal text-sm">
           {productName}
         </div>
       );
@@ -596,8 +598,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     cell: ({ row }) => {
       const customText = row.getValue('custom_text') as string | null;
       const fullText = customText || '';
-      const truncatedText =
-        fullText.length > 50 ? `${fullText.substring(0, 50)}...` : fullText;
+      const truncatedText = fullText.length > 50 ? `${fullText.substring(0, 50)}...` : fullText;
 
       const handleCopyCustomText = () => {
         if (fullText) {
@@ -684,10 +685,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
           break;
         case PrintTaskStatus.cancelled:
           indicator = (
-            <Badge
-              variant="outline"
-              className="bg-red-100 text-red-800 border-red-300 font-medium"
-            >
+            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 font-medium">
               Cancelled
             </Badge>
           );
@@ -722,9 +720,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       return (
         <div className="text-center text-xs">
           <div>{formatRelativeDate(date)}</div>
-          <div className="text-gray-500">
-            {date ? format(new Date(date), 'HH:mm') : 'N/A'}
-          </div>
+          <div className="text-gray-500">{date ? format(new Date(date), 'HH:mm') : 'N/A'}</div>
         </div>
       );
     },
@@ -873,8 +869,8 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
     if (onSelectTask) {
       onSelectTask(task);
     }
-    setSelectedTask(task); 
-    setIsModalOpen(true);  
+    setSelectedTask(task);
+    setIsModalOpen(true);
   };
 
   const table = useReactTable<ClientPrintTaskData>({
@@ -895,11 +891,11 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
       ],
       sorting: [{ id: 'created_at', desc: true }],
       columnVisibility: {
-        'custom_text': true,
-        'marketplace_order_number': true,
+        custom_text: true,
+        marketplace_order_number: true,
         'product.sku': true,
-        'product.name': true
-      }
+        'product.name': true,
+      },
     },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
@@ -1081,14 +1077,12 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
         `}</style>
         <Table className="min-w-full table-fixed">
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map(header => (
                   <TableHead key={header.id} colSpan={header.colSpan} className="px-3 py-2">
                     {header.isPlaceholder ? null : (
-                      <div>
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </div>
+                      <div>{flexRender(header.column.columnDef.header, header.getContext())}</div>
                     )}
                   </TableHead>
                 ))}
@@ -1097,7 +1091,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+              table.getRowModel().rows.map(row => {
                 const task = row.original;
                 const isInProgress = task.status === PrintTaskStatus.in_progress;
                 const shippingService = task.order?.requested_shipping_service;
@@ -1120,7 +1114,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                     data-state={row.getIsSelected() ? 'selected' : undefined}
                     className={rowClassName}
                   >
-                    {row.getVisibleCells().map((cell) => (
+                    {row.getVisibleCells().map(cell => (
                       <TableCell
                         key={cell.id}
                         className={cn(
@@ -1133,8 +1127,12 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                             : '',
                           cell.column.id === 'select' ? 'select-cell' : '',
                           cell.column.id === 'product.sku' ? 'sku-cell' : '',
-                          cell.column.id === 'product.name' ? 'product-name-cell whitespace-normal' : '',
-                          cell.column.id === 'marketplace_order_number' ? 'marketplace-id-cell' : '',
+                          cell.column.id === 'product.name'
+                            ? 'product-name-cell whitespace-normal'
+                            : '',
+                          cell.column.id === 'marketplace_order_number'
+                            ? 'marketplace-id-cell'
+                            : '',
                           cell.column.id === 'custom_text' ? 'custom-text-cell' : ''
                         )}
                       >
