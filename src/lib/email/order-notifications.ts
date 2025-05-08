@@ -37,7 +37,7 @@ interface OrderNotificationOptions {
     // Whether to filter for just premium/prime orders
     onlyPremiumOrders?: boolean
     // Format currency values
-    formatCurrency?: (value: number) => string
+    formatCurrency?: (_value: number) => string
 }
 
 const DEFAULT_OPTIONS: OrderNotificationOptions = {
@@ -156,4 +156,4 @@ View order: [Your admin URL]/orders/${order.orderId}
         logger.error(`Failed to send order notification for #${order.orderNumber}:`, { error })
         return false
     }
-} 
+}  

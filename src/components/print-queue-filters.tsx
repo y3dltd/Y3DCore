@@ -108,7 +108,7 @@ export function PrintQueueFilters({
   availableProductNames = [],
   availableShippingMethods = [],
 }: PrintQueueFiltersProps) {
-  const _productNames = availableProductNames; // Will be used in future implementation
+  // availableProductNames will be used in future implementation
   const shippingMethods = availableShippingMethods; // Use the passed prop
   const router = useRouter();
   const pathname = usePathname();

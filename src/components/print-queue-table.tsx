@@ -251,7 +251,7 @@ const formatRelativeDate = (date: Date | null): string => {
 
 // Define interfaces for table meta
 interface TableMeta {
-  openModal: (task: ClientPrintTaskData) => void;
+  openModal: (_task: ClientPrintTaskData) => void;
 }
 interface ExtendedTableMeta extends TableMeta {
   router: ReturnType<typeof useRouter>;
