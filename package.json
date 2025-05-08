@@ -45,6 +45,9 @@
     "@auth/prisma-adapter": "^2.9.0",
     "@aws-sdk/credential-provider-node": "^3.787.0",
     "@aws-sdk/signature-v4": "^3.374.0",
+    "@google-cloud/aiplatform": "^4.1.0",
+    "@google-cloud/vertexai": "^1.10.0",
+    "@google/genai": "^0.13.0",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.0",
     "@nextui-org/react": "^2.6.11",
@@ -160,8 +163,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
-    "typescript": "^5",
+    "typescript": "^5.8.3",
     "vitest": "^0.34.2",
     "vitest-fetch-mock": "^0.2.0"
   }

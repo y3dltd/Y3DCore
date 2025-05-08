@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:22-alpine AS base
 
 # Create app directory and set permissions
 WORKDIR /workspace
@@ -11,6 +11,8 @@ USER root
 RUN apk update && apk add --no-cache \
     # Base tools
     python3 \
+    py3-pip \
+    gcompat \
     git \
     openssh \
     curl \
