@@ -109,6 +109,7 @@ export function PrintQueueFilters({
   availableShippingMethods = [],
 }: PrintQueueFiltersProps) {
   // Will be used in future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   const _availableProductNames = availableProductNames;
   const shippingMethods = availableShippingMethods; // Use the passed prop
   const router = useRouter();
