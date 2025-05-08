@@ -21,7 +21,7 @@ type DataPoint = { time: string; revenue: number };
 type ApiResponse = { data: DataPoint[]; total: number };
 interface Props { defaultDays?: string }
 
-export default function RevenueOverTimeChart({ defaultDays = '7' }: Props) {
+export default function RevenueOverTimeChart({ defaultDays = '7' }: Props): JSX.Element {
   const [days, setDays] = useState<string>(defaultDays);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);

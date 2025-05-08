@@ -113,7 +113,7 @@ export default function PlannerPage(): React.ReactNode {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  const startTimer = () => {
+  const startTimer = (): void => {
     setElapsedTime(0);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -243,7 +243,7 @@ export default function PlannerPage(): React.ReactNode {
   // Effect to load data ONLY on initial mount - Simplified
   // Define loadLatestPlan with proper dependencies
   const loadLatestPlan = useCallback(
-    async (showLoading = true) => {
+    async (showLoading = true): Promise<void> => {
       if (showLoading) setInitialLoading(true);
       setError(null);
       console.log('[PlannerPage] Loading latest plan...');
@@ -478,7 +478,7 @@ export default function PlannerPage(): React.ReactNode {
   }, []); // Empty dependency array: Run only once on mount
 
   const pollOptimizationStatus = useCallback(
-    async (runId: string | null) => {
+    async (runId: string | null): Promise<void> => {
       try {
         if (!runId) {
           console.warn('[PlannerPage] pollOptimizationStatus called with null runId.');
@@ -527,7 +527,7 @@ export default function PlannerPage(): React.ReactNode {
     [loadLatestPlan, stopPolling, stopTimer] // Now depends on the recreated loadLatestPlan
   );
 
-  const runNewOptimization = async () => {
+  const runNewOptimization = async (): Promise<void> => {
     if (optimizing || polling) return;
 
     setOptimizing(true);
@@ -589,7 +589,7 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
-  const runTodayOptimization = async () => {
+  const runTodayOptimization = async (): Promise<void> => {
     if (optimizing || polling) return;
 
     setOptimizing(true);
@@ -650,7 +650,7 @@ export default function PlannerPage(): React.ReactNode {
     }
   };
 
-  const runTodayTomorrowOptimization = async () => {
+  const runTodayTomorrowOptimization = async (): Promise<void> => {
     if (optimizing || polling) return;
 
     setOptimizing(true);
