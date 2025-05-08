@@ -93,7 +93,7 @@ export default function RevenueOverTimeChart({ defaultDays = '7' }: Props): JSX.
     scales: {
       y: {
         ticks: {
-          callback: (value: number | string, _index: number, _ticks: Tick[]): string => `£${value}`,
+          callback: (value: number | string): string => `£${value}`,
         },
       },
     },

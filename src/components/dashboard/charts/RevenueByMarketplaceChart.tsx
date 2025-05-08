@@ -99,7 +99,7 @@ export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props):
     scales: {
       y: {
         ticks: {
-          callback: (value: number | string, _index: number, _ticks: Tick[]): string => `£${value}`
+          callback: (value: number | string): string => `£${value}`
         }
       }
     }
