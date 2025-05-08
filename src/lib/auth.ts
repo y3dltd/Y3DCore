@@ -31,6 +31,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials: Record<"email" | "password", string> | undefined, 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
         _req: Pick<RequestInternal, "query" | "body" | "headers" | "method">): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
