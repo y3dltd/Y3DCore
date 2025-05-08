@@ -158,3 +158,4 @@ node_modules/
 .venv
 fix-quantity-mismatches.sh
 mismatched-order-numbers.txt
+gkey.json
