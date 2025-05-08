@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -404,94 +405,132 @@ function ActionCellComponent({
 
 export const columns: ColumnDef<ClientPrintTaskData>[] = [
   {
-    accessorKey: 'product.sku',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        SKU <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate')
+        }
+        onCheckedChange={(value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        className="border-gray-400 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+      />
     ),
-    cell: ({ row }) => {
-      const sku = row.original.product?.sku || 'N/A';
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value: boolean | 'indeterminate') => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        className="border-gray-400 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: 'product.sku',
+    header: ({ column }) => {
       return (
-        <div
-          style={{
-            fontSize: '12px',
-            textOverflow: 'clip',
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            overflow: 'visible',
-            padding: '4px',
-            width: '100%',
-            maxWidth: '300px',
-            display: 'block',
-          }}
-          title={sku}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
-          {sku}
-        </div>
+          SKU
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const sku = row.getValue('product_sku') as string;
+      const product = row.original.product;
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="truncate font-mono text-xs max-w-[80px] cursor-default">
+                {sku}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start">
+              <p className="text-sm font-semibold">{product.name}</p>
+              <p className="text-xs text-muted-foreground">SKU: {sku}</p>
+              {product.weight && <p className="text-xs">Weight: {product.weight}g</p>}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     },
     enableSorting: true,
   },
   {
     accessorKey: 'product.name',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Product Name <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Product Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
-      const productName = row.original.product?.name || 'N/A';
+      const name = row.getValue('product_name') as string;
+      const productName = name || 'N/A';
       return (
         <div
-          style={{
-            fontSize: '12px',
-            textOverflow: 'clip',
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            overflow: 'visible',
-            padding: '4px',
-            width: '100%',
-            maxWidth: '350px',
-            display: 'block',
-          }}
           title={productName}
+          className="truncate max-w-[200px] whitespace-normal text-sm"
         >
           {productName}
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'quantity',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Qty <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const quantity = row.original.quantity;
-      return <div className="text-center">{quantity}</div>;
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Qty
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
     },
+    cell: ({ row }) => {
+      const quantity = row.getValue('quantity') as number;
+      if (quantity > 1) {
+        return (
+          <div className="text-center">
+            <Badge variant="default" className="bg-blue-500 text-white px-2 py-0.5 text-xs">
+              {quantity}
+            </Badge>
+          </div>
+        );
+      }
+      return <div className="text-center text-sm">{quantity}</div>;
+    },
+    enableSorting: true,
   },
   {
     accessorKey: 'color_1',
-    header: 'Color 1',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Color 1
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const color = row.original.color_1;
       if (!color) return <div className="text-center">-</div>;
@@ -508,10 +547,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'color_2',
-    header: 'Color 2',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Color 2
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const color = row.original.color_2;
       if (!color) return <div className="text-center">-</div>;
@@ -528,10 +578,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'custom_text',
-    header: () => <div className="text-left">Custom Text</div>,
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Personalisation
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const customText = row.getValue('custom_text') as string | null;
       const fullText = customText || '';
@@ -575,7 +636,17 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
   },
   {
     accessorKey: 'status',
-    header: 'Status',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Status
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const status = row.original.status;
       let indicator;
@@ -631,19 +702,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 
       return <div className="flex justify-center status-cell">{indicator}</div>;
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'created_at',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="px-2 py-1 h-7"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      >
-        Created <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
-    ),
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Created
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const date = row.original.created_at;
       return (
@@ -655,10 +728,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'order.requested_shipping_service',
-    header: 'Shipping',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Shipping
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const shippingService = row.original.order?.requested_shipping_service;
       const shippingAlias = getShippingAlias(shippingService);
@@ -699,10 +783,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'order.marketplace',
-    header: 'Marketplace',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Marketplace
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const marketplace = row.original.order?.marketplace;
       const marketplaceAlias = getMarketplaceAlias(marketplace);
@@ -717,82 +812,50 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
         </div>
       );
     },
+    enableSorting: true,
   },
   {
     accessorKey: 'marketplace_order_number',
-    header: () => <div className="font-medium text-center">Marketplace ID</div>,
-    cell: ({ row }) => {
-      const marketplaceId = row.original.marketplace_order_number || 'N/A';
-      const text = `${marketplaceId}`;
-
-      const handleCopy = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        if (text && text !== 'N/A') {
-          navigator.clipboard
-            .writeText(text)
-            .then(() => toast.success(`Copied: ${text}`))
-            .catch(() => toast.error('Failed to copy'));
-        }
-      };
-
+    header: ({ column }) => {
       return (
-        <div className="flex items-center justify-center space-x-2 px-2">
-          <span className="text-sm font-medium">{text}</span>
-          {text !== 'N/A' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-full"
-              onClick={handleCopy}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Order ID
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
       );
     },
-  },
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <div className="flex justify-center">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          checked={
-            table.getIsAllPageRowsSelected() 
-              ? true 
-              : table.getIsSomePageRowsSelected() 
-                ? false 
-                : false
-          }
-          onChange={e => table.toggleAllPageRowsSelected(!!e.target.checked)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex justify-center select-cell">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          checked={row.getIsSelected()}
-          onChange={e => row.toggleSelected(!!e.target.checked)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
+    cell: ({ row }) => {
+      const orderNum = row.original.order?.marketplace_order_number;
+      const orderLink = row.original.orderLink;
+
+      if (orderLink) {
+        return (
+          <Link
+            href={orderLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 hover:underline text-xs"
+          >
+            {orderNum || 'View Order'}
+          </Link>
+        );
+      }
+      return <div className="text-xs">{orderNum || 'N/A'}</div>;
+    },
+    enableSorting: true,
   },
   {
     id: 'actions',
+    cell: ActionCellComponent,
+    enableSorting: false,
     enableHiding: false,
-    cell: ({ row, table }) => <ActionCellComponent row={row} table={table} />,
   },
 ];
 
-interface PrintQueueTableProps {
+export interface PrintQueueTableProps {
   data: ClientPrintTaskData[];
   onSelectTask?: (task: ClientPrintTaskData) => void;
 }

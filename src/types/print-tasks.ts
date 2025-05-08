@@ -39,6 +39,7 @@ export interface ClientPrintTaskData
   order?: {
     requested_shipping_service: string | null;
     marketplace?: string | null;
+    marketplace_order_number?: string | null;
     // Avoid passing full customer or order objects unless explicitly serialized
   };
   // Add product_name explicitly if needed by client components that use this type
