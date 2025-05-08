@@ -14,7 +14,7 @@ import { Bar } from 'react-chartjs-2';
 
 import { formatMarketplaceName, MARKETPLACE_DISPLAY } from '@/lib/marketplace-utils';
 
-import type { ChartOptions, Tick, ScriptableContext } from 'chart.js';
+import type { ChartOptions, ScriptableContext } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
