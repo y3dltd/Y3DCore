@@ -238,10 +238,10 @@ const getColorInfo = (
 
 // Marketplace styles are defined at the bottom of the file
 
-// Helper function to format dates
-const formatRelativeDate = (date: Date | null): string => {
+// Helper function to format dates - Modified to accept string or Date
+const formatRelativeDate = (date: Date | string | null): string => {
   if (!date) return 'N/A';
-  const dateObj = new Date(date);
+  const dateObj = date instanceof Date ? date : new Date(date);
   if (isToday(dateObj)) return 'Today';
   if (isTomorrow(dateObj)) return 'Tomorrow';
   if (isYesterday(dateObj)) return 'Yesterday';
@@ -505,10 +505,10 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     },
   },
   {
-    accessorKey: 'color1',
+    accessorKey: 'color_1',
     header: 'Color 1',
     cell: ({ row }) => {
-      const color = row.original.color1;
+      const color = row.original.color_1;
       if (!color) return <div className="text-center">-</div>;
 
       const { bgClass, textClass } = getColorInfo(color);
@@ -525,10 +525,10 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     },
   },
   {
-    accessorKey: 'color2',
+    accessorKey: 'color_2',
     header: 'Color 2',
     cell: ({ row }) => {
-      const color = row.original.color2;
+      const color = row.original.color_2;
       if (!color) return <div className="text-center">-</div>;
 
       const { bgClass, textClass } = getColorInfo(color);
@@ -684,7 +684,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
 
       return (
         <div className="flex justify-center">
-          <Badge className={`${style.bg} ${style.text}`} variant="solid">
+          <Badge className={`${style.bg} ${style.text}`} variant="default">
             {marketplaceAlias}
           </Badge>
         </div>
@@ -731,8 +731,11 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
           type="checkbox"
           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
           checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
+            table.getIsAllPageRowsSelected() 
+              ? true 
+              : table.getIsSomePageRowsSelected() 
+                ? false 
+                : false
           }
           onChange={e => table.toggleAllPageRowsSelected(!!e.target.checked)}
           aria-label="Select all"
