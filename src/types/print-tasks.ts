@@ -95,7 +95,10 @@ export interface PrintTaskCardProps {
   orderId: string;
   status: PrintTaskStatus;
   items: PrintItem[]; // List of items included in the task (now with item-specific details)
-  onStatusChange?: (taskId: string, newStatus: PrintTaskStatus) => void;
+  onStatusChange?: (
+    taskId: string, 
+    newStatus: PrintTaskStatus
+  ) => void;
   // New: colours explicitly loaded for this plate (from AI optimiser)
   colorsLoaded?: string[];
 }
