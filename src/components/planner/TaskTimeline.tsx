@@ -24,10 +24,12 @@ const getStatusColor = (status: PrintTaskStatus): string => {
 interface TaskTimelineProps {
   tasks: PrintTaskCardProps[];
   activeTaskId: string | null;
-  onTaskSelect?: (taskId: string) => void;
+  onTaskSelect?: (
+    taskId: string
+  ) => void;
 }
 
-export const TaskTimeline = ({ tasks, activeTaskId, onTaskSelect }: TaskTimelineProps) => {
+export const TaskTimeline = ({ tasks, activeTaskId, onTaskSelect }: TaskTimelineProps): JSX.Element => {
   return (
     <Card className="h-full w-64 border-r shadow-none rounded-none" shadow="none" radius="none">
       <CardBody className="overflow-y-auto p-0 flex flex-col justify-center">
