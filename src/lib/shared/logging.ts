@@ -5,19 +5,27 @@
 
 export interface Logger {
   info: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     context?: Record<string, unknown>
   ) => void;
   warn: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     context?: Record<string, unknown>
   ) => void;
   error: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     context?: Record<string, unknown>
   ) => void;
   debug: (
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     message: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     context?: Record<string, unknown>
   ) => void;
 }
