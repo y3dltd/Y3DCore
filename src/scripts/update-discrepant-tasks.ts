@@ -562,7 +562,6 @@ async function applyAiUpdatesToTasks(
 // --- Main Execution ---
 async function main() {
     console.log("--- DEBUG: main() function started ---");
-    const _SCRIPT_NAME = 'update-discrepant-tasks';
     let cmdOptions: UpdateOptions;
 
     try {
