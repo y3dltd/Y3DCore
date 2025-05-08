@@ -30,7 +30,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials: Record<"email" | "password", string> | undefined, _req: Pick<RequestInternal, "query" | "body" | "headers" | "method">): Promise<{ id: string; email: string | null } | null> {
+      async authorize(credentials: Record<"email" | "password", string> | undefined, 
+        _req: Pick<RequestInternal, "query" | "body" | "headers" | "method">): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
           return null;
