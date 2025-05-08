@@ -1,4 +1,3 @@
-// import { Order } from '@prisma/client'; // Unused import
 import { Prisma } from '@prisma/client'; // Import Prisma types for where clause
 import {
   DollarSign, // Example icon for revenue
@@ -38,41 +37,9 @@ import { cn } from '@/lib/utils'; // Import cn utility for className concatenati
 export const dynamic = 'force-dynamic';
 
 // Define the currency symbol
-// const CURRENCY_SYMBOL = '£' // Remove this line
 
-// --- Date Helper Functions (UTC) ---
-function getStartOfTodayUTC(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-}
 
-function getStartOfYesterdayUTC(): Date {
-  const today = getStartOfTodayUTC();
-  return new Date(today.getTime() - 24 * 60 * 60 * 1000);
-}
 
-// Gets the start of the week (Monday 00:00 UTC)
-function getStartOfWeekUTC(date: Date = new Date()): Date {
-  const dayOfWeek = date.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-  const diff = date.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust Sunday to previous week
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), diff, 0, 0, 0, 0));
-}
-
-function getStartOfLastWeekUTC(): Date {
-  const startOfThisWeek = getStartOfWeekUTC();
-  return new Date(startOfThisWeek.getTime() - 7 * 24 * 60 * 60 * 1000);
-}
-
-// --- Percentage Change Helper ---
-function calculatePercentageChange(current: number, previous: number): string {
-  if (previous === 0) {
-    // Avoid division by zero
-    return current > 0 ? '+∞%' : '+0%'; // Indicate infinite increase or no change from zero
-  }
-  const change = ((current - previous) / previous) * 100;
-  const sign = change >= 0 ? '+' : '';
-  return `${sign}${change.toFixed(1)}%`; // One decimal place
-}
 
 // Replace mock data with actual database queries
 async function getDashboardStats() {

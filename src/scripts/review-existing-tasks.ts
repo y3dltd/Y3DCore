@@ -8,9 +8,9 @@ import path from 'path';
 
 import { PrintTaskStatus, Prisma, PrismaClient } from '@prisma/client';
 // REMOVED: import { Command } from 'commander';
-import dotenv from 'dotenv';
-import pino from 'pino';
-import z from 'zod';
+import { config } from 'dotenv';
+import { pino } from 'pino';
+import { z } from 'zod';
 
 import type { PrintOrderTask as PrintTask } from '@prisma/client';
 
@@ -75,7 +75,7 @@ type OrderWithItemsTasksAndProduct = Prisma.OrderGetPayload<{
 
 // --- Globals ---
 const prisma = new PrismaClient();
-dotenv.config();
+config();
 let logger: pino.Logger;
 let logStream: fsSync.WriteStream | null = null;
 

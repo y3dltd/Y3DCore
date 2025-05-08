@@ -22,7 +22,7 @@ type DataPoint = { marketplace: string; revenue: number };
 type ApiResponse = { data: DataPoint[]; total: number };
 interface Props { defaultDays?: string }
 
-export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props) {
+export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props): JSX.Element {
   const [days, setDays] = useState<string>(defaultDays);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,13 +37,13 @@ export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props) 
   }, [days]);
 
   // Filter out 'Unknown' marketplace from display
-  const filteredDataPoints = dataPoints.filter(d => d.marketplace.toLowerCase() !== 'unknown');
+  const filteredDataPoints = dataPoints.filter((d): boolean => d.marketplace.toLowerCase() !== 'unknown');
   
   // Get formatted labels and matching color scheme
-  const formattedLabels = filteredDataPoints.map(d => formatMarketplaceName(d.marketplace));
-  const filteredRevenues = filteredDataPoints.map(d => d.revenue);
+  const formattedLabels = filteredDataPoints.map((d): string => formatMarketplaceName(d.marketplace));
+  const filteredRevenues = filteredDataPoints.map((d): number => d.revenue);
   // Get the base colors for each marketplace
-  const marketplaceColors = filteredDataPoints.map(d => {
+  const marketplaceColors = filteredDataPoints.map((d): string[] => {
     const info = MARKETPLACE_DISPLAY[d.marketplace.toLowerCase()] || MARKETPLACE_DISPLAY.unknown;
     // Extract color from Tailwind class by getting the general color family
     const colorClass = info.badgeColor.split('-')[1];
@@ -61,7 +61,7 @@ export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props) 
   });
   
   // Function to create a gradient when the chart is rendered
-  function createGradient(ctx: CanvasRenderingContext2D, colors: string[]) {
+  function createGradient(ctx: CanvasRenderingContext2D, colors: string[]): CanvasGradient {
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, colors[0]);
     gradient.addColorStop(1, colors[1]);
@@ -99,7 +99,7 @@ export default function RevenueByMarketplaceChart({ defaultDays = '7' }: Props) 
     scales: {
       y: {
         ticks: {
-          callback: (value: number | string, _index: number, _ticks: Tick[]) => `£${value}`
+          callback: (value: number | string, _index: number, _ticks: Tick[]): string => `£${value}`
         }
       }
     }

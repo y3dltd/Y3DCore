@@ -1,0 +1,161 @@
+
+> y3dhub@0.1.0 lint
+> next lint
+
+
+./src/app/orders/page.tsx
+49:10  Warning: 'getStartOfYesterdayUTC' is defined but never used.  no-unused-vars
+49:10  Warning: 'getStartOfYesterdayUTC' is defined but never used.  @typescript-eslint/no-unused-vars
+61:10  Warning: 'getStartOfLastWeekUTC' is defined but never used.  no-unused-vars
+61:10  Warning: 'getStartOfLastWeekUTC' is defined but never used.  @typescript-eslint/no-unused-vars
+67:10  Warning: 'calculatePercentageChange' is defined but never used.  no-unused-vars
+67:10  Warning: 'calculatePercentageChange' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/planner/page.tsx
+4:10  Warning: 'Select' is defined but never used.  no-unused-vars
+111:10  Warning: 'optimizingRunId' is assigned a value but never used.  no-unused-vars
+
+./src/components/dashboard/charts/RevenueByMarketplaceChart.tsx
+102:46  Warning: '_index' is defined but never used.  no-unused-vars
+102:46  Warning: '_index' is defined but never used.  @typescript-eslint/no-unused-vars
+102:62  Warning: '_ticks' is defined but never used.  no-unused-vars
+102:62  Warning: '_ticks' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/dashboard/charts/RevenueOverTimeChart.tsx
+96:46  Warning: '_index' is defined but never used.  no-unused-vars
+96:46  Warning: '_index' is defined but never used.  @typescript-eslint/no-unused-vars
+96:62  Warning: '_ticks' is defined but never used.  no-unused-vars
+96:62  Warning: '_ticks' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/planner/TaskCarousel.tsx
+44:24  Warning: 'taskId' is defined but never used.  no-unused-vars
+44:40  Warning: 'itemId' is defined but never used.  no-unused-vars
+44:56  Warning: 'newStatus' is defined but never used.  no-unused-vars
+45:28  Warning: 'taskId' is defined but never used.  no-unused-vars
+45:44  Warning: 'newStatus' is defined but never used.  no-unused-vars
+
+./src/components/planner/TaskPage.tsx
+6:3  Warning: 'Card' is defined but never used.  no-unused-vars
+7:3  Warning: 'CardBody' is defined but never used.  no-unused-vars
+45:18  Warning: 'id' is defined but never used.  no-unused-vars
+
+./src/components/planner/TaskTimeline.tsx
+27:19  Warning: 'taskId' is defined but never used.  no-unused-vars
+
+./src/components/print-queue-filters.tsx
+112:9  Warning: 'productNames' is assigned a value but never used.  no-unused-vars
+291:9  Warning: 'handleColor1Change' is assigned a value but never used.  no-unused-vars
+299:9  Warning: 'handleColor2Change' is assigned a value but never used.  no-unused-vars
+307:9  Warning: 'handleColorChange' is assigned a value but never used.  no-unused-vars
+315:9  Warning: 'clearColor1' is assigned a value but never used.  no-unused-vars
+322:9  Warning: 'clearColor2' is assigned a value but never used.  no-unused-vars
+329:9  Warning: 'clearColor' is assigned a value but never used.  no-unused-vars
+342:9  Warning: 'clearShippingMethod' is assigned a value but never used.  no-unused-vars
+
+./src/components/print-queue-table.tsx
+254:15  Warning: 'task' is defined but never used.  no-unused-vars
+909:19  Warning: 'task' is defined but never used.  no-unused-vars
+1145:23  Warning: 'isPriority' is assigned a value but never used.  no-unused-vars
+
+./src/components/print-queue-task-totals.tsx
+30:9  Warning: 'cancelledItems' is assigned a value but never used.  no-unused-vars
+
+./src/components/ui/date-picker.tsx
+15:15  Warning: 'date' is defined but never used.  no-unused-vars
+
+./src/lib/auth.ts
+12:8  Warning: Using exported name 'CredentialsProvider' as identifier for default import.  import/no-named-as-default
+
+./src/lib/csv-utils.ts
+146:15  Warning: 'count' is defined but never used.  no-unused-vars
+147:13  Warning: 'count' is defined but never used.  no-unused-vars
+148:16  Warning: 'stats' is defined but never used.  no-unused-vars
+
+./src/lib/email/order-notifications.ts
+40:23  Warning: 'value' is defined but never used.  no-unused-vars
+
+./src/lib/email/system-notifications.ts
+6:5  Warning: 'CRITICAL' is defined but never used.  no-unused-vars
+7:5  Warning: 'ERROR' is defined but never used.  no-unused-vars
+8:5  Warning: 'WARNING' is defined but never used.  no-unused-vars
+12:5  Warning: 'ORDER_PROCESSING' is defined but never used.  no-unused-vars
+13:5  Warning: 'AI_SERVICE' is defined but never used.  no-unused-vars
+14:5  Warning: 'DATABASE' is defined but never used.  no-unused-vars
+15:5  Warning: 'SHIPSTATION' is defined but never used.  no-unused-vars
+16:5  Warning: 'SYNC' is defined but never used.  no-unused-vars
+17:5  Warning: 'AUTHENTICATION' is defined but never used.  no-unused-vars
+18:5  Warning: 'GENERAL' is defined but never used.  no-unused-vars
+
+./src/lib/marketplace-utils.ts
+1:10  Warning: 'cn' is defined but never used.  no-unused-vars
+1:10  Warning: 'cn' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/order-processing-v2/logger.ts
+7:8  Warning: Using exported name 'pino' as identifier for default import.  import/no-named-as-default
+42:13  Warning: Caution: `pino` also has a named export `multistream`. Check if you meant to write `import {multistream} from 'pino'` instead.  import/no-named-as-default-member
+
+./src/lib/order-processing-v2/orchestrator.ts
+299:27  Warning: '_dbResult' is assigned a value but never used.  no-unused-vars
+299:27  Warning: '_dbResult' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+370:11  Warning: '_SCRIPT_NAME' is assigned a value but never used.  no-unused-vars
+370:11  Warning: '_SCRIPT_NAME' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/orders/amazon/__tests__/customization.test.ts
+39:60  Warning: 'value' is defined but never used.  no-unused-vars
+62:60  Warning: 'value' is defined but never used.  no-unused-vars
+
+./src/lib/orders/sync.ts
+5:10  Warning: 'sendSystemNotification' is defined but never used.  no-unused-vars
+5:10  Warning: 'sendSystemNotification' is defined but never used.  @typescript-eslint/no-unused-vars
+5:34  Warning: 'ErrorSeverity' is defined but never used.  no-unused-vars
+5:34  Warning: 'ErrorSeverity' is defined but never used.  @typescript-eslint/no-unused-vars
+5:49  Warning: 'ErrorCategory' is defined but never used.  no-unused-vars
+5:49  Warning: 'ErrorCategory' is defined but never used.  @typescript-eslint/no-unused-vars
+812:12  Warning: Unexpected constant condition.  no-constant-condition
+971:12  Warning: Unexpected constant condition.  no-constant-condition
+
+./src/lib/shared/database.ts
+14:8  Warning: '_tx' is defined but never used.  no-unused-vars
+
+./src/lib/shared/logging.ts
+7:10  Warning: '_message' is defined but never used.  no-unused-vars
+7:28  Warning: '_context' is defined but never used.  no-unused-vars
+8:10  Warning: '_message' is defined but never used.  no-unused-vars
+8:28  Warning: '_context' is defined but never used.  no-unused-vars
+9:11  Warning: '_message' is defined but never used.  no-unused-vars
+9:29  Warning: '_context' is defined but never used.  no-unused-vars
+10:11  Warning: '_message' is defined but never used.  no-unused-vars
+10:29  Warning: '_context' is defined but never used.  no-unused-vars
+
+./src/lib/shared/metrics.ts
+17:18  Warning: '_metric' is defined but never used.  no-unused-vars
+
+./src/scripts/populate-print-queue.ts
+12:8  Warning: Using exported name 'pino' as identifier for default import.  import/no-named-as-default
+13:8  Warning: Using exported name 'z' as identifier for default import.  import/no-named-as-default
+24:1  Warning: Caution: `dotenv` also has a named export `config`. Check if you meant to write `import {config} from 'dotenv'` instead.  import/no-named-as-default-member
+1123:7  Warning: Caution: `pino` also has a named export `multistream`. Check if you meant to write `import {multistream} from 'pino'` instead.  import/no-named-as-default-member
+
+./src/scripts/print-tasks.ts
+14:1  Warning: Caution: `dotenv` also has a named export `config`. Check if you meant to write `import {config} from 'dotenv'` instead.  import/no-named-as-default-member
+
+./src/scripts/review-existing-tasks.ts
+12:8  Warning: Using exported name 'pino' as identifier for default import.  import/no-named-as-default
+13:8  Warning: Using exported name 'z' as identifier for default import.  import/no-named-as-default
+78:1  Warning: Caution: `dotenv` also has a named export `config`. Check if you meant to write `import {config} from 'dotenv'` instead.  import/no-named-as-default-member
+284:45  Warning: Caution: `pino` also has a named export `multistream`. Check if you meant to write `import {multistream} from 'pino'` instead.  import/no-named-as-default-member
+420:15  Warning: '_errorMsg' is assigned a value but never used.  no-unused-vars
+420:15  Warning: '_errorMsg' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/scripts/update-discrepant-tasks.ts
+9:8  Warning: Using exported name 'pino' as identifier for default import.  import/no-named-as-default
+10:8  Warning: Using exported name 'z' as identifier for default import.  import/no-named-as-default
+129:1  Warning: Caution: `dotenv` also has a named export `config`. Check if you meant to write `import {config} from 'dotenv'` instead.  import/no-named-as-default-member
+565:11  Warning: '_SCRIPT_NAME' is assigned a value but never used.  no-unused-vars
+565:11  Warning: '_SCRIPT_NAME' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./src/types/print-tasks.ts
+98:21  Warning: '_taskId' is defined but never used.  no-unused-vars
+98:38  Warning: '_newStatus' is defined but never used.  no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

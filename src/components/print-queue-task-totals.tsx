@@ -26,8 +26,7 @@ export function PrintQueueTaskTotals({ tasks }: PrintQueueTaskTotalsProps) {
   const completedItems = sumQuantity(
     tasks.filter(task => task.status === PrintTaskStatus.completed)
   );
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const cancelledItems = sumQuantity(
+  const _cancelledItems = sumQuantity(
     tasks.filter(task => task.status === PrintTaskStatus.cancelled)
   );
   const needsReviewItems = sumQuantity(tasks.filter(task => task.needs_review));

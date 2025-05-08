@@ -2,7 +2,6 @@ import { Customer, Prisma, Product } from '@prisma/client';
 import axios from 'axios';
 
 import { sendNewOrderNotification } from '../email/order-notifications';
-import { sendSystemNotification, ErrorSeverity, ErrorCategory } from '../email/system-notifications';
 import { prisma } from '../shared/database'; // Use relative path
 import { logger } from '../shared/logging'; // Import logger
 // --- Imports ---
@@ -809,6 +808,7 @@ export async function syncAllPaginatedOrders(
       lastProcessedTimestamp: new Date(dateStartFilter), // Use correct field name
     });
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         logger.info(`[Full Sync] Fetching page ${page}... (Reported total pages: ${totalPages})`);
@@ -968,6 +968,7 @@ export async function syncRecentOrders(
     let page = 1;
     let totalPages = 1;
     logger.info('[Recent Sync] Fetching all relevant orders from ShipStation...');
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         logger.info(`[Recent Sync] Fetching page ${page}... (Reported total pages: ${totalPages})`);

@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 
 import { PrismaClient, Prisma, PrintTaskStatus } from '@prisma/client';
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -11,7 +11,7 @@ import { logger } from '@/lib/shared/logging';
 const prisma = new PrismaClient();
 
 // Load environment variables
-dotenv.config();
+config();
 
 // Log script start
 logger.info('print-tasks.ts script started');

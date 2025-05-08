@@ -2,12 +2,15 @@ import { logger } from '../shared/logging'
 
 import { sendEmail } from './send-email'
 
+/* eslint-disable no-unused-vars */
 export enum ErrorSeverity {
     CRITICAL = 'CRITICAL',
     ERROR = 'ERROR',
     WARNING = 'WARNING'
 }
+/* eslint-enable no-unused-vars */
 
+/* eslint-disable no-unused-vars */
 export enum ErrorCategory {
     ORDER_PROCESSING = 'ORDER_PROCESSING',
     AI_SERVICE = 'AI_SERVICE',
@@ -17,6 +20,7 @@ export enum ErrorCategory {
     AUTHENTICATION = 'AUTHENTICATION',
     GENERAL = 'GENERAL'
 }
+/* eslint-enable no-unused-vars */
 
 interface SystemNotificationOptions {
     // Admin recipients for system notifications
@@ -184,4 +188,4 @@ function formatErrorDetails(details: unknown, includeStack = true): string {
     }
 
     return formattedDetails;
-} 
+}    

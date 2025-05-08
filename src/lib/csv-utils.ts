@@ -143,9 +143,9 @@ export async function updateTaskFromCSVRow(taskData: Record<string, string>): Pr
  */
 export async function processCSVImport(
   file: File, 
-  onSuccess: (count: number) => void,
-  onError: (count: number) => void,
-  onComplete: (stats: { success: number; failed: number; total: number }) => void
+  onSuccess: (_count: number) => void,
+  onError: (_count: number) => void,
+  onComplete: (_stats: { success: number; failed: number; total: number }) => void
 ): Promise<void> {
   parse(file, {
     header: true,

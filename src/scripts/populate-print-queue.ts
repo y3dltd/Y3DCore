@@ -8,9 +8,9 @@ import util from 'util';
 // External dependencies
 import { OrderItem, PrintTaskStatus, Prisma, PrismaClient, Product } from '@prisma/client';
 import { Command } from 'commander';
-import dotenv from 'dotenv';
-import pino from 'pino';
-import z from 'zod';
+import { config } from 'dotenv';
+import { pino } from 'pino';
+import { z } from 'zod';
 
 // Internal/local imports
 import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
@@ -21,7 +21,7 @@ import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/share
 const prisma = new PrismaClient();
 
 // Load environment variables
-dotenv.config();
+config();
 
 // Helper Variables for Logging Scope
 let logStream: fsSync.WriteStream | null = null;

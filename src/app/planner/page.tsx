@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
-
-import { Select } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -108,7 +105,7 @@ export default function PlannerPage(): React.ReactNode {
     completedTasks: 0,
     lastUpdated: new Date().toISOString(),
   });
-  const [optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
+  const [_optimizingRunId, setOptimizingRunId] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [savedRuns, setSavedRuns] = useState<{ id: string; finishedAt: string }[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);

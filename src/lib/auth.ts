@@ -9,7 +9,8 @@
 
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import CredentialsProviderModule from 'next-auth/providers/credentials';
+const CredentialsProvider = CredentialsProviderModule;
 
 import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/server-only/auth-password';
@@ -26,7 +27,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "jsmith@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials): Promise<{ id: string; email: string | null } | null> {
+      async authorize(credentials: any): Promise<{ id: string; email: string | null } | null> {
         if (!credentials?.email || !credentials.password) {
           console.log('Auth: Missing credentials');
           return null;
@@ -55,13 +56,13 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }): Promise<any> {
       if (user) {
         token.id = user.id;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }): Promise<any> {
       if (token?.id && session.user) {
         (session.user as { id: string } & typeof session.user).id = token.id as string;
       }

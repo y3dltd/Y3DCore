@@ -272,7 +272,7 @@ function ActionCellComponent({
   const [isPending, startTransition] = useTransition(); // Hooks are safe here
   const currentStatus = task.status;
 
-  const handleStatusUpdate = (newStatus: PrintTaskStatus) => {
+  const handleStatusUpdate = (newStatus: PrintTaskStatus): void => {
     startTransition(async () => {
       try {
         await updateTaskStatus(task.id, newStatus);
@@ -286,7 +286,7 @@ function ActionCellComponent({
     });
   };
 
-  const handleCopyId = () => {
+  const handleCopyId = (): void => {
     navigator.clipboard
       .writeText(task.id.toString())
       .then(() => toast.success(`Task ID ${task.id} copied!`))
@@ -294,7 +294,7 @@ function ActionCellComponent({
   };
 
   // Quick action button based on current status
-  const renderQuickActionButton = () => {
+  const renderQuickActionButton = (): React.ReactNode => {
     if (currentStatus === PrintTaskStatus.pending) {
       return (
         <Button
@@ -1141,8 +1141,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps) {
                 // Check for priority shipping methods
                 const isSpecialDelivery = shippingAlias === 'Special Delivery';
                 const isTracked24 = shippingAlias === 'Tracked24';
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const isPriority = isSpecialDelivery || isTracked24;
+                const _isPriority = isSpecialDelivery || isTracked24;
 
                 // Row styling based on status and shipping method
                 const rowClassName = cn(

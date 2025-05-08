@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 import { Button, Progress, Tooltip } from '@nextui-org/react';
 import { PrintTaskStatus } from '@prisma/client';
@@ -41,8 +40,8 @@ const colorMap: Record<string, string> = {
 interface TaskCarouselProps {
   tasks: PrintTaskCardProps[];
   className?: string;
-  onTaskStatusChange: (taskId: string, itemId: string, newStatus: PrintTaskStatus) => void;
-  onBulkTaskStatusChange: (taskId: string, newStatus: PrintTaskStatus) => void;
+  onTaskStatusChange: (_taskId: string, _itemId: string, _newStatus: PrintTaskStatus) => void;
+  onBulkTaskStatusChange: (_taskId: string, _newStatus: PrintTaskStatus) => void;
 }
 
 // Helper function to generate a gradient from colors - Simplified Logic
@@ -75,7 +74,7 @@ const getGradientFromColors = (colors: { color: string; displayName: string }[])
 };
 
 // helper to get colors for ribbon
-const getColorsForRibbon = (task: PrintTaskCardProps) => {
+const getColorsForRibbon = (task: PrintTaskCardProps): { color: string; displayName: string }[] => {
   if (task.colorsLoaded && task.colorsLoaded.length > 0) {
     // Ensure color strings are handled, provide default for null/undefined
     return task.colorsLoaded.map(c => ({ color: c ?? 'Unknown', displayName: c ?? 'Unknown' }));
@@ -102,7 +101,7 @@ const deriveColorsFromItems = (items: PrintItem[]): { color: string; displayName
 };
 
 // Helper function to copy text to clipboard
-const copyToClipboard = (text: string) => {
+const copyToClipboard = (text: string): void => {
   navigator.clipboard.writeText(text).then(
     () => {
       console.log('Text copied to clipboard:', text);
@@ -128,7 +127,7 @@ const TaskCarousel: React.FC<TaskCarouselProps> = ({
   }
 
   // Helper to confirm bulk status change per plate
-  const confirmAndBulkUpdate = (taskId: string, newStatus: PrintTaskStatus) => {
+  const confirmAndBulkUpdate = (taskId: string, newStatus: PrintTaskStatus): void => {
     let actionLabel = 'update';
     if (newStatus === PrintTaskStatus.in_progress) actionLabel = 'mark as In Progress';
     else if (newStatus === PrintTaskStatus.completed) actionLabel = 'mark as Complete';
