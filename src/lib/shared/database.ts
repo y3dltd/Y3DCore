@@ -11,7 +11,7 @@ export { prisma, Prisma };
 
 // Optional: Add transaction helper function if needed frequently
 export async function runInTransaction<T>(
-  fn: (_tx: Prisma.TransactionClient) => Promise<T>
+  fn: (tx: Prisma.TransactionClient) => Promise<T>
 ): Promise<T> {
   return prisma.$transaction(fn);
 }

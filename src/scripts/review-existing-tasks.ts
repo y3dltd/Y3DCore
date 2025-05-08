@@ -417,7 +417,6 @@ async function main() {
 
 
     } catch (error) {
-        const _errorMsg = error instanceof Error ? error.message : String(error);
         if (logger) logger.error('SCRIPT FAILED', error);
         else console.error('SCRIPT FAILED', error);
         process.exitCode = 1; // Indicate failure
