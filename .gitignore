@@ -156,3 +156,5 @@ node_modules/
 
 #Misc
 .venv
+fix-quantity-mismatches.sh
+mismatched-order-numbers.txt
