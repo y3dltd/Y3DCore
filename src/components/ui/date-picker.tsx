@@ -12,7 +12,9 @@ interface DatePickerProps {
   name: string; // For form submission
   value?: string; // ISO String date from URL param (YYYY-MM-DD)
   placeholder?: string; // Optional placeholder text
-  onSelect?: (date: Date | undefined) => void; // Optional callback on select
+  onSelect?: (
+    date: Date | undefined
+  ) => void; // Optional callback on select
 }
 
 export function DatePicker({
