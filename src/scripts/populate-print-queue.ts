@@ -181,18 +181,18 @@ async function extractOrderPersonalization(
   type OrderItemWithProduct = Prisma.OrderItemGetPayload<{ include: { product: true } }>;
 
   const itemsForPrompt: AiOrderItemData[] = order.items
-    .filter((orderItem: OrderItemWithProduct) => orderItem.lineItemKey != null)
-    .map((orderItem: OrderItemWithProduct): AiOrderItemData => {
+    .filter((orderItem: OrderWithItemsAndProducts['items'][number]) => orderItem.shipstationLineItemKey != null)
+    .map((orderItem: OrderWithItemsAndProducts['items'][number]): AiOrderItemData => {
       const simplifiedName = simplifyProductName(
-        orderItem.product?.name ?? orderItem.name ?? '',
+        orderItem.product?.name ?? '', // Correctly access product name, provide default
         productNameMappings
       );
       return {
-        id: orderItem.lineItemKey!, // lineItemKey is non-null due to filter
-        sku: orderItem.product?.sku ?? orderItem.sku,
+        id: orderItem.shipstationLineItemKey!, // lineItemKey is non-null due to filter
+        sku: orderItem.product?.sku ?? '', // Correctly access product SKU, provide default
         name: simplifiedName,
         quantity: orderItem.quantity,
-        options: orderItem.options?.map((opt: { name: string; value: string; }) => ({ name: opt.name, value: opt.value })) ?? [],
+        options: [], // Changed from orderItem.options
         productName: orderItem.product?.name,
         productId: orderItem.product?.id,
       };
@@ -210,22 +210,22 @@ async function extractOrderPersonalization(
   }
 
   const inputData: AiPromptData = {
-    orderId: order.id,
-    orderNumber: order.shipstation_order_number,
-    orderDate: order.orderDate.toISOString(),
-    marketplace: order.marketplace,
+    orderId: order.id, // Changed to be the numeric database ID
+    orderNumber: order.shipstation_order_number ?? 'N/A', // Provide default if null
+    orderDate: order.order_date ? order.order_date.toISOString() : new Date().toISOString(), // Handle potential null before toISOString()
+    marketplace: order.marketplace ?? 'Unknown',
     customerNotes: order.customer_notes,
     internalNotes: order.internal_notes,
     items: itemsForPrompt,
     shippingAddress: {
-      name: order.shipToName,
-      street1: order.shipToStreet1,
-      street2: order.shipToStreet2,
-      city: order.shipToCity,
-      state: order.shipToState,
-      postalCode: order.shipToPostalCode,
-      country: order.shipToCountry,
-      phone: order.shipToPhone,
+      name: order.customer?.name ?? '',
+      street1: order.customer?.street1 ?? '',
+      street2: order.customer?.street2 ?? '',
+      city: order.customer?.city ?? '',
+      state: order.customer?.state ?? '',
+      postalCode: order.customer?.postal_code ?? '',
+      country: order.customer?.country_code ?? '', // Use country_code from Customer
+      phone: order.customer?.phone ?? '',
     },
   };
 
@@ -449,12 +449,109 @@ async function createOrUpdateTasksInTransaction(
   options: ProcessingOptions,
   orderDebugInfo: OrderDebugInfo
 ): Promise<{ tasksCreatedCount: number; tasksSkippedCount: number; itemsNeedReviewCount: number }> {
+  // Fetch the order again within the transaction to ensure data consistency and full type compatibility
   const orderInTx: OrderWithItemsAndProducts = await tx.order.findUniqueOrThrow({
     where: { id: order.id },
-    include: {
+    select: { // Explicit select to match OrderWithItemsAndProducts structure
+      // Order scalar fields
+      id: true,
+      shipstation_order_id: true,
+      shipstation_order_number: true,
+      customerId: true,
+      customer_name: true,
+      order_status: true,
+      order_key: true,
+      order_date: true,
+      payment_date: true,
+      ship_by_date: true,
+      shipping_price: true,
+      tax_amount: true,
+      discount_amount: true,
+      shipping_amount_paid: true,
+      shipping_tax: true,
+      total_price: true,
+      gift: true,
+      gift_message: true,
+      gift_email: true,
+      requested_shipping_service: true,
+      carrier_code: true,
+      service_code: true,
+      package_code: true,
+      confirmation: true,
+      tracking_number: true,
+      shipped_date: true,
+      warehouse_id: true,
+      customer_notes: true,
+      internal_notes: true,
+      last_sync_date: true,
+      notes: true,
+      created_at: true,
+      updated_at: true,
+      marketplace: true,
+      amount_paid: true,
+      order_weight_units: true,
+      order_weight_value: true,
+      payment_method: true,
+      shipstation_store_id: true,
+      tag_ids: true,
+      dimensions_height: true,
+      dimensions_length: true,
+      dimensions_units: true,
+      dimensions_width: true,
+      insurance_insure_shipment: true,
+      insurance_insured_value: true,
+      insurance_provider: true,
+      internal_status: true,
+      is_voided: true,
+      marketplace_notified: true,
+      void_date: true,
+      lastPackingSlipAt: true,
+      is_merged: true,
+      merged_to_order_id: true,
+      merged_from_order_ids: true,
+
+      // Customer relation (as per OrderWithItemsAndProducts)
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          shipstation_customer_id: true,
+          company: true,
+          street1: true,
+          street2: true,
+          street3: true,
+          city: true,
+          state: true,
+          postal_code: true,
+          country: true,
+          country_code: true,
+          customer_notes: true,
+          created_at: true,
+          updated_at: true,
+          address_verified_status: true,
+          is_residential: true,
+        },
+      },
+
+      // Items relation (as per OrderWithItemsAndProducts)
       items: {
+        select: {
+          id: true,
+          orderId: true,
+          quantity: true,
+          unit_price: true,
+          print_settings: true,
+          created_at: true,
+          updated_at: true,
+          shipstationLineItemKey: true,
+          productId: true,
+        },
         include: {
           product: true,
+          printTasks: true,
         },
       },
     },
@@ -948,7 +1045,7 @@ async function main() {
       )
       .option('-l, --limit <number>', 'Limit orders fetched', val => parseInt(val, 10))
       .option('--openai-api-key <key>', 'OpenAI API Key', process.env.OPENAI_API_KEY)
-      .option('--openai-model <model>', 'OpenAI model', 'gpt-4.1-mini')
+      .option('--openai-model <model>', 'OpenAI model', 'gpt-4.1')
       .option('--debug', 'Enable debug logging', false)
       .option('--verbose', 'Enable verbose logging', false)
       .option('--log-level <level>', 'Set log level', 'info')
@@ -1264,7 +1361,7 @@ Options:
   --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
   --limit <number>          Limit orders fetched (no default; fetch all orders)
   --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
-  --openai-model <model>    OpenAI model (default: gpt-4-turbo)
+  --openai-model <model>    OpenAI model (default: gpt-4.1)
   --debug                   Enable debug logging
   --verbose                 Enable verbose logging
   --log-level <level>       Set log level (default: info)

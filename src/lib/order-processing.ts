@@ -7,14 +7,106 @@ const logger = getLogger('order-processing');
 
 // Define the type for an Order including its items, products, and print tasks
 export type OrderWithItemsAndProducts = Prisma.OrderGetPayload<{
+  select: { 
+    id: true,
+    shipstation_order_id: true,
+    shipstation_order_number: true,
+    customerId: true,
+    customer_name: true,
+    order_status: true,
+    order_key: true,
+    order_date: true,
+    payment_date: true,
+    ship_by_date: true,
+    shipping_price: true,
+    tax_amount: true,
+    discount_amount: true,
+    shipping_amount_paid: true,
+    shipping_tax: true,
+    total_price: true,
+    gift: true,
+    gift_message: true,
+    gift_email: true,
+    requested_shipping_service: true,
+    carrier_code: true,
+    service_code: true,
+    package_code: true,
+    confirmation: true,
+    tracking_number: true,
+    shipped_date: true,
+    warehouse_id: true,
+    customer_notes: true,
+    internal_notes: true,
+    last_sync_date: true,
+    notes: true, 
+    created_at: true, 
+    updated_at: true, 
+    marketplace: true,
+    amount_paid: true,
+    order_weight_units: true,
+    order_weight_value: true,
+    payment_method: true,
+    shipstation_store_id: true,
+    tag_ids: true,
+    dimensions_height: true,
+    dimensions_length: true,
+    dimensions_units: true,
+    dimensions_width: true,
+    insurance_insure_shipment: true,
+    insurance_insured_value: true,
+    insurance_provider: true,
+    internal_status: true,
+    is_voided: true,
+    marketplace_notified: true,
+    void_date: true,
+    lastPackingSlipAt: true,
+    is_merged: true,
+    merged_to_order_id: true,
+    merged_from_order_ids: true
+  },
   include: {
+    customer: { 
+      select: { 
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true, 
+        shipstation_customer_id: true,
+        company: true,
+        street1: true,
+        street2: true,
+        street3: true,
+        city: true,
+        state: true,
+        postal_code: true,
+        country: true, 
+        country_code: true, 
+        customer_notes: true, 
+        created_at: true, 
+        updated_at: true, 
+        address_verified_status: true,
+        is_residential: true
+      }
+    },
     items: {
+      select: { 
+        id: true,
+        orderId: true,
+        quantity: true,
+        unit_price: true,
+        print_settings: true,
+        created_at: true,
+        updated_at: true,
+        shipstationLineItemKey: true,
+        productId: true
+      },
       include: {
-        product: true;
-        printTasks: true;
-      };
-    };
-  };
+        product: true, 
+        printTasks: true, 
+      },
+    },
+  },
 }>;
 
 /**
@@ -62,9 +154,9 @@ export async function fixInvalidStlRenderStatus(db: PrismaClient): Promise<numbe
 
 export async function getOrdersToProcess(
   db: PrismaClient,
-  orderIdentifier?: string, // Renamed parameter for clarity
+  orderIdentifier?: string, 
   limit?: number,
-  forceRecreate?: boolean // Add forceRecreate flag
+  forceRecreate?: boolean 
 ): Promise<OrderWithItemsAndProducts[]> {
   logger.info(
     `[getOrdersToProcess] Received args: orderIdentifier='${orderIdentifier}', limit=${limit}, forceRecreate=${forceRecreate}`
@@ -75,7 +167,7 @@ export async function getOrdersToProcess(
     items: {
       include: {
         product: true,
-        printTasks: true, // Include print tasks to check if they exist
+        printTasks: true, 
       },
     },
   };
@@ -89,7 +181,7 @@ export async function getOrdersToProcess(
     let foundOrders: OrderWithItemsAndProducts[] = [];
 
     // 1. Try parsing as integer and searching by database ID *only if the identifier consists purely of digits*
-    const isNumeric = /^\d+$/.test(orderIdentifier); // Check if string contains only digits
+    const isNumeric = /^\d+$/.test(orderIdentifier); 
     if (isNumeric) {
       const potentialId = parseInt(orderIdentifier, 10);
       // Double check isNaN just in case, though regex should cover it
@@ -104,7 +196,7 @@ export async function getOrdersToProcess(
         })) as OrderWithItemsAndProducts[];
         if (foundOrders.length > 0) {
           logger.info(`[getOrdersToProcess] Found order by database ID: ${potentialId}`);
-          return foundOrders; // Return immediately if found
+          return foundOrders; 
         }
         logger.debug(`[getOrdersToProcess] No order found with database ID: ${potentialId}.`);
       }
@@ -127,7 +219,7 @@ export async function getOrdersToProcess(
       logger.info(
         `[getOrdersToProcess] Found order by ShipStation Order Number: ${orderIdentifier}`
       );
-      return foundOrders; // Return immediately if found
+      return foundOrders; 
     }
     logger.debug(
       `[getOrdersToProcess] No order found with ShipStation Order Number: ${orderIdentifier}.`
@@ -138,7 +230,7 @@ export async function getOrdersToProcess(
       `[getOrdersToProcess] Attempting to find order by ShipStation Order ID: ${orderIdentifier}`
     );
     foundOrders = (await db.order.findMany({
-      where: { shipstation_order_id: orderIdentifier }, // Search by shipstation_order_id
+      where: { shipstation_order_id: orderIdentifier }, 
       include: includeClause,
       orderBy: orderByClause,
     })) as OrderWithItemsAndProducts[];
@@ -150,7 +242,7 @@ export async function getOrdersToProcess(
         `No order found matching Database ID (if applicable), ShipStation Order Number, or ShipStation Order ID: ${orderIdentifier}`
       );
     }
-    return foundOrders; // Return the result (which might be empty)
+    return foundOrders; 
     // --- END MODIFIED LOGIC ---
   } else {
     // Default filtering when no specific ID/Number is provided
