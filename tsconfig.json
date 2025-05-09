@@ -23,7 +23,8 @@
     // Path alias for absolute imports using '@'
     "baseUrl": "src",
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["*"],
+      "@lib/*": ["lib/*"]
     }
   },
   "include": ["test.ts", "src/**/*", ".next/types/**/*.ts"],

@@ -1,41 +1,35 @@
 {
-  // Dev Container schema
   "$schema": "https://containers.dev/schemas/devcontainer.json",
   "name": "Y3DHub Dev Environment (Node 22 + MySQL 8)",
   "dockerComposeFile": ["docker-compose.yml"],
   "service": "app",
   "workspaceFolder": "/workspace",
-  // Pre-install runtimes via Dev Container Features
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    "ghcr.io/devcontainers/features/mysql:1": { "version": "8" }
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
   },
-  // Cache dependencies and bind source for faster rebuilds
   "mounts": [
     "source=node_modules,target=/workspace/node_modules,type=volume",
     "source=${localWorkspaceFolder}/src,target=/workspace/src,type=bind,consistency=cached"
   ],
-
-  // Configure tool-specific properties.
   "customizations": {
-    // Configure properties specific to VS Code.
     "vscode": {
-      // Add the IDs of extensions you want installed when the container is created.
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "ms-azuretools.vscode-docker",
         "prisma.prisma",
-        "eamodio.gitlens", // Enhanced Git capabilities
-        "mtxr.sqltools", // Database client
-        "mtxr.sqltools-driver-mysql", // MySQL driver for SQLTools
-        "mike-co.import-sorter", // TypeScript Import Sorter
-        "usernamehw.errorlens", // Error Lens
-        "Gruntfuggly.todo-tree" // Todo Tree
+        "eamodio.gitlens",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-mysql",
+        "mike-co.import-sorter",
+        "usernamehw.errorlens",
+        "Gruntfuggly.todo-tree"
       ],
       "settings": {
-        "cSpell.enabled": false, // Disable spell checking
-        "editor.formatOnSave": true, // Enable format on save
+        "cSpell.enabled": false,
+        "editor.formatOnSave": true,
         "[javascript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
@@ -48,10 +42,9 @@
         "[jsonc]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
-        "git.autofetch": true // Enable automatic git fetch
+        "git.autofetch": true
       }
     },
-    // Codespaces-specific customizations
     "codespaces": {
       "repositories": {
         "y3dltd/Y3DCore": {
@@ -63,30 +56,14 @@
       }
     }
   },
-
-  // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [3000, 8080, 443, 3306, 4000, 5432],
-
-  // Use 'postCreateCommand' to run commands after the container is created.
-  // Using an external script avoids JSON escape character issues
   "postCreateCommand": "/workspace/.devcontainer/setup.sh && /workspace/.devcontainer/setup-litellm.sh",
-
-  // Use 'postStartCommand' for per-restart setup (migrations/seeding)
   "postStartCommand": "npm run migrate && npm run seed",
-  // Use 'postAttachCommand' to run commands after VS Code attaches to the container.
-  // First kill any process listening on port 3000, then start the dev server
   "postAttachCommand": "lsof -ti tcp:3000 | xargs -r kill -9; npm run dev",
-
-  // Use 'initializeCommand' to copy .env.example if .env doesn't exist
   "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
-
-  // Connect as node user for Codespaces compatibility
   "remoteUser": "node",
   "updateRemoteUserUID": true,
-  // Pass through environment variables from host/Codespaces secrets
   "remoteEnv": ["DATABASE_URL", "NEXTAUTH_SECRET"],
-
-  // Codespaces-specific settings
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",
