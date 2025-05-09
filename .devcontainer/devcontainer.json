@@ -74,5 +74,7 @@
     "cpus": 4,
     "memory": "8gb",
     "storage": "32gb"
-  }
+  },
+
+  "remote.containers.autoRebuild": false
 }
