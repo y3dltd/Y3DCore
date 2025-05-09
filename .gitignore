@@ -161,3 +161,6 @@ mismatched-order-numbers.txt
 gkey.json
 google-cloud-sdk/
 y3dhub-app-573-creds.json
+openrouter-keys.json
+vertex-ai-keys.json
+vertex-ai-formatted-keys.json
