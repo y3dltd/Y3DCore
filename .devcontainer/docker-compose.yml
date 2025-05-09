@@ -11,10 +11,9 @@ services:
       MYSQL_DATABASE: myapp_dev
     volumes:
       - db_data:/var/lib/mysql
-    ports:
-      - '3306:3306'
+    ports: ['3306:3306']
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '--silent']
+      test: [CMD, mysqladmin, ping, -h, localhost, --silent]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,45 +21,37 @@ services:
   app:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile # ← keep using your Dockerfile
       args:
-        # Codespaces-compatible build arguments
-        - NODE_VERSION=22
-        - USERNAME=node
+        NODE_VERSION: 22
+        VARIANT: 22-bullseye-slim # ← tells the Dockerfile to use the Debian image
+        USERNAME: node
+    command: sleep infinity
+    working_dir: /workspace
     volumes:
       - ..:/workspace:cached
       - node_modules:/workspace/node_modules
       - npm_cache:/home/node/.npm
-      # Mount Docker socket for Docker-in-Docker functionality (if available)
-      - /var/run/docker.sock:/var/run/docker.sock
-    working_dir: /workspace
-    command: sleep infinity
+      - /var/run/docker.sock:/var/run/docker.sock # optional: Docker-in-Docker
     env_file:
       - ../.env
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - '3010:3010'
     environment:
       - NODE_ENV=development
       - NPM_CONFIG_PREFIX=/home/node/.npm-global
-      # Codespaces GitHub authentication (if available)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-    # Ensure the node user exists and has proper UID/GID
+    depends_on:
+      db:
+        condition: service_healthy
+    ports: ['3000:3000']
     user: node
-    # Improve Codespaces performance
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
+    cap_add: [SYS_PTRACE]
+    security_opt: [seccomp:unconfined]
 
 volumes:
   node_modules: {}
   npm_cache: {}
   db_data: {}
 
-# Codespaces networking
 networks:
   default:
     name: y3dhub_network

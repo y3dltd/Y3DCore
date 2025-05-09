@@ -1,18 +1,24 @@
 {
   "$schema": "https://containers.dev/schemas/devcontainer.json",
   "name": "Y3DHub Dev Environment (Node 22 + MySQL 8)",
+
   "dockerComposeFile": ["docker-compose.yml"],
   "service": "app",
   "workspaceFolder": "/workspace",
+
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "22"
+      "version": "22",
+      "installYarnUsingApt": true,
+      "installPnpm": true
     }
   },
+
   "mounts": [
     "source=node_modules,target=/workspace/node_modules,type=volume",
     "source=${localWorkspaceFolder}/src,target=/workspace/src,type=bind,consistency=cached"
   ],
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -30,40 +36,32 @@
       "settings": {
         "cSpell.enabled": false,
         "editor.formatOnSave": true,
-        "[javascript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[typescript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[json]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[jsonc]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
+        "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
         "git.autofetch": true
       }
     },
     "codespaces": {
       "repositories": {
         "y3dltd/Y3DCore": {
-          "permissions": {
-            "contents": "write",
-            "pull_requests": "write"
-          }
+          "permissions": { "contents": "write", "pull_requests": "write" }
         }
       }
     }
   },
-  "forwardPorts": [3000, 8080, 443, 3306, 4000, 5432],
+
+  "forwardPorts": [3002, 3306],
   "postCreateCommand": "/workspace/.devcontainer/setup.sh && /workspace/.devcontainer/setup-litellm.sh",
   "postStartCommand": "npm run migrate && npm run seed",
-  "postAttachCommand": "lsof -ti tcp:3000 | xargs -r kill -9; npm run dev",
+  "postAttachCommand": "lsof -ti tcp:3002 | xargs -r kill -9; npm run dev -p 3002",
   "initializeCommand": "if [ ! -f .env ]; then cp .env.example .env; fi",
+
   "remoteUser": "node",
   "updateRemoteUserUID": true,
   "remoteEnv": ["DATABASE_URL", "NEXTAUTH_SECRET"],
+
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",

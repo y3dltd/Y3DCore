@@ -1,89 +1,63 @@
-FROM node:22-alpine AS base
+# Base image: Debian Bullseye slim with Node 22
+FROM node:22-bullseye-slim AS base
 
-# Create app directory and set permissions
+# Create and chown workspace
 WORKDIR /workspace
-
-# Ensure workspace is owned by the pre-existing node user
 RUN chown -R node:node /workspace
 
-# Install essential development tools for Y3DHub
+# Install build- and runtime-deps as root
 USER root
-RUN apk update && apk add --no-cache \
-    # Base tools
-    python3 \
-    py3-pip \
-    gcompat \
-    git \
-    openssh \
-    curl \
-    wget \
-    bash \
-    # Build tools
-    build-base \
-    g++ \
-    make \
-    # MySQL client for database operations
-    mysql-client \
-    # GitHub CLI 
-    && wget https://github.com/cli/cli/releases/download/v2.45.0/gh_2.45.0_linux_amd64.tar.gz -O /tmp/gh.tar.gz \
-    && tar -xzf /tmp/gh.tar.gz -C /tmp \
-    && mv /tmp/gh_*_linux_amd64/bin/gh /usr/local/bin/ \
-    && rm -rf /tmp/gh* \
-    # Install Docker CLI
-    && apk add --no-cache docker-cli \
-    # Install OpenSCAD (required for STL rendering in Y3DHub)
-    && apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing \
-       openscad
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+      python3 python3-pip \
+      git openssh-client \
+      curl wget ca-certificates \
+      bash \
+      build-essential g++ make \
+      default-mysql-client-core \
+      docker.io \
+      openscad && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install global NPM packages used in your environment
+# Install GitHub CLI
+RUN wget -qO /tmp/gh.tar.gz \
+      https://github.com/cli/cli/releases/download/v2.45.0/gh_2.45.0_linux_amd64.tar.gz && \
+    tar -xzf /tmp/gh.tar.gz -C /tmp && \
+    mv /tmp/gh_*_linux_amd64/bin/gh /usr/local/bin/ && \
+    rm -rf /tmp/gh*
+
+# Global npm tools
 RUN npm install -g npm@10.9.2 && \
     npm install -g \
-    typescript@latest \
-    ts-node@latest \
-    prisma@latest \
-    next@latest \
-    corepack@latest \
-    eslint@latest \
-    prettier@latest \
-    vercel@latest \
-    # Testing tools mentioned in project memory
-    vitest@latest \
-    @playwright/test@latest
+      typescript@latest ts-node@latest prisma@latest \
+      next@latest corepack@latest eslint@latest prettier@latest \
+      vercel@latest vitest@latest @playwright/test@latest
 
-# Install AI coding assistants (in a separate step to prevent build failures)
-RUN npm install -g @anthropic-ai/claude-code@latest task-master-ai@latest || echo "AI assistants installation failed but continuing build"
+# AI assistants (fail-safe)
+RUN npm install -g @anthropic-ai/claude-code@latest task-master-ai@latest \
+    || echo "AI assistants install failed, continuing…"
 
-# Switch back to non-root user
+# Back to non-root
 USER node
 
-# Copy package manifests with correct ownership
+# Copy manifests, install deps, copy code
 COPY --chown=node:node package*.json ./
-
-# Copy Prisma schema with correct ownership
 COPY --chown=node:node prisma ./prisma
-
-# Install dependencies
 RUN npm install
-
-# Copy the rest of your application code with correct ownership
 COPY --chown=node:node . .
 
-# --- Development Stage (used by Dev Container) ---
-# (Dev Container mounts your source and will run further commands via postCreateCommand)
-# No extra steps here; container will stay up per your compose file.
-
-# --- Production Stage ---
+# Production stage
 FROM base AS production
 WORKDIR /workspace
+
 COPY --from=base /workspace /workspace
-RUN npm run build       # e.g. compile TypeScript, bundler, etc.
-ENV PORT 3002
+RUN npm run build
+
+ENV PORT=3002
 EXPOSE 3002
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl --fail http://localhost:3002/ || exit 1
-# Add a step to ensure /home/node exists and is owned by node, just in case.
-# And verify node user exists in /etc/passwd
-USER root
-RUN mkdir -p /home/node && chown node:node /home/node && grep node /etc/passwd && ls -ld /home/node
-USER node               # drop privileges
+
+USER node
 CMD ["npm", "run", "start"]
