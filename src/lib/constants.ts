@@ -1,1 +1,9 @@
 export const CURRENCY_SYMBOL = '£';
+export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+export const DEFAULT_OPENAI_MODEL = 'gpt-4.1';
+export const MAX_AI_TOKENS = 4096;
+export const DEFAULT_SYSTEM_PROMPT_PATH = 'src/lib/ai/prompts/prompt-system-optimized.txt';
+export const DEFAULT_USER_PROMPT_PATH = 'src/lib/ai/prompts/prompt-user-template-optimized.txt';
+export const PRISMA_TRANSACTION_MAX_WAIT = 120000; // ms
+export const PRISMA_TRANSACTION_TIMEOUT = 300000; // ms
+export const SCRIPT_LOG_DIR = 'logs';

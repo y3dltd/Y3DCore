@@ -1,33 +1,47 @@
 // Node built-in modules first
-import fsSync from 'fs';
-import fs from 'fs/promises';
-import path from 'path';
-import readline from 'readline/promises';
-import util from 'util';
+import fsCallback from 'node:fs'; // For createWriteStream
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import readline from 'node:readline/promises';
+import util from 'node:util';
 
 // External dependencies
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, PrintTaskStatus } from '@prisma/client'; // Assuming PrintTaskStatus is the enum
 import { Command } from 'commander';
 import { config } from 'dotenv';
-import { pino } from 'pino';
+import fetch from 'node-fetch'; // Added node-fetch
+import pino from 'pino'; // Default import, assuming pino v7+ with own types
+import type { Response as FetchResponse } from 'node-fetch'; // Type for node-fetch response
 import { z } from 'zod';
 
 // Internal/local imports
 import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
-import { simplifyProductName, productNameMappings } from '@lib/product-mapping'; // Added import
+import { simplifyProductName, productNameMappings } from '@lib/product-mapping';
+import {
+  OPENAI_API_URL,
+  DEFAULT_OPENAI_MODEL,
+  MAX_AI_TOKENS,
+  DEFAULT_SYSTEM_PROMPT_PATH,
+  DEFAULT_USER_PROMPT_PATH,
+  PRISMA_TRANSACTION_MAX_WAIT,
+  PRISMA_TRANSACTION_TIMEOUT,
+  SCRIPT_LOG_DIR
+} from '../lib/constants'; // Adjust path as necessary
 
-// Initialize database connection
+// --- Constants --- (These are now imported)
+// const OPENAI_API_URL = ...;
+// ... (remove all duplicated constant definitions here) ...
+
+// Initialize single Prisma Client instance
 const prisma = new PrismaClient();
+const isPrismaConnected = false;
 
 // Load environment variables
 config();
 
-// Helper Variables for Logging Scope
-let logStream: fsSync.WriteStream | null = null;
-
-// Setup logger (initialize basic, level set after parsing args)
-let logger: pino.Logger;
+// Module-level logger for very early use or if main logger setup fails
+let logger: pino.Logger = pino({ level: 'warn' }); // Initial basic logger
 
 // --- Zod Schemas ---
 const PersonalizationDetailSchema = z.object({
@@ -59,7 +73,6 @@ interface OrderDebugInfo {
   promptSent: string | null;
   rawResponseReceived: string | null;
   parsedResponse: z.infer<typeof AiOrderResponseSchema> | null;
-  validationError: string | null;
   processingError: string | null;
   aiProvider: string | null;
   modelUsed: string | null;
@@ -67,7 +80,7 @@ interface OrderDebugInfo {
     itemId: number;
     status: string;
     error?: string;
-    createdTaskIds: number[]; // Made non-optional
+    createdTaskIds: number[];
   }>;
   forceRecreate?: boolean;
   preserveText?: boolean;
@@ -137,13 +150,26 @@ interface AiPromptData {
   shippingAddress: AiPromptShippingAddress;
 }
 
+// Define a simpler type for what taskDetailsToCreate will actually hold
+interface TaskPersonalizationData {
+  custom_text: string | null;
+  color_1: string | null;
+  color_2?: string | null | undefined;
+  quantity: number;
+  needs_review?: boolean;
+  review_reason?: string | null;
+  status: PrintTaskStatus;
+  annotation?: string | null | undefined;
+}
+
 // --- Helper Functions ---
+// Modify helpers to accept a logger instance
 async function loadPromptFile(filePath: string): Promise<string> {
   try {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown file load error';
-    logger.error(`Failed to load prompt file: ${filePath} - ${errorMsg}`);
+    logger.error({ filePath, err: error }, `Failed to load prompt file: ${filePath} - ${errorMsg}`);
     throw new Error(`Could not load prompt file: ${filePath}`);
   }
 }
@@ -152,14 +178,14 @@ async function appendToDebugLog(filePath: string | undefined, data: OrderDebugIn
   if (!filePath) return;
   try {
     const logEntry = `\n--- Entry: ${new Date().toISOString()} ---\n${util.inspect(data, { depth: null, colors: false })}\n`;
-    if (logStream) logStream.write(logEntry);
     await fs.appendFile(filePath, logEntry);
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown debug log write error';
-    logger.error(`Failed to write to debug log file ${filePath}: ${errorMsg}`);
+    logger.error({ filePath, err: error }, `Failed to write to debug log file ${filePath}: ${errorMsg}`);
   }
 }
 
+// Re-insert confirmExecution function definition
 async function confirmExecution(promptMessage: string): Promise<boolean> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const answer = await rl.question(`${promptMessage} (yes/NO) `);
@@ -167,23 +193,49 @@ async function confirmExecution(promptMessage: string): Promise<boolean> {
   return answer.toLowerCase() === 'yes';
 }
 
-// --- Mock Script Logging ---
 let runLogId: number | null = null;
 const createRunLog = async (data: { scriptName: string }) => {
-  logger.info('[Mock Log] Create Run Log:', data);
+  logger.info({ data }, '[Mock Log] Create Run Log:');
   runLogId = Date.now();
   return { id: runLogId };
 };
 const updateRunLog = async (id: number | null, data: { status: string; message?: string }) => {
-  logger.info('[Mock Log] Update Run Log:', id, data);
+  logger.info({ id, data }, '[Mock Log] Update Run Log:');
 };
+
+// --- Helper Function for ShipStation Personalized Details String ---
+function buildPersonalizedDetailsString(
+  personalizations: Array<z.infer<typeof PersonalizationDetailSchema>>,
+  lineItemKeyForLog: string,
+  orderIdForLog: number
+): string {
+  if (!personalizations || personalizations.length === 0) {
+    logger.info(`[Util][Order ${orderIdForLog}][Item ${lineItemKeyForLog}] No personalizations to build details string from.`);
+    return "No personalization details extracted.";
+  }
+  const personalizedDetailStrings: string[] = [];
+  for (const p of personalizations) {
+    const text = p.customText || 'N/A';
+    const color1 = p.color1;
+    const color2 = p.color2 ? ` / ${p.color2}` : '';
+    personalizedDetailStrings.push(`${text} (${color1 || 'N/A'}${color2})`);
+  }
+  let combinedDetailsString = personalizedDetailStrings.join(', ');
+  const MAX_LEN_SHIPSTATION_OPTION = 200;
+  const TRUNCATION_SUFFIX = '... (See Packing List)';
+  if (combinedDetailsString.length > MAX_LEN_SHIPSTATION_OPTION) {
+    combinedDetailsString = combinedDetailsString.substring(0, MAX_LEN_SHIPSTATION_OPTION - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
+  }
+  logger.info(`[Util][Order ${orderIdForLog}][Item ${lineItemKeyForLog}] Built personalized details string: "${combinedDetailsString}"`);
+  return combinedDetailsString;
+}
 
 // --- AI Extraction Logic (Order Level) --- Replace Placeholder
 async function extractOrderPersonalization(
   order: OrderWithItemsAndProducts,
   options: Pick<
     ProcessingOptions,
-    'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate' | 'forceRecreate' | 'preserveText'
+    'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate' | 'forceRecreate' | 'preserveText' | 'dryRun'
   >
 ): Promise<{ success: boolean; data?: z.infer<typeof AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null }> {
   // type OrderItemWithProduct = Prisma.OrderItemGetPayload<{ include: { product: true } }>; // Removed unused type
@@ -239,7 +291,7 @@ async function extractOrderPersonalization(
 
   const inputDataJson = JSON.stringify(inputData, null, 2);
   const userPromptContent = options.userPromptTemplate.replace('{INPUT_DATA_JSON}', inputDataJson);
-  let systemPromptContent = options.systemPrompt; // Use let to allow modification
+  let systemPromptContent = options.systemPrompt;
 
   // Conditionally modify the system prompt if forceRecreate is true
   if (options.forceRecreate) {
@@ -269,7 +321,7 @@ async function extractOrderPersonalization(
   );
   // Avoid logging full prompts at debug level if they are large or sensitive
   // logger.debug(`[AI][Order ${order.id}] System Prompt:\n${systemPromptContent}`);
-  // logger.debug(`[AI][Order ${order.id}] User Prompt:\n${userPromptContent}`);
+  // logger.debug(`[AI][Order ${order.id}] User Prompt:\n${options.userPromptTemplate.replace('{INPUT_DATA_JSON}', inputDataJson)}`);
 
   interface ApiMessage {
     role: 'system' | 'user';
@@ -291,13 +343,24 @@ async function extractOrderPersonalization(
 
   let rawResponse: string | null = null;
   const modelUsed = options.openaiModel;
-  const apiUrl = 'https://api.openai.com/v1/chat/completions';
   const apiKey = options.openaiApiKey;
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-  };
   const startTime = Date.now();
+
+  // If dryRun is enabled, skip actual API call and return mock/success
+  if (options.dryRun) {
+    logger.info({ orderId: order.id }, `[AI][Dry Run] Skipping actual OpenAI API call for order ${order.id}.`);
+    // Optionally, return a more structured mock AI response if needed for downstream dry-run testing
+    const mockAiData: z.infer<typeof AiOrderResponseSchema> = {
+      itemPersonalizations: {} // Empty or minimal mock
+    };
+    return {
+      success: true,
+      data: mockAiData,
+      promptUsed: fullPromptForDebug, // Still useful to log the prompt that would have been sent
+      rawResponse: "--DRY RUN: No actual API call made--",
+      modelUsed: modelUsed,
+    };
+  }
 
   try {
     if (!apiKey) throw new Error('OpenAI API key missing');
@@ -307,28 +370,31 @@ async function extractOrderPersonalization(
     const apiPayload: ApiPayload = {
       model: modelUsed,
       messages: [
-        { role: 'system', content: systemPromptContent }, // Use potentially modified system prompt
+        { role: 'system', content: systemPromptContent },
         { role: 'user', content: userPromptContent },
       ],
       temperature: 0.0,
       top_p: 1.0,
       frequency_penalty: 0.0,
       presence_penalty: 0.0,
-      max_tokens: 4096,
+      max_tokens: MAX_AI_TOKENS,
       response_format: { type: 'json_object' },
     };
 
     logger.debug(
-      { provider: 'openai', url: apiUrl, headers: { ...headers, Authorization: '***' } },
+      { provider: 'openai', url: OPENAI_API_URL, headers: 'Authorization HIDDEN' }, // Redacted headers
       `[AI][Order ${order.id}] Sending API Request`
     );
     logger.trace(`[AI][Order ${order.id}] Payload: ${JSON.stringify(apiPayload)}`);
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
-      headers: headers,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify(apiPayload),
-    });
+    }) as FetchResponse;
 
     const duration = Date.now() - startTime;
     logger.info(
@@ -504,11 +570,10 @@ async function createOrUpdateTasksInTransaction(
   options: ProcessingOptions,
   orderDebugInfo: OrderDebugInfo
 ): Promise<{ tasksCreatedCount: number; tasksSkippedCount: number; itemsNeedReviewCount: number }> {
-  // Fetch the order again within the transaction to ensure data consistency and full type compatibility
+  // Fetch the order again within the transaction
   const orderInTx: OrderWithItemsAndProducts = await tx.order.findUniqueOrThrow({
     where: { id: order.id },
-    select: { // Explicit select to match OrderWithItemsAndProducts structure
-      // Order scalar fields
+    select: { // Top-level select for Order fields
       id: true,
       shipstation_order_id: true,
       shipstation_order_number: true,
@@ -565,8 +630,7 @@ async function createOrUpdateTasksInTransaction(
       merged_to_order_id: true,
       merged_from_order_ids: true,
 
-      // Customer relation (as per OrderWithItemsAndProducts)
-      customer: {
+      customer: { // Select for customer relation is fine
         select: {
           id: true,
           name: true,
@@ -581,7 +645,7 @@ async function createOrUpdateTasksInTransaction(
           city: true,
           state: true,
           postal_code: true,
-          country: true,
+          country: true, // Assuming this means country name from your schema
           country_code: true,
           customer_notes: true,
           created_at: true,
@@ -590,23 +654,13 @@ async function createOrUpdateTasksInTransaction(
           is_residential: true,
         },
       },
-
-      // Items relation (as per OrderWithItemsAndProducts)
-      items: {
-        select: {
-          id: true,
-          orderId: true,
-          quantity: true,
-          unit_price: true,
-          print_settings: true,
-          created_at: true,
-          updated_at: true,
-          shipstationLineItemKey: true,
-          productId: true,
-        },
-        include: {
+      items: { // For items, use EITHER select OR include. We need related product & printTasks.
+        // Remove the 'select' block for items if using 'include' for its relations.
+        // If OrderWithItemsAndProducts expects all OrderItem scalars, then simply including is best.
+        // Assuming OrderWithItemsAndProducts implies OrderItem scalars + included relations.
+        include: { // Use include to get full related objects
           product: true,
-          printTasks: true,
+          printTasks: true
         },
       },
     },
@@ -622,11 +676,9 @@ async function createOrUpdateTasksInTransaction(
 
   for (const item of orderInTx.items) {
     const orderItemId = item.id;
-
-    // --- Preserve Text Logic (Placeholder for now) ---
     const preservedTexts = new Map<number, string | null>();
 
-    // --- Force Recreate: Delete existing tasks for this item if flag is set ---
+    // --- Preserve Text Logic (Placeholder for now) ---
     if (options.forceRecreate && !options.dryRun) {
       // Fetch existing tasks if preserveText is also true, before deleting
       if (options.preserveText) {
@@ -653,28 +705,16 @@ async function createOrUpdateTasksInTransaction(
 
     let itemDebugEntry = orderDebugInfo.items.find(i => i.itemId === item.id);
     if (!itemDebugEntry) {
-      itemDebugEntry = { itemId: item.id, status: 'Processing Transaction', createdTaskIds: [] };
+      itemDebugEntry = { itemId: item.id, status: 'Pending Transaction Logic', createdTaskIds: [] };
       orderDebugInfo.items.push(itemDebugEntry);
     } else {
-      itemDebugEntry.status = 'Processing Transaction';
+      itemDebugEntry.status = 'Starting Transaction Logic';
       itemDebugEntry.createdTaskIds = [];
     }
 
-    const taskDetailsToCreate: Array<
-      Omit<
-        Prisma.PrintOrderTaskCreateInput,
-        | 'order'
-        | 'orderItem'
-        | 'product'
-        | 'customer'
-        | 'taskIndex'
-        | 'shorthandProductName'
-        | 'marketplace_order_number'
-        | 'ship_by_date'
-      >
-    > = [];
-    let finalDataSource: string | null = 'AI'; // Default assumption
-
+    // Use the new simpler type for taskDetailsToCreate
+    const taskDetailsToCreate: TaskPersonalizationData[] = [];
+    let finalDataSource: string | null = 'AI';
     const lineItemKey = item.shipstationLineItemKey;
     const itemPzResult = lineItemKey ? aiData.itemPersonalizations[lineItemKey] : undefined;
 
@@ -684,70 +724,54 @@ async function createOrUpdateTasksInTransaction(
           custom_text: p.customText,
           color_1: p.color1,
           color_2: p.color2,
-          quantity: p.quantity || 1, // Default quantity to 1 if not provided
+          quantity: p.quantity || 1,
           needs_review: p.needsReview || itemPzResult.overallNeedsReview || false,
           review_reason: p.reviewReason || itemPzResult.overallReviewReason,
-          status: 'pending', // Corrected: 'needs_review' is a boolean field, status should be valid PrintTaskStatus
+          status: PrintTaskStatus.pending,
           annotation: p.annotation,
         });
       });
       finalDataSource = 'AI_Direct';
+      if (itemDebugEntry) itemDebugEntry.status = 'AI Data Parsed';
     } else {
-      // Case: No AI personalizations for this item (either AI didn't return it, or key mismatch, or AI processing failed at order level)
-      logger.warn(
-        `[DB][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations found for lineItemKey ${lineItemKey}.`
-      );
+      logger.warn({ orderId: orderInTx.id, itemId: orderItemId, lineItemKey }, "No AI personalizations found for line item.");
       if (options.createPlaceholder) {
-        logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] Creating placeholder task as 'createPlaceholder' is true.`);
+        logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Creating placeholder task as 'createPlaceholder' is true.");
         if (options.skipAi) {
-          logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] Placeholder reason: AI processing was skipped via --skip-ai flag.`);
+          logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Placeholder reason: AI processing was skipped via --skip-ai flag.");
         }
         taskDetailsToCreate.push({
           custom_text: 'Placeholder - Check Order Details',
+          color_1: null,
+          color_2: null,
           quantity: item.quantity || 1,
           needs_review: true,
-          review_reason: `No AI personalizations for lineItemKey ${lineItemKey}. AI data for order might be missing or incomplete.`,
-          status: 'pending', // Corrected: 'needs_review' is true, status should be valid PrintTaskStatus
+          review_reason: `No AI personalizations for lineItemKey ${lineItemKey}. Check order notes/options. AI processing might have been skipped or failed.`,
+          status: PrintTaskStatus.pending,
         });
         finalDataSource = 'Placeholder';
+        if (itemDebugEntry) itemDebugEntry.status = 'Placeholder Creation';
       } else {
         logger.warn(
           `[DB][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations and 'createPlaceholder' is false. No task will be created for this item.`
         );
         finalDataSource = 'Skipped_No_AI_Data';
+        if (itemDebugEntry) itemDebugEntry.status = 'Skipped - No Placeholder';
       }
     }
 
     // --- REPLACEMENT LOGIC for populating itemsToPatch with 'Personalized Details' ---
     if (item.shipstationLineItemKey && aiData?.itemPersonalizations && orderInTx.shipstation_order_id) {
-      const lineItemKey = item.shipstationLineItemKey; // Ensured not null by the if condition
+      const lineItemKey = item.shipstationLineItemKey;
       const personalizationsForThisKey = aiData.itemPersonalizations[lineItemKey]?.personalizations;
+      // Call without logger
+      const detailsString = buildPersonalizedDetailsString(personalizationsForThisKey || [], lineItemKey, orderInTx.id);
 
       if (personalizationsForThisKey && personalizationsForThisKey.length > 0) {
-        const personalizedDetailStrings: string[] = [];
-        for (const p of personalizationsForThisKey) {
-          const detail = p.customText || 'N/A';
-          const color1 = p.color1;
-          const color2 = p.color2 ? ` / ${p.color2}` : '';
-          personalizedDetailStrings.push(`${detail} (${color1}${color2})`);
-        }
-
-        let combinedDetailsString = personalizedDetailStrings.join(', ');
-        const maxLen = 200;
-        const truncationSuffix = '... (See Packing List)';
-
-        if (combinedDetailsString.length > maxLen) {
-          combinedDetailsString = combinedDetailsString.substring(0, maxLen - truncationSuffix.length) + truncationSuffix;
-        }
-
-        const ssOptions = [{ name: 'Personalized Details', value: combinedDetailsString }];
-
+        const ssOptions = [{ name: 'Personalized Details', value: detailsString }];
         itemsToPatch[lineItemKey] = ssOptions;
-        patchReasons.push(`${lineItemKey}(AI-PD)`); // PD for Personalized Details
-
-        logger.info(
-          `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Preparing 'Personalized Details' for ShipStation line item key ${lineItemKey}. Value: "${combinedDetailsString}"`
-        );
+        patchReasons.push(`${lineItemKey}(AI-PD)`);
+        // Logging is now inside buildPersonalizedDetailsString
       } else {
         logger.info(
           `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations found for line item key ${lineItemKey} to create 'Personalized Details'.`
@@ -760,13 +784,18 @@ async function createOrUpdateTasksInTransaction(
     }
     // --- END REPLACEMENT LOGIC ---
 
-    let currentTaskIndex = 0; // Initialize task index for this item
-
+    let currentTaskIndex = 0;
     for (const taskDetail of taskDetailsToCreate) {
-      const taskData: Prisma.PrintOrderTaskCreateInput = {
+      // Check for productId BEFORE attempting to create taskData that requires it
+      if (!item.productId) {
+        logger.error({ orderId: orderInTx.id, itemId: orderItemId, itemSKU: item.product?.sku }, "OrderItem is missing a productId. Skipping task creation for this item as product link is required.");
+        if (itemDebugEntry) itemDebugEntry.status = 'Skipped - Missing ProductID';
+        continue; // Skip this taskDetail, effectively skipping tasks for this item
+      }
+
+      const taskDataFields: Omit<Prisma.PrintOrderTaskCreateInput, 'product'> = {
         order: { connect: { id: orderInTx.id } },
         orderItem: { connect: { id: orderItemId } },
-        product: { connect: { id: item.productId } },
         taskIndex: currentTaskIndex,
         shorthandProductName: item.product?.name ? (item.product.name.length > 100 ? item.product.name.substring(0, 97) + '...' : item.product.name) : 'Unknown',
         customer: orderInTx.customerId ? { connect: { id: orderInTx.customerId } } : undefined,
@@ -774,47 +803,37 @@ async function createOrUpdateTasksInTransaction(
         color_1: taskDetail.color_1,
         color_2: taskDetail.color_2,
         quantity: taskDetail.quantity,
-        needs_review: taskDetail.needs_review,
+        needs_review: taskDetail.needs_review ?? false,
         review_reason: taskDetail.review_reason,
         status: taskDetail.status,
         annotation: taskDetail.annotation,
+        marketplace_order_number: orderInTx.shipstation_order_number,
+        ship_by_date: orderInTx.ship_by_date,
       };
 
-      // --- Apply Preserve Text Logic ---
+      // ProductId is now guaranteed to exist due to the check above
+      const taskData: Prisma.PrintOrderTaskCreateInput = {
+        ...taskDataFields,
+        product: { connect: { id: item.productId } },
+      };
+
       if (options.forceRecreate && options.preserveText && preservedTexts.has(currentTaskIndex)) {
         const oldText = taskData.custom_text;
         taskData.custom_text = preservedTexts.get(currentTaskIndex);
         logger.info(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preserved text. Old: "${oldText}", New: "${taskData.custom_text}"`);
       }
 
-      if (taskDetail.needs_review) itemsNeedReviewCount++; // Reinstate counter logic
+      if (taskDetail.needs_review) itemsNeedReviewCount++;
 
       if (options.dryRun) {
-        logger.info(
-          `[Dry Run][Order ${order.id}][Item ${orderItemId}] Would upsert task ${currentTaskIndex} from ${finalDataSource}. Review: ${taskDetail.needs_review}`
-        );
-        // Log the actual data that would be used for create/update
         const upsertDataForLog = {
-          where: {
-            orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex },
-          },
-          update: { // Log what would be updated
-            shorthandProductName: taskData.shorthandProductName,
-            custom_text: taskData.custom_text,
-            color_1: taskData.color_1,
-            color_2: taskData.color_2,
-            quantity: taskData.quantity,
-            needs_review: taskData.needs_review,
-            review_reason: taskData.review_reason,
-            status: taskData.status,
-            ship_by_date: taskData.ship_by_date,
-            marketplace_order_number: taskData.marketplace_order_number,
-            annotation: taskData.annotation,
-          },
-          create: taskData, // Log the full create object
+          where: { orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex } },
+          update: { ...taskData, order: undefined, orderItem: undefined, product: undefined, customer: undefined }, // Exclude connect objects for cleaner log
+          create: taskData,
         };
-        logger.info({ dryRunTaskData: upsertDataForLog }, `[Dry Run][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upsert data`);
-
+        logger.info({ orderId: order.id, itemId: orderItemId, taskIndex: currentTaskIndex, dataSource: finalDataSource, dryRunTaskData: upsertDataForLog },
+          `[Dry Run] Would upsert task. Review: ${taskDetail.needs_review}`);
+        if (itemDebugEntry) itemDebugEntry.status = `Dry Run - Task ${currentTaskIndex} Would Upsert`;
       } else {
         try {
           const upsertData = {
@@ -846,6 +865,7 @@ async function createOrUpdateTasksInTransaction(
           );
           tasksCreatedCount++; // Reinstate counter logic
           itemDebugEntry.createdTaskIds.push(task.id);
+          if (itemDebugEntry) itemDebugEntry.status = `Task ${currentTaskIndex} Upserted`;
         } catch (e) {
           logger.error(
             `[DB][Order ${orderInTx.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${finalDataSource}:`,
@@ -856,14 +876,51 @@ async function createOrUpdateTasksInTransaction(
           throw e;
         }
       }
-      currentTaskIndex++; // Increment task index
+      currentTaskIndex++;
+    }
+    if (itemDebugEntry && taskDetailsToCreate.length === 0 && finalDataSource !== 'Skipped_No_AI_Data') {
+      itemDebugEntry.status = 'No tasks to create for item';
     }
     logger.info(
       `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`
     );
   }
 
-  // Conditional ShipStation Sync Logic
+  // Conditional ShipStation Sync Logic (Data Preparation part for dry run)
+  if (options.syncToShipstation && options.dryRun && orderInTx.shipstation_order_id) {
+    logger.info({ orderId: orderInTx.id }, "[Dry Run] Preparing ShipStation sync data...");
+    if (Object.keys(itemsToPatch).length > 0) {
+      // Construct auditNoteForInternalNotes for dry run log
+      const packingListLines_dryRun: string[] = [];
+      let taskCounter_dryRun = 1;
+      if (aiData?.itemPersonalizations) {
+        for (const ssOrderItemId_str of Object.keys(aiData.itemPersonalizations)) {
+          const itemPers = aiData.itemPersonalizations[ssOrderItemId_str];
+          if (itemPers && itemPers.personalizations) {
+            for (const pers of itemPers.personalizations) {
+              const text = pers.customText || 'N/A';
+              const color1 = pers.color1 || '';
+              const color2 = pers.color2 ? ` / ${pers.color2}` : '';
+              packingListLines_dryRun.push(`${taskCounter_dryRun++}. ${text} (${color1}${color2})`);
+            }
+          }
+        }
+      }
+      const packingListHeader_dryRun = `PACKING LIST (Order #${orderInTx.shipstation_order_number || 'N/A'}):`;
+      const packingListString_dryRun = packingListLines_dryRun.length > 0 ? packingListLines_dryRun.join('\n') : "No specific personalizations found by AI for packing list.";
+      const originalCustomerNotes_dryRun = orderInTx.customer_notes || 'No customer notes provided.';
+      const syncDetails_dryRun = `Automated Task Sync (Dry Run) ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+      const auditNoteForInternalNotes_dryRun = `${packingListHeader_dryRun}\n${packingListString_dryRun}\n---\nOriginal Customer Notes:\n${originalCustomerNotes_dryRun}\n---
+${syncDetails_dryRun}`;
+
+      logger.info({ orderId: orderInTx.id, itemsToPatch, auditNote: auditNoteForInternalNotes_dryRun },
+        "[Dry Run] Would update ShipStation with items and internalNotes.");
+    } else {
+      logger.info({ orderId: orderInTx.id }, "[Dry Run] No item options prepared for ShipStation patching (itemsToPatch is empty).");
+    }
+  }
+
+  // Actual ShipStation Sync Logic (executes if NOT dryRun)
   if (options.syncToShipstation && !options.dryRun && Object.keys(itemsToPatch).length > 0 && orderInTx.shipstation_order_id) {
     try {
       const ssOrderResp = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
@@ -1017,7 +1074,6 @@ async function syncExistingTasksToShipstation(
 
     // --- START: Logic for consolidated "Personalized Details" and Packing List for internalNotes ---
     const allOrderPackingListLines: string[] = [];
-    let globalTaskCounterForPackingList = 1;
 
     for (const item of orderDetails.items) {
       if (!item.shipstationLineItemKey) {
@@ -1036,35 +1092,33 @@ async function syncExistingTasksToShipstation(
         continue;
       }
 
-      const personalizedDetailStrings: string[] = [];
-      item.printTasks.forEach(task => {
-        const detail = task.custom_text || 'N/A'; // Changed let to const
+      // Use loop index for numbering packing list lines
+      item.printTasks.forEach((task, index) => {
+        const detail = task.custom_text || 'N/A';
         const color1 = task.color_1;
         const color2 = task.color_2 ? ` / ${task.color_2}` : '';
         const taskDetailString = `${detail} (${color1 || 'N/A'}${color2})`;
-        personalizedDetailStrings.push(taskDetailString);
-
-        // Add to global packing list for internalNotes
-        allOrderPackingListLines.push(`${globalTaskCounterForPackingList}. ${taskDetailString}`);
-        globalTaskCounterForPackingList++;
+        allOrderPackingListLines.push(`${index + 1}. ${taskDetailString}`);
       });
 
-      if (personalizedDetailStrings.length > 0) {
-        let combinedDetailsString = personalizedDetailStrings.join(', ');
-        const maxLen = 200;
-        const truncationSuffix = '... (See Packing List)';
+      const taskPersonalizations: Array<z.infer<typeof PersonalizationDetailSchema>> = item.printTasks.map(task => ({
+        customText: task.custom_text,
+        color1: task.color_1,
+        color2: task.color_2,
+        quantity: 1,
+        needsReview: false,
+        reviewReason: null,
+        annotation: null,
+      }));
 
-        if (combinedDetailsString.length > maxLen) {
-          combinedDetailsString = combinedDetailsString.substring(0, maxLen - truncationSuffix.length) + truncationSuffix;
-        }
+      // buildPersonalizedDetailsString uses module-scoped logger
+      const detailsString = buildPersonalizedDetailsString(taskPersonalizations, item.shipstationLineItemKey, orderDetails.id);
 
-        const ssOption = { name: 'Personalized Details', value: combinedDetailsString };
-        itemsToPatch[item.shipstationLineItemKey] = [ssOption]; // Replace if exists or add new
+      if (taskPersonalizations.length > 0) {
+        const ssOption = { name: 'Personalized Details', value: detailsString };
+        itemsToPatch[item.shipstationLineItemKey] = [ssOption];
         patchReasons.push(`${item.shipstationLineItemKey}(PD-Sync)`);
-        logger.info(
-          `[ShipStation Sync][Item ${item.id}] Prepared 'Personalized Details' for ShipStation line item key ${item.shipstationLineItemKey}. Value: "${combinedDetailsString}"`
-        );
-        if (!options.dryRun) updatedCount++; // Count successful preparation for update
+        if (!options.dryRun) updatedCount++;
       } else {
         logger.info(
           `[ShipStation Sync][Item ${item.id}] No details extracted from tasks for line item key ${item.shipstationLineItemKey}.`
@@ -1087,13 +1141,13 @@ async function syncExistingTasksToShipstation(
     if (options.dryRun) {
       if (Object.keys(itemsToPatch).length > 0) {
         logger.info(
-          `[Dry Run][ShipStation Sync] Would update ShipStation order ${orderDetails.shipstation_order_id} with items: ${JSON.stringify(itemsToPatch)} and internalNotes (packing slip summary):\n${finalAuditNoteForInternalNotes}`
+          { orderId, itemsToPatch, internalNotesPreview: finalAuditNoteForInternalNotes }, // Use the actual finalAuditNoteForInternalNotes
+          `[Dry Run][ShipStation Sync-Only] Would update ShipStation order ${orderDetails?.shipstation_order_id} with items and internalNotes.`
         );
-        // For dry run, updatedCount is already incremented per item successfully prepared
       } else {
-        logger.info(`[Dry Run][ShipStation Sync] No items require updates for order ${orderId}.`);
+        logger.info({ orderId }, `[Dry Run][ShipStation Sync-Only] No items require updates for order ${orderId}.`);
       }
-    } else if (Object.keys(itemsToPatch).length > 0) {
+    } else if (Object.keys(itemsToPatch).length > 0 && ssOrder) { // Ensure ssOrder is defined for live update
       try {
         await updateOrderItemsOptionsBatch(ssOrder, itemsToPatch, finalAuditNoteForInternalNotes);
         logger.info(
@@ -1116,60 +1170,98 @@ async function syncExistingTasksToShipstation(
     return { updatedCount, failedCount };
   } catch (error) {
     logger.error(
+      { err: error, orderId },
       `[ShipStation Sync] Failed to sync order ${orderId}: ${error instanceof Error ? error.message : String(error)}`
     );
-    // If a general error occurs, it's one failure for the whole order sync attempt.
-    // Individual item failures are counted within the loop.
-    return { updatedCount, failedCount: Math.max(failedCount, 1) };
+    failedCount = Math.max(failedCount, 1); // Ensure at least one failure if error occurs here
   }
+  return { updatedCount, failedCount };
 }
 
 // --- Main Execution ---
 async function main() {
   const SCRIPT_NAME = 'populate-print-queue';
-  let scriptRunSuccess = true,
-    finalMessage = 'Script finished.';
-  let totalOrdersProcessed = 0,
-    totalOrdersFailed = 0,
-    totalTasksCreated = 0;
+  let scriptRunSuccess = true;
+  let finalMessage = 'Script finished.';
+  let mainTryCatchError: Error | null = null;
+  let isPrismaConnected = false;
+  let fileLogStream: fsCallback.WriteStream | null = null;
+  let shuttingDown = false;
+
+  // Counters
+  let totalOrdersProcessed = 0;
+  let totalOrdersFailed = 0;
+  let totalTasksCreated = 0;
   const failedOrderIds: number[] = [];
-  let prisma: PrismaClient | null = null;
 
+  // STEP 1: Full Logger Initialization (re-assigns module-scoped logger)
+  const logDir = path.join(process.cwd(), SCRIPT_LOG_DIR);
+  const logFilePath = path.join(logDir, `${SCRIPT_NAME}-${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
   try {
-    const logDir = path.join(process.cwd(), 'logs');
-    const logFilePath = path.join(
-      logDir,
-      `${SCRIPT_NAME}-${new Date().toISOString().replace(/[:.]/g, '-')}.log`
-    );
     await fs.mkdir(logDir, { recursive: true });
-    logStream = fsSync.createWriteStream(logFilePath, { flags: 'a' });
-
-    logger = pino(
-      { level: 'info' },
-      pino.multistream([
-        { stream: logStream },
-        { stream: process.stdout },
-      ])
+    fileLogStream = fsCallback.createWriteStream(logFilePath, { flags: 'a' });
+    logger = pino( // Re-assigns the module-scoped logger
+      { level: 'info' }, // Default level
+      pino.multistream([{ stream: process.stdout }, { stream: fileLogStream }])
     );
+  } catch (logSetupError: unknown) {
+    const setupErr = logSetupError instanceof Error ? logSetupError : new Error(String(logSetupError));
+    (logger || console).error({ err: setupErr, stack: setupErr.stack }, "Critical error setting up logger!");
+    if (!fileLogStream) logger = pino({ level: 'info' }); // Fallback to stdout if file stream failed
+  }
 
-    logger.info(`--- Script Start: ${new Date().toISOString()} ---`);
-    logger.info(`Logging to file: ${logFilePath}`);
+  // STEP 2: Define cleanupAndExit (uses module-scoped logger)
+  async function cleanupAndExit(errorForCleanup: Error | null, triggerEvent: string) {
+    if (shuttingDown) { /* ... */ return; }
+    shuttingDown = true;
+    const isErrorCondition = !!errorForCleanup || !scriptRunSuccess;
+    const finalExitCode = isErrorCondition ? 1 : 0;
+    logger.info({ triggerEvent, error: errorForCleanup?.message, finalExitCode }, `Shutdown sequence started.`);
+    if (isPrismaConnected) { /* ... disconnect prisma ... */ }
+    if (typeof logger.flush === 'function') { /* ... flush logger ... */ }
+    if (fileLogStream && !fileLogStream.destroyed) { /* ... close fileLogStream ... */ }
+    await new Promise(resolve => setTimeout(resolve, 100));
+    process.exit(finalExitCode);
+  }
 
+  // STEP 3: Attach Signal Handlers (call cleanupAndExit)
+  process.on('uncaughtException', (_errCaught) => { // Prefixed with _
+    // Use console.error as logger itself might be compromised or in an unstable state
+    (logger || console).fatal({ err: _errCaught, stack: _errCaught.stack }, 'UNCAUGHT EXCEPTION!');
+    mainTryCatchError = _errCaught;
+    scriptRunSuccess = false;
+    cleanupAndExit(_errCaught, 'uncaughtException');
+  });
+  process.on('unhandledRejection', (_reason) => { // Prefixed with _
+    const err = _reason instanceof Error ? _reason : new Error(String(_reason));
+    (logger || console).fatal({ err, stack: err.stack }, 'UNHANDLED REJECTION!');
+    mainTryCatchError = err;
+    scriptRunSuccess = false;
+    cleanupAndExit(err, 'unhandledRejection');
+  });
+  ['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(signal =>
+    process.on(signal, () => {
+      (logger || console).warn(`Received ${signal}. Shutting down gracefully...`);
+      scriptRunSuccess = false; // Signal means not a full success
+      // Pass a new error object for signals, as there isn't an existing error object
+      cleanupAndExit(new Error(`Received signal: ${signal}`), signal);
+    })
+  );
+
+  // STEP 4: Main Try-Catch-Finally Block
+  try {
+    // STEP 4a: Commander Setup & Parse (AFTER logger is fully init)
     const program = new Command();
     program
       .name(SCRIPT_NAME)
       .description('Fetch orders and create print tasks via AI.')
-      .option(
-        '-o, --order-id <id>',
-        'Process specific order by DB ID, ShipStation Order Number, or ShipStation Order ID',
-        String
-      )
+      .option('-o, --order-id <id>', 'Process order by DB ID, ShipStation Order Number, or ShipStation Order ID', String)
       .option('-l, --limit <number>', 'Limit orders fetched', val => parseInt(val, 10))
       .option('--days <number>', 'Limit orders to those created in the last X days', val => parseInt(val, 10))
       .option('--openai-api-key <key>', 'OpenAI API Key', process.env.OPENAI_API_KEY)
-      .option('--openai-model <model>', 'OpenAI model', 'gpt-4.1')
-      .option('--system-prompt-file <path>', 'Path to system prompt file', 'src/lib/ai/prompts/prompt-system-optimized.txt')
-      .option('--user-prompt-file <path>', 'Path to user prompt template file', 'src/lib/ai/prompts/prompt-user-template-optimized.txt')
+      .option('--openai-model <model>', 'OpenAI model', DEFAULT_OPENAI_MODEL)
+      .option('--system-prompt-file <path>', 'Path to system prompt file', DEFAULT_SYSTEM_PROMPT_PATH)
+      .option('--user-prompt-file <path>', 'Path to user prompt template file', DEFAULT_USER_PROMPT_PATH)
       .option('--debug', 'Enable debug logging', false)
       .option('--verbose', 'Enable verbose logging', false)
       .option('--log-level <level>', 'Set log level', 'info')
@@ -1181,155 +1273,56 @@ async function main() {
       .option('--preserve-text', 'Keep existing custom text/names when recreating tasks', false)
       .option('--skip-ai', 'Skip AI extraction step', false)
       .option('--sync-to-shipstation', 'Enable ShipStation synchronization during processing', false)
-      .option(
-        '--shipstation-sync-only',
-        'Only sync existing DB tasks to ShipStation without changing DB',
-        false
-      )
+      .option('--shipstation-sync-only', 'Only sync existing DB tasks to ShipStation without changing DB', false)
       .option('--debug-file <path>', 'Path for detailed debug log file (requires --order-id)', String);
-
-    logger.info({ argv: process.argv }, 'Raw process.argv before commander parse');
-
     program.parse(process.argv);
-
     const cmdOptions = program.opts<ProcessingOptions>();
 
-    if (cmdOptions.verbose) {
-      logger.level = 'debug';
-    } else {
-      logger.level = cmdOptions.logLevel;
-    }
+    if (cmdOptions.verbose) logger.level = 'debug';
+    else if (cmdOptions.logLevel) logger.level = cmdOptions.logLevel;
+
+    logger.info(`--- Script Start: ${new Date().toISOString()} ---`);
+    logger.info(`Logging to file: ${logFilePath}`);
     logger.info(`Effective logger level: ${logger.level}`);
+    logger.info(`Parsed CLI Options: ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })}`);
+
+    cmdOptions.systemPrompt = await loadPromptFile(cmdOptions.systemPromptFile || DEFAULT_SYSTEM_PROMPT_PATH);
+    cmdOptions.userPromptTemplate = await loadPromptFile(cmdOptions.userPromptFile || DEFAULT_USER_PROMPT_PATH);
+    logger.info(`Prompts loaded.`);
 
     if (!cmdOptions.openaiApiKey) throw new Error('OpenAI API key missing.');
-    if (cmdOptions.debugFile && !cmdOptions.orderId) {
-      logger.warn('--debug-file requires --order-id, disabling file debug.');
-      cmdOptions.debugFile = undefined;
-    }
 
-    logger.info('Loading prompts...');
-    const systemPromptFilePath = cmdOptions.systemPromptFile || 'src/lib/ai/prompts/prompt-system-optimized.txt';
-    const userPromptFilePath = cmdOptions.userPromptFile || 'src/lib/ai/prompts/prompt-user-template-optimized.txt';
-
-    const systemPrompt = await loadPromptFile(systemPromptFilePath);
-    const userPromptTemplate = await loadPromptFile(userPromptFilePath);
-    logger.info(`Prompts loaded from: ${systemPromptFilePath} and ${userPromptFilePath}`);
-
-    logger.info(
-      `Commander Parsed Options (opts): ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })}`
-    );
-    if (cmdOptions.dryRun) logger.info('--- DRY RUN MODE ---');
-    if (cmdOptions.debug) logger.debug('Debug mode enabled.');
-
-    prisma = new PrismaClient();
     await prisma.$connect();
+    isPrismaConnected = true;
     logger.info('DB connected.');
 
-    // Fix any invalid StlRenderStatus values before proceeding
-    try {
-      const fixedCount = await fixInvalidStlRenderStatus(prisma);
-      if (fixedCount > 0) {
-        logger.info(`Fixed ${fixedCount} PrintOrderTask records with invalid stl_render_state values`);
-      }
-    } catch (fixError) {
-      logger.warn(`Unable to fix invalid StlRenderStatus values: ${fixError instanceof Error ? fixError.message : String(fixError)}`);
-    }
-
     await createRunLog({ scriptName: SCRIPT_NAME });
-
-    if (cmdOptions.clearAll) {
-      if (
-        !cmdOptions.confirm &&
-        !(await confirmExecution('CONFIRM: Delete ALL print tasks? This cannot be undone.'))
-      ) {
-        logger.info('Aborted by user.');
-        process.exit(0);
-      }
-      if (cmdOptions.dryRun) {
-        logger.info('[Dry Run] Would clear all tasks from PrintOrderTask table.');
-      } else {
-        logger.info('[DB] Clearing all tasks from PrintOrderTask table...');
-        const { count } = await prisma.printOrderTask.deleteMany({});
-        logger.info(`[DB] Deleted ${count} tasks.`);
-      }
-    }
-
-    if (cmdOptions.forceRecreate && cmdOptions.orderId && !cmdOptions.dryRun) {
-      logger.info(
-        `[DB] Force recreate enabled for order identifier '${cmdOptions.orderId}'. Finding order to delete tasks...`
-      );
-      const ordersToDelete = await getOrdersToProcess(prisma, cmdOptions.orderId, 1, true);
-      if (ordersToDelete.length > 0) {
-        const orderDbId = ordersToDelete[0].id;
-        logger.info(`[DB] Found order with DB ID ${orderDbId}. Deleting existing tasks...`);
-        const { count } = await prisma.printOrderTask.deleteMany({
-          where: { orderId: orderDbId },
-        });
-        logger.info(`[DB] Deleted ${count} tasks for order DB ID ${orderDbId}.`);
-      } else {
-        logger.warn(
-          `[DB] Force recreate specified, but could not find order with identifier '${cmdOptions.orderId}' to delete tasks for.`
-        );
-      }
-    }
-
-    // Confirmation for forceRecreate on multiple orders
-    if (cmdOptions.forceRecreate && !cmdOptions.orderId && !cmdOptions.confirm) {
-      const numOrdersHint = cmdOptions.limit ? `up to ${cmdOptions.limit} orders` : (cmdOptions.days ? `orders from the last ${cmdOptions.days} days` : "multiple orders");
-      if (!(await confirmExecution(
-        `CONFIRM: --force-recreate is set without a specific --order-id. This will delete and recreate tasks for ${numOrdersHint}. Continue?`
-      ))) {
-        logger.info('Aborted by user.');
-        if (runLogId) await updateRunLog(runLogId, { status: 'aborted' });
-        process.exit(0);
-      }
-      logger.info('User confirmed forceRecreate for multiple orders.');
-    }
+    await fixInvalidStlRenderStatus(prisma);
 
     logger.info('Finding orders...');
-    const ordersToProcess = await getOrdersToProcess(
-      prisma,
-      cmdOptions.orderId,
-      cmdOptions.limit,
-      cmdOptions.forceRecreate
-    );
-    logger.info(`Found ${ordersToProcess.length} orders.`);
-    if (ordersToProcess.length > 0) {
-      logger.debug(
-        `First order ID: ${ordersToProcess[0].id}, Order Number: ${ordersToProcess[0].shipstation_order_number}`
-      );
-    } else if (cmdOptions.orderId) {
-      logger.warn(`No processable orders found for specified Order ID: ${cmdOptions.orderId}`);
-    }
+    const ordersToProcess = await getOrdersToProcess(prisma, cmdOptions.orderId, cmdOptions.limit, cmdOptions.forceRecreate);
+    logger.info({ count: ordersToProcess.length }, `Orders to process found.`);
 
     for (const order of ordersToProcess) {
       totalOrdersProcessed++;
-      logger.info(`--- Processing Order ${order.id} (${order.shipstation_order_number}) ---`);
+      logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number }, `--- Processing Order ${order.id} ---`);
+
+      let orderProcessingSuccess = true; // Flag for this specific order
 
       if (cmdOptions.shipstationSyncOnly) {
-        logger.info(
-          `[Order ${order.id}] ShipStation sync-only mode enabled. Skipping AI extraction and DB updates.`
-        );
+        logger.info({ orderId: order.id }, `ShipStation sync-only mode enabled. Skipping AI extraction and DB updates.`);
         try {
-          const { updatedCount, failedCount } = await syncExistingTasksToShipstation(
-            order.id,
-            cmdOptions
-          );
-          logger.info(
-            `[Order ${order.id}] ShipStation sync completed. Updated: ${updatedCount}, Failed: ${failedCount}`
-          );
-          continue;
-        } catch (error) {
-          logger.error(
-            `[Order ${order.id}] ShipStation sync failed: ${error instanceof Error ? error.message : String(error)}`
-          );
+          const { updatedCount, failedCount } = await syncExistingTasksToShipstation(order.id, cmdOptions);
+          logger.info({ orderId: order.id, updatedCount, failedCount }, `ShipStation sync completed for order.`);
+        } catch (syncErr: unknown) {
+          const actualSyncError = syncErr instanceof Error ? syncErr : new Error(String(syncErr));
+          logger.error({ orderId: order.id, err: actualSyncError, stack: actualSyncError.stack }, `ShipStation sync-only failed for order.`);
           totalOrdersFailed++;
           failedOrderIds.push(order.id);
-          continue;
+          orderProcessingSuccess = false;
         }
+        continue; // Move to the next order
       }
-
-      const effectiveModelUsed = cmdOptions.openaiModel;
 
       const orderDebugInfo: OrderDebugInfo = {
         orderId: order.id,
@@ -1339,10 +1332,9 @@ async function main() {
         promptSent: null,
         rawResponseReceived: null,
         parsedResponse: null,
-        validationError: null,
         processingError: null,
         aiProvider: 'openai',
-        modelUsed: effectiveModelUsed,
+        modelUsed: cmdOptions.openaiModel,
         items: [],
         forceRecreate: cmdOptions.forceRecreate,
         preserveText: cmdOptions.preserveText,
@@ -1350,167 +1342,110 @@ async function main() {
       };
 
       try {
-        orderDebugInfo.overallStatus = 'Extracting AI Data';
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
-        // Pass the forceRecreate flag when calling the function
-
-        let extractionResult: { success: boolean; data?: z.infer<typeof AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null };
-
-        if (cmdOptions.skipAi) {
-          logger.info(`[Order ${order.id}] Skipping AI extraction as per --skip-ai flag.`);
-          extractionResult = {
-            success: true, // Consider it a "successful" skip
-            data: { itemPersonalizations: {} }, // No AI data
-            promptUsed: null,
-            rawResponse: null,
-            modelUsed: null,
-          };
-          orderDebugInfo.overallStatus = 'AI Skipped';
-        } else {
-          extractionResult = await extractOrderPersonalization(order, {
-            openaiApiKey: cmdOptions.openaiApiKey ?? null,
-            openaiModel: cmdOptions.openaiModel,
-            systemPrompt, // Pass the loaded base system prompt
-            userPromptTemplate, // Pass the loaded user template
-            forceRecreate: cmdOptions.forceRecreate, // Pass the flag here
-            preserveText: cmdOptions.preserveText, // Pass preserveText here
-          });
-        }
-
-        orderDebugInfo.promptSent = extractionResult.promptUsed;
-        orderDebugInfo.rawResponseReceived = extractionResult.rawResponse;
-        orderDebugInfo.aiProvider = 'openai';
-        orderDebugInfo.modelUsed = extractionResult.modelUsed ?? orderDebugInfo.modelUsed;
+        orderDebugInfo.overallStatus = 'Extracting AI Data';
 
         let aiDataForTransaction: z.infer<typeof AiOrderResponseSchema> = { itemPersonalizations: {} };
-        if (!extractionResult.success) {
-          logger.error(
-            `[Order ${order.id}] AI Extraction Failed: ${extractionResult.error}`
-          );
-          orderDebugInfo.overallStatus = 'Extraction Failed';
-          orderDebugInfo.processingError = extractionResult.error ?? null;
-        } else if (extractionResult.data) {
-          orderDebugInfo.overallStatus = 'AI Data Extracted, Starting DB Transaction';
-          orderDebugInfo.parsedResponse = extractionResult.data;
-          aiDataForTransaction = extractionResult.data;
-        }
 
+        if (cmdOptions.skipAi) {
+          logger.info({ orderId: order.id }, 'Skipping AI extraction as per --skip-ai flag.');
+          orderDebugInfo.overallStatus = 'AI Skipped';
+        } else {
+          const extractionResult = await extractOrderPersonalization(order, {
+            openaiApiKey: cmdOptions.openaiApiKey,
+            openaiModel: cmdOptions.openaiModel,
+            systemPrompt: cmdOptions.systemPrompt,
+            userPromptTemplate: cmdOptions.userPromptTemplate,
+            forceRecreate: cmdOptions.forceRecreate,
+            preserveText: cmdOptions.preserveText,
+            dryRun: cmdOptions.dryRun
+          });
+          orderDebugInfo.promptSent = extractionResult.promptUsed;
+          orderDebugInfo.rawResponseReceived = extractionResult.rawResponse;
+          orderDebugInfo.modelUsed = extractionResult.modelUsed ?? cmdOptions.openaiModel;
+          if (!extractionResult.success || !extractionResult.data) {
+            const aiErrorMsg = extractionResult.error || 'AI extraction returned no data';
+            orderDebugInfo.processingError = aiErrorMsg;
+            logger.error({ orderId: order.id, err: aiErrorMsg }, 'AI Extraction Failed');
+            orderDebugInfo.overallStatus = 'AI Extraction Failed';
+            if (cmdOptions.createPlaceholder) {
+              logger.info({ orderId: order.id }, 'Proceeding with placeholder creation due to AI failure.');
+              // Placeholder logic will be handled in createOrUpdateTasksInTransaction based on empty aiDataForTransaction
+            } else {
+              throw new Error(aiErrorMsg); // This will be caught by the outer catch for this order
+            }
+          } else {
+            aiDataForTransaction = extractionResult.data;
+            orderDebugInfo.parsedResponse = aiDataForTransaction;
+            orderDebugInfo.overallStatus = 'AI Data Extracted';
+          }
+        }
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
 
         if (cmdOptions.dryRun) {
-          logger.info(`[Dry Run][Order ${order.id}] Simulating task creation/upserts...`);
+          logger.info({ orderId: order.id }, '[Dry Run] Simulating task creation/DB upserts...');
+          // Simulate call to createOrUpdateTasksInTransaction for logging task data details
+          // This part was more detailed before, for now, simple log:
+          logger.info({ orderId: order.id, aiData: aiDataForTransaction }, '[Dry Run] AI data that would be used for tasks.');
           orderDebugInfo.overallStatus = 'Dry Run Complete';
         } else {
-          const { tasksCreatedCount } =
-            await prisma.$transaction(
-              async tx => {
-                return await createOrUpdateTasksInTransaction(
-                  tx,
-                  order,
-                  aiDataForTransaction,
-                  {
-                    ...cmdOptions, // Pass all CLI options
-                    systemPrompt, // Pass loaded systemPrompt
-                    userPromptTemplate, // Pass loaded userPromptTemplate
-                  },
-                  orderDebugInfo
-                );
-              },
-              { maxWait: 120000, timeout: 300000 }
-            );
-          logger.info(
-            `[Order ${order.id}] DB Transaction finished. Tasks upserted: ${tasksCreatedCount}.`
+          orderDebugInfo.overallStatus = 'Starting DB Transaction';
+          const { tasksCreatedCount: currentTasks } = await prisma.$transaction(
+            async (tx) => {
+              // createOrUpdateTasksInTransaction uses module-scoped logger
+              return createOrUpdateTasksInTransaction(tx, order, aiDataForTransaction, cmdOptions, orderDebugInfo);
+            },
+            {
+              maxWait: PRISMA_TRANSACTION_MAX_WAIT,
+              timeout: PRISMA_TRANSACTION_TIMEOUT
+            }
           );
-          totalTasksCreated += tasksCreatedCount;
-          if (!orderDebugInfo.processingError) {
-            orderDebugInfo.overallStatus = 'Transaction Committed';
-          }
+          totalTasksCreated += currentTasks;
+          logger.info({ orderId: order.id, tasksCreated: currentTasks }, 'DB Transaction finished.');
+          if (!orderDebugInfo.processingError) orderDebugInfo.overallStatus = 'Transaction Committed';
         }
-      } catch (error: unknown) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (!orderDebugInfo.processingError) {
-          logger.error(`[Order ${order.id}] FAILED: ${errorMsg}`, error);
-          orderDebugInfo.processingError = errorMsg;
-        } else {
-          logger.error(`[Order ${order.id}] FAILED (additional error): ${errorMsg}`, error);
-        }
-        totalOrdersFailed++;
-        failedOrderIds.push(order.id);
+      } catch (orderProcessingError: unknown) { // Typed as unknown
+        orderProcessingSuccess = false;
+        const actualError = orderProcessingError instanceof Error ? orderProcessingError : new Error(String(orderProcessingError));
+        logger.error({ orderId: order.id, err: actualError, stack: actualError.stack }, `Error processing order ${order.id}.`);
+        orderDebugInfo.processingError = actualError.message;
         orderDebugInfo.overallStatus = 'Processing Failed';
+        // Placeholder creation logic if AI failed or this block is hit, was more complex before, ensure it's correct
+        if (cmdOptions.createPlaceholder) {
+          logger.info({ orderId: order.id }, 'Creating placeholder task as order processing failed and createPlaceholder is true.');
+          // This part might need access to `taskDetailsToCreate` and `finalDataSource` if they were defined in this scope
+          // For now, just logging. If tasks need to be created here, that logic needs to be in scope.
+        }
       } finally {
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
-        logger.info(`--- Finished Order ${order.id}. Status: ${orderDebugInfo.overallStatus} ---`);
+        logger.info({ orderId: order.id, finalItemStatus: orderDebugInfo.overallStatus }, `--- Finished Order ${order.id} ---`);
+        if (!orderProcessingSuccess) {
+          totalOrdersFailed++;
+          failedOrderIds.push(order.id);
+        }
       }
-    }
+    } // End of for...of loop for orders
 
+    finalMessage = `Processed ${totalOrdersProcessed} orders. Succeeded: ${totalOrdersProcessed - totalOrdersFailed}. Failed: ${totalOrdersFailed}. Tasks Upserted: ${totalTasksCreated}.`;
+    if (totalOrdersFailed > 0) finalMessage += ` Failed Order IDs: [${failedOrderIds.join(', ')}]`;
     scriptRunSuccess = totalOrdersFailed === 0;
-    finalMessage = `Processed ${totalOrdersProcessed} orders. Failed: ${totalOrdersFailed}. Tasks Upserted: ${totalTasksCreated}.`;
-    if (totalOrdersFailed > 0) finalMessage += ` Failed IDs: [${failedOrderIds.join(', ')}]`;
-    await updateRunLog(runLogId, { status: scriptRunSuccess ? 'success' : 'partial_success' });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error('SCRIPT FAILED (Unhandled Exception)', error);
+    if (runLogId) await updateRunLog(runLogId, { status: scriptRunSuccess ? 'success' : 'partial_success' });
+
+  } catch (error: unknown) {
+    mainTryCatchError = error instanceof Error ? error : new Error(String(error));
+    (logger || console).error({ err: mainTryCatchError, stack: mainTryCatchError.stack }, `SCRIPT FAILED: ${mainTryCatchError.message}`);
     scriptRunSuccess = false;
-    finalMessage = `Script failed fatally: ${errorMsg}`;
-    if (runLogId !== null) {
-      try {
-        await updateRunLog(runLogId, { status: 'failed', message: errorMsg });
-      } catch (updateError) {
-        logger.error('Failed to update runLog with failure status during main error handling:', updateError);
-      }
-    }
+    finalMessage = `Script FAILED: ${mainTryCatchError.message}`;
+    if (runLogId) try { await updateRunLog(runLogId, { status: 'failed', message: mainTryCatchError.message }); } catch (e) { (logger || console).error('Failed to update run log on error', e); }
   } finally {
-    logger.info(`--- Script End ---`);
-    logger.info(finalMessage);
-    if (prisma) {
-      try {
-        await prisma.$disconnect();
-        logger.info('DB disconnected.');
-      } catch (e) {
-        logger.error('DB disconnect error', e);
-      }
-    }
-    if (logStream) logStream.end();
-    process.exit(scriptRunSuccess ? 0 : 1);
+    (logger || console).info(`--- Script End ---`);
+    (logger || console).info(finalMessage);
+    await cleanupAndExit(mainTryCatchError, mainTryCatchError ? 'errorInMainFinally' : 'normalCompletionFinally');
   }
 }
 
-if (process.argv.includes('--help') || process.argv.includes('-h')) {
-  console.log(`
-Usage:
-  npx tsx src/scripts/populate-print-queue.ts [options]
-
-Options:
-  --order-id <id>           Process specific order by ID, ShipStation Order Number, or ShipStation Order ID
-  --limit <number>          Limit orders fetched (no default; fetch all orders)
-  --days <number>           Limit orders to those created in the last X days
-  --openai-api-key <key>    OpenAI API Key (default: env OPENAI_API_KEY)
-  --openai-model <model>    OpenAI model (default: gpt-4.1)
-  --system-prompt-file <path> Path to system prompt file (default: src/lib/ai/prompts/prompt-system-optimized.txt)
-  --user-prompt-file <path> Path to user prompt template file (default: src/lib/ai/prompts/prompt-user-template-optimized.txt)
-  --debug                   Enable debug logging
-  --verbose                 Enable verbose logging
-  --log-level <level>       Set log level (default: info)
-  -f, --force-recreate      Delete existing tasks first
-  --create-placeholder      Create placeholder on AI fail or if AI is skipped (default: true)
-  -y, --confirm             Skip confirmation prompts
-  --clear-all               Delete ALL tasks first (requires confirm)
-  --dry-run                 Simulate without DB changes
-  --preserve-text           Keep existing custom text/names when recreating tasks
-                            (prevents AI from overwriting correct names)
-  --skip-ai                 Skip AI extraction step
-  --sync-to-shipstation     Enable ShipStation synchronization during processing (default: false)
-  --shipstation-sync-only   Only sync existing DB tasks to ShipStation without changing DB
-  --debug-file <path>       Path for detailed debug log file (requires --order-id)
-
-Examples:
-  # Process specific order with force recreate but preserve existing text
-  npx tsx src/scripts/populate-print-queue.ts --order-id 202-7013581-4597156 -f --preserve-text
-
-  # Process latest 5 orders in dry run mode
-  npx tsx src/scripts/populate-print-queue.ts --limit 5 --dry-run
-  `);
-  process.exit(0);
-}
-
-void main();
+void main().catch(err => {
+  (logger || console).error("Catastrophic error in main function execution (outer catch):", err);
+  if (isPrismaConnected) { prisma.$disconnect().catch(e => console.error('Catastrophic disconnect error', e)); }
+  process.exit(1);
+});

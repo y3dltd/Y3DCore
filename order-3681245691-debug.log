@@ -1,0 +1,1322 @@
+
+--- Entry: 2025-05-10T01:56:46.357Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'Starting',
+  promptSent: null,
+  rawResponseReceived: null,
+  parsedResponse: null,
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: false
+}
+
+--- Entry: 2025-05-10T01:57:02.536Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'Starting',
+  promptSent: null,
+  rawResponseReceived: null,
+  parsedResponse: null,
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: true
+}
+
+--- Entry: 2025-05-10T01:57:02.537Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'AI Skipped',
+  promptSent: null,
+  rawResponseReceived: null,
+  parsedResponse: null,
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: true
+}
+
+--- Entry: 2025-05-10T01:57:02.537Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'Dry Run Complete',
+  promptSent: null,
+  rawResponseReceived: null,
+  parsedResponse: null,
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: true
+}
+
+--- Entry: 2025-05-10T01:57:07.093Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'AI Data Extracted',
+  promptSent: 'System:\n' +
+    '# System Prompt\n' +
+    '**Purpose**\n' +
+    '\n' +
+    'You are an AI assistant tasked with extracting personalization details for 3D printing from e-commerce order data provided in JSON format.\n' +
+    '\n' +
+    '**Instructions**\n' +
+    '\n' +
+    'Focus exclusively on:\n' +
+    '- The JSON data provided under the "Actual Order Data" heading.\n' +
+    '\n' +
+    'Ignore:\n' +
+    '- Any previous context or external information.\n' +
+    '\n' +
+    '**Output Requirements**\n' +
+    '\n' +
+    'Your response must:\n' +
+    '- Be a valid JSON object, starting with `{` and ending with `}`.\n' +
+    '- Contain only the JSON object without any additional text, explanations, or formatting.\n' +
+    "- Include ALL items from the input JSON in your response, even if you can't find personalization details for them.\n" +
+    '\n' +
+    '**JSON Structure**\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "itemPersonalizations": {\n' +
+    '    "INTERNAL_ITEM_ID": {\n' +
+    '      "personalizations": [\n' +
+    '        {\n' +
+    '          "customText": "...", // The extracted personalization text (e.g., name, registration)\n' +
+    '          "color1": "...",     // Primary color, if applicable\n' +
+    '          "color2": null,      // Secondary color (for 2-color items), if applicable\n' +
+    '          "quantity": 1,       // Quantity for this specific personalization (usually 1 if split)\n' +
+    '          "needsReview": false,// Flag if manual review is needed\n' +
+    '          "reviewReason": null,// Reason for review flag or informative note\n' +
+    '          "annotation": null   // Optional internal annotation (e.g., about splitting)\n' +
+    '        }\n' +
+    '        // ... potentially more personalization objects if split from input ...\n' +
+    '      ],\n' +
+    '      "overallNeedsReview": false, // Flag if the item as a whole needs review (e.g., quantity mismatch)\n' +
+    '      "overallReviewReason": null  // Reason for overall item review\n' +
+    '    }\n' +
+    '  }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    '**IMPORTANT: Default Handling for Missing Personalization**\n' +
+    '\n' +
+    "You MUST include an entry in `itemPersonalizations` for EVERY item ID in the input JSON's `items` array. If you cannot extract *any* specific personalization details for an item (neither from `print_settings`, `customerNotes`, nor inferred from product type):\n" +
+    '- Create an entry for that `INTERNAL_ITEM_ID`.\n' +
+    '- Include a *single* object in the `personalizations` array with:\n' +
+    '    - `"customText": null`\n' +
+    '    - `"color1": null`\n' +
+    '    - `"color2": null`\n' +
+    '    - `"quantity"` set to match the item\'s original `"quantityOrdered"` value.\n' +
+    '    - `"needsReview": true`\n' +
+    '    - `"reviewReason": "No personalization details found"`\n' +
+    '- Set `"overallNeedsReview": true` for the item.\n' +
+    '- Set `"overallReviewReason": "No personalization details found"` for the item.\n' +
+    '\n' +
+    '**Core Personalization Extraction Logic**\n' +
+    '\n' +
+    'For each item in the input `items` array:\n' +
+    '1.  **Examine `customerNotes` FIRST for explicit color/text:**\n' +
+    '    *   Look thoroughly for lines starting with "Personalisation:", "Text:", "Name:", etc. Use the value following this as the primary source for `customText`.\n' +
+    '    *   Look thoroughly for lines starting with "Colour:", "Color:", "Primary Colour:", etc. Use the value following this as the primary source for `color1`.\n' +
+    '    *   Look thoroughly for lines starting with "Secondary colour:", "Color 2:", etc. Use the value following this as the primary source for `color2`.\n' +
+    '2.  **Examine `print_settings` SECOND:**\n' +
+    '    *   If `customText` was NOT found in notes, look for options named "Personalization", "Text", "Custom Text", "Name", etc., in `print_settings`. Use its `value` if found.\n' +
+    '    *   If `color1` was NOT found in notes, look for options named "Color", "Colour 1", etc., in `print_settings`. Use its `value` if found.\n' +
+    '    *   If `color2` was NOT found in notes, look for options named "Secondary color", "Colour 2", etc., in `print_settings`. Use its `value` if found.\n' +
+    '3.  **Infer Color from Product Name THIRD:** If `color1` is still undetermined, check the product name for bracketed colors (e.g., "[Light Blue]").\n' +
+    "4.  **Special Handling: 'Random Color' with Buyer Preferences:**\n" +
+    '    *   This rule applies if:\n' +
+    "        *   An item's `print_settings` (e.g., an option like `Color=Random Selection`) or product name explicitly indicates a random or assorted color choice, AND\n" +
+    '        *   `color1` has NOT been determined by rules 1, 2, or 3 above, AND\n' +
+    '        *   `customerNotes` contain phrases suggesting color preferences (e.g., "boy colours," "girl colors," "likes blue or green," "prefers red, orange, yellow," "any color except pink").\n' +
+    '    *   **Action:**\n' +
+    '        *   Attempt to select ONE suitable standard color from the preferred list/description for `color1`.\n' +
+    '            *   For general preferences (e.g., "boy colours like blue green red orange"), pick one of the explicitly listed colors (e.g., "Blue", "Green", "Red", or "Orange"). Prioritize the first explicitly mentioned suitable color.\n' +
+    '            *   If only a category is given (e.g., "boy colors" without specific examples), you may infer a common color (e.g., "Blue").\n' +
+    `            *   If a negative preference is given (e.g., "any color except pink"), you may pick any standard color that isn't pink (e.g., "Blue").\n` +
+    '            *   **For Duplicate Names**: If the same `customText` (e.g., "Issac") appears multiple times for items subject to this \'Random Color\' rule, attempt to assign *different* suitable standard colors from the buyer\'s preference list to each instance. For example, if \'Issac\' appears twice and notes say \'boy colours like blue, green, red\', assign \'Blue\' to the first \'Issac\' and \'Green\' to the second. If not enough distinct preferred colors are available for all duplicates, you may reuse colors, but ensure each instance still becomes a separate personalization object.\n' +
+    '        *   If a color is successfully assigned this way:\n' +
+    "            *   Set the `personalizations` array entry's `color1` to this chosen color.\n" +
+    '            *   Set its `needsReview` to `true`.\n' +
+    '            *   Set its `reviewReason` to clearly state the assignment (e.g., "Assigned [ChosenColor] based on \'boy colours like blue green red orange\' preference from notes; Random Selection item. Please verify.").\n' +
+    '        *   If no specific color can be confidently assigned despite preferences (e.g., notes are too vague or conflicting with available standard colors), then do not assign a color here; proceed to subsequent rules.\n' +
+    '    *   This rule aims to make a reasonable color assignment for review, rather than leaving it `null` when strong preferences for random items are noted.\n' +
+    '5.  **Apply REGKEY Logic:** Apply specific REGKEY color logic if applicable (see below).\n' +
+    '6.  **Default Handling:** Only if NO personalization text AND NO colors were found through any of the above steps, should you resort to the "Default Handling for Missing Personalization" rule.\n' +
+    '\n' +
+    '### Special Handling: Car Registration Keyrings (SKU contains "REGKEY")\n' +
+    '# ... existing REGKEY handling ...\n' +
+    '\n' +
+    '### Special Handling: Multiple Personalizations / Complex Formatting (Revised Combined Logic)\n' +
+    '\n' +
+    '**Goal:** Accurately extract individual personalizations, even when multiple are combined into a single field (`customerNotes` or `print_settings` value) using various customer formats, AND handle cases where `quantityOrdered` might mismatch the actual number of items described.\n' +
+    '\n' +
+    '**Core Principle:** Use multiple signals to determine if splitting is needed: `quantityOrdered`, product name patterns (e.g., "Nx", "Set of N"), and the structure of `customerNotes` (e.g., multiple lines).\n' +
+    '\n' +
+    '**Parsing Strategy:**\n' +
+    '\n' +
+    '1.  **Check for Multiple Items Trigger:** Examine the context. Should you *attempt* to split the personalization text? Trigger an attempt if ANY of the following are true:\n' +
+    '    *   `quantityOrdered > 1`.\n' +
+    '    *   The `productName` contains patterns like "Nx", "Set of N", "Pack of N" (where N is a number > 1).\n' +
+    '    *   The `customerNotes` contain multiple lines (`\\n`) where each line appears to represent a distinct item.\n' +
+    '    *   The `customerNotes` use clear separators (commas, semicolons, pipes) between parts that look like distinct names/items (use caution with multi-word names).\n' +
+    '    *   The `customerNotes` show repeated structures or numbered/bulleted lists suggesting multiple items.\n' +
+    '\n' +
+    '2.  **Attempt Splitting/Parsing (If Triggered in Step 1):**\n' +
+    '    *   If a trigger condition was met, attempt to split the text (primarily from `customerNotes`, but consider `print_settings` value if notes are empty) into individual items based on the detected structure (newlines are the primary separator).\n' +
+    '    *   Common patterns for splitting `customerNotes`:\n' +
+    '        *   Each line is a separate personalization.\n' +
+    '        *   Bulleted/numbered lists.\n' +
+    '        *   Blank lines separate personalizations.\n' +
+    '        *   Phrases like "Item 1:", "Person 2:", etc.\n' +
+    '    *   **Special Handling for "Personalisation:" blocks (e.g., from Etsy) - CRITICAL & OVERRIDING:**\n' +
+    '        *   If `customerNotes` (or a similar field representing buyer-provided personalization) contain a clear section indicative of multiple distinct items (e.g., starting with a keyword like "Personalisation:", "Details:", or simply multiple lines of text when `quantityOrdered > 1`) AND subsequent lines clearly appear to be `Name Color` pairs (e.g., "Layan Magenta", "Ava Red") or `Name` on one line and `Color` on the next for that name:\n' +
+    '            *   **You MUST treat each such identified `Name Color` pair (or Name and its associated Color) as a distinct sub-item.**\n' +
+    '            *   For `customText`, extract the Name part (e.g., "Layan").\n' +
+    '            *   For `color1`, extract the Color part (e.g., "Magenta") directly associated with that name from the *same line or context block*.\n' +
+    "            *   This line-specific or block-specific `color1` **MUST take precedence** over any general 'Colour:' field found at the item/SKU level or elsewhere in the notes for this sub-item's `color1`.\n" +
+    '            *   **The `quantity` for EACH such created personalization object MUST be set to `1`.**\n' +
+    '            *   If a line within such a block does not clearly fit the `Name Color` (or Name/Color) pattern, or if a color is missing for a name, you should still attempt to create a sub-item for the name, use `null` for the missing color, and set `needsReview: true`, `reviewReason: "Incomplete Name/Color'... 17812 more characters,
+  rawResponseReceived: '{\n' +
+    '  "itemPersonalizations": {\n' +
+    '    "4588771605": {\n' +
+    '      "personalizations": [\n' +
+    '        {\n' +
+    '          "customText": "Meya",\n' +
+    '          "color1": "Red",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Dion",\n' +
+    '          "color1": "Orange",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Eloise",\n' +
+    '          "color1": "Yellow",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rosie",\n' +
+    '          "color1": "Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Joe",\n' +
+    '          "color1": "Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "James",\n' +
+    '          "color1": "Magenta",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Freya",\n' +
+    '          "color1": "Pink",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rowan",\n' +
+    '          "color1": "Purple",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Mara",\n' +
+    '          "color1": "Light Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Arnie",\n' +
+    '          "color1": "Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Brody",\n' +
+    '          "color1": "Silver",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Lottie",\n' +
+    '          "color1": "White",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned White based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Hunter",\n' +
+    '          "color1": "Peak Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Peak Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Primrose",\n' +
+    '          "color1": "Rose Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Rose Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Emily",\n' +
+    '          "color1": "Turquoise",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Turquoise based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Aurora",\n' +
+    '          "color1": "Orange",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Nova",\n' +
+    '          "color1": "Red",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Dexter",\n' +
+    '          "color1": "Yellow",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rupert",\n' +
+    '          "color1": "Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Emilia",\n' +
+    '          "color1": "Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Elsie",\n' +
+    '          "color1": "Magenta",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Octavius",\n' +
+    '          "color1": "Pink",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Freddie",\n' +
+    '          "color1": "Purple",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Fraser",\n' +
+    '          "color1": "Light Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Elliot",\n' +
+    '          "color1": "Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Arkley",\n' +
+    '          "color1": "Silver",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        }\n' +
+    '      ],\n' +
+    '      "overallNeedsReview": true,\n' +
+    '      "overallRe'... 211 more characters,
+  parsedResponse: {
+    itemPersonalizations: {
+      '4588771605': {
+        personalizations: [
+          {
+            customText: 'Meya',
+            color1: 'Red',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Dion',
+            color1: 'Orange',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Eloise',
+            color1: 'Yellow',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rosie',
+            color1: 'Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Joe',
+            color1: 'Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'James',
+            color1: 'Magenta',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Freya',
+            color1: 'Pink',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rowan',
+            color1: 'Purple',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Mara',
+            color1: 'Light Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Arnie',
+            color1: 'Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Brody',
+            color1: 'Silver',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Lottie',
+            color1: 'White',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned White based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Hunter',
+            color1: 'Peak Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Peak Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Primrose',
+            color1: 'Rose Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Rose Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Emily',
+            color1: 'Turquoise',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Turquoise based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Aurora',
+            color1: 'Orange',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Nova',
+            color1: 'Red',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Dexter',
+            color1: 'Yellow',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rupert',
+            color1: 'Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Emilia',
+            color1: 'Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Elsie',
+            color1: 'Magenta',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Octavius',
+            color1: 'Pink',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Freddie',
+            color1: 'Purple',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Fraser',
+            color1: 'Light Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Elliot',
+            color1: 'Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Arkley',
+            color1: 'Silver',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          }
+        ],
+        overallNeedsReview: true,
+        overallReviewReason: "QUANTITY_MISMATCH: OrderQty=1, ParsedTotalQty=26, NotesLines=26. Used notes structure.; Assigned colors based on 'Mixed variety of bright colours' preference from notes; Please verify."
+      }
+    }
+  },
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: false
+}
+
+--- Entry: 2025-05-10T01:57:07.097Z ---
+{
+  orderId: 31056,
+  orderNumber: '3681245691',
+  marketplace: 'etsy',
+  overallStatus: 'Dry Run Complete',
+  promptSent: 'System:\n' +
+    '# System Prompt\n' +
+    '**Purpose**\n' +
+    '\n' +
+    'You are an AI assistant tasked with extracting personalization details for 3D printing from e-commerce order data provided in JSON format.\n' +
+    '\n' +
+    '**Instructions**\n' +
+    '\n' +
+    'Focus exclusively on:\n' +
+    '- The JSON data provided under the "Actual Order Data" heading.\n' +
+    '\n' +
+    'Ignore:\n' +
+    '- Any previous context or external information.\n' +
+    '\n' +
+    '**Output Requirements**\n' +
+    '\n' +
+    'Your response must:\n' +
+    '- Be a valid JSON object, starting with `{` and ending with `}`.\n' +
+    '- Contain only the JSON object without any additional text, explanations, or formatting.\n' +
+    "- Include ALL items from the input JSON in your response, even if you can't find personalization details for them.\n" +
+    '\n' +
+    '**JSON Structure**\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "itemPersonalizations": {\n' +
+    '    "INTERNAL_ITEM_ID": {\n' +
+    '      "personalizations": [\n' +
+    '        {\n' +
+    '          "customText": "...", // The extracted personalization text (e.g., name, registration)\n' +
+    '          "color1": "...",     // Primary color, if applicable\n' +
+    '          "color2": null,      // Secondary color (for 2-color items), if applicable\n' +
+    '          "quantity": 1,       // Quantity for this specific personalization (usually 1 if split)\n' +
+    '          "needsReview": false,// Flag if manual review is needed\n' +
+    '          "reviewReason": null,// Reason for review flag or informative note\n' +
+    '          "annotation": null   // Optional internal annotation (e.g., about splitting)\n' +
+    '        }\n' +
+    '        // ... potentially more personalization objects if split from input ...\n' +
+    '      ],\n' +
+    '      "overallNeedsReview": false, // Flag if the item as a whole needs review (e.g., quantity mismatch)\n' +
+    '      "overallReviewReason": null  // Reason for overall item review\n' +
+    '    }\n' +
+    '  }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    '**IMPORTANT: Default Handling for Missing Personalization**\n' +
+    '\n' +
+    "You MUST include an entry in `itemPersonalizations` for EVERY item ID in the input JSON's `items` array. If you cannot extract *any* specific personalization details for an item (neither from `print_settings`, `customerNotes`, nor inferred from product type):\n" +
+    '- Create an entry for that `INTERNAL_ITEM_ID`.\n' +
+    '- Include a *single* object in the `personalizations` array with:\n' +
+    '    - `"customText": null`\n' +
+    '    - `"color1": null`\n' +
+    '    - `"color2": null`\n' +
+    '    - `"quantity"` set to match the item\'s original `"quantityOrdered"` value.\n' +
+    '    - `"needsReview": true`\n' +
+    '    - `"reviewReason": "No personalization details found"`\n' +
+    '- Set `"overallNeedsReview": true` for the item.\n' +
+    '- Set `"overallReviewReason": "No personalization details found"` for the item.\n' +
+    '\n' +
+    '**Core Personalization Extraction Logic**\n' +
+    '\n' +
+    'For each item in the input `items` array:\n' +
+    '1.  **Examine `customerNotes` FIRST for explicit color/text:**\n' +
+    '    *   Look thoroughly for lines starting with "Personalisation:", "Text:", "Name:", etc. Use the value following this as the primary source for `customText`.\n' +
+    '    *   Look thoroughly for lines starting with "Colour:", "Color:", "Primary Colour:", etc. Use the value following this as the primary source for `color1`.\n' +
+    '    *   Look thoroughly for lines starting with "Secondary colour:", "Color 2:", etc. Use the value following this as the primary source for `color2`.\n' +
+    '2.  **Examine `print_settings` SECOND:**\n' +
+    '    *   If `customText` was NOT found in notes, look for options named "Personalization", "Text", "Custom Text", "Name", etc., in `print_settings`. Use its `value` if found.\n' +
+    '    *   If `color1` was NOT found in notes, look for options named "Color", "Colour 1", etc., in `print_settings`. Use its `value` if found.\n' +
+    '    *   If `color2` was NOT found in notes, look for options named "Secondary color", "Colour 2", etc., in `print_settings`. Use its `value` if found.\n' +
+    '3.  **Infer Color from Product Name THIRD:** If `color1` is still undetermined, check the product name for bracketed colors (e.g., "[Light Blue]").\n' +
+    "4.  **Special Handling: 'Random Color' with Buyer Preferences:**\n" +
+    '    *   This rule applies if:\n' +
+    "        *   An item's `print_settings` (e.g., an option like `Color=Random Selection`) or product name explicitly indicates a random or assorted color choice, AND\n" +
+    '        *   `color1` has NOT been determined by rules 1, 2, or 3 above, AND\n' +
+    '        *   `customerNotes` contain phrases suggesting color preferences (e.g., "boy colours," "girl colors," "likes blue or green," "prefers red, orange, yellow," "any color except pink").\n' +
+    '    *   **Action:**\n' +
+    '        *   Attempt to select ONE suitable standard color from the preferred list/description for `color1`.\n' +
+    '            *   For general preferences (e.g., "boy colours like blue green red orange"), pick one of the explicitly listed colors (e.g., "Blue", "Green", "Red", or "Orange"). Prioritize the first explicitly mentioned suitable color.\n' +
+    '            *   If only a category is given (e.g., "boy colors" without specific examples), you may infer a common color (e.g., "Blue").\n' +
+    `            *   If a negative preference is given (e.g., "any color except pink"), you may pick any standard color that isn't pink (e.g., "Blue").\n` +
+    '            *   **For Duplicate Names**: If the same `customText` (e.g., "Issac") appears multiple times for items subject to this \'Random Color\' rule, attempt to assign *different* suitable standard colors from the buyer\'s preference list to each instance. For example, if \'Issac\' appears twice and notes say \'boy colours like blue, green, red\', assign \'Blue\' to the first \'Issac\' and \'Green\' to the second. If not enough distinct preferred colors are available for all duplicates, you may reuse colors, but ensure each instance still becomes a separate personalization object.\n' +
+    '        *   If a color is successfully assigned this way:\n' +
+    "            *   Set the `personalizations` array entry's `color1` to this chosen color.\n" +
+    '            *   Set its `needsReview` to `true`.\n' +
+    '            *   Set its `reviewReason` to clearly state the assignment (e.g., "Assigned [ChosenColor] based on \'boy colours like blue green red orange\' preference from notes; Random Selection item. Please verify.").\n' +
+    '        *   If no specific color can be confidently assigned despite preferences (e.g., notes are too vague or conflicting with available standard colors), then do not assign a color here; proceed to subsequent rules.\n' +
+    '    *   This rule aims to make a reasonable color assignment for review, rather than leaving it `null` when strong preferences for random items are noted.\n' +
+    '5.  **Apply REGKEY Logic:** Apply specific REGKEY color logic if applicable (see below).\n' +
+    '6.  **Default Handling:** Only if NO personalization text AND NO colors were found through any of the above steps, should you resort to the "Default Handling for Missing Personalization" rule.\n' +
+    '\n' +
+    '### Special Handling: Car Registration Keyrings (SKU contains "REGKEY")\n' +
+    '# ... existing REGKEY handling ...\n' +
+    '\n' +
+    '### Special Handling: Multiple Personalizations / Complex Formatting (Revised Combined Logic)\n' +
+    '\n' +
+    '**Goal:** Accurately extract individual personalizations, even when multiple are combined into a single field (`customerNotes` or `print_settings` value) using various customer formats, AND handle cases where `quantityOrdered` might mismatch the actual number of items described.\n' +
+    '\n' +
+    '**Core Principle:** Use multiple signals to determine if splitting is needed: `quantityOrdered`, product name patterns (e.g., "Nx", "Set of N"), and the structure of `customerNotes` (e.g., multiple lines).\n' +
+    '\n' +
+    '**Parsing Strategy:**\n' +
+    '\n' +
+    '1.  **Check for Multiple Items Trigger:** Examine the context. Should you *attempt* to split the personalization text? Trigger an attempt if ANY of the following are true:\n' +
+    '    *   `quantityOrdered > 1`.\n' +
+    '    *   The `productName` contains patterns like "Nx", "Set of N", "Pack of N" (where N is a number > 1).\n' +
+    '    *   The `customerNotes` contain multiple lines (`\\n`) where each line appears to represent a distinct item.\n' +
+    '    *   The `customerNotes` use clear separators (commas, semicolons, pipes) between parts that look like distinct names/items (use caution with multi-word names).\n' +
+    '    *   The `customerNotes` show repeated structures or numbered/bulleted lists suggesting multiple items.\n' +
+    '\n' +
+    '2.  **Attempt Splitting/Parsing (If Triggered in Step 1):**\n' +
+    '    *   If a trigger condition was met, attempt to split the text (primarily from `customerNotes`, but consider `print_settings` value if notes are empty) into individual items based on the detected structure (newlines are the primary separator).\n' +
+    '    *   Common patterns for splitting `customerNotes`:\n' +
+    '        *   Each line is a separate personalization.\n' +
+    '        *   Bulleted/numbered lists.\n' +
+    '        *   Blank lines separate personalizations.\n' +
+    '        *   Phrases like "Item 1:", "Person 2:", etc.\n' +
+    '    *   **Special Handling for "Personalisation:" blocks (e.g., from Etsy) - CRITICAL & OVERRIDING:**\n' +
+    '        *   If `customerNotes` (or a similar field representing buyer-provided personalization) contain a clear section indicative of multiple distinct items (e.g., starting with a keyword like "Personalisation:", "Details:", or simply multiple lines of text when `quantityOrdered > 1`) AND subsequent lines clearly appear to be `Name Color` pairs (e.g., "Layan Magenta", "Ava Red") or `Name` on one line and `Color` on the next for that name:\n' +
+    '            *   **You MUST treat each such identified `Name Color` pair (or Name and its associated Color) as a distinct sub-item.**\n' +
+    '            *   For `customText`, extract the Name part (e.g., "Layan").\n' +
+    '            *   For `color1`, extract the Color part (e.g., "Magenta") directly associated with that name from the *same line or context block*.\n' +
+    "            *   This line-specific or block-specific `color1` **MUST take precedence** over any general 'Colour:' field found at the item/SKU level or elsewhere in the notes for this sub-item's `color1`.\n" +
+    '            *   **The `quantity` for EACH such created personalization object MUST be set to `1`.**\n' +
+    '            *   If a line within such a block does not clearly fit the `Name Color` (or Name/Color) pattern, or if a color is missing for a name, you should still attempt to create a sub-item for the name, use `null` for the missing color, and set `needsReview: true`, `reviewReason: "Incomplete Name/Color'... 17812 more characters,
+  rawResponseReceived: '{\n' +
+    '  "itemPersonalizations": {\n' +
+    '    "4588771605": {\n' +
+    '      "personalizations": [\n' +
+    '        {\n' +
+    '          "customText": "Meya",\n' +
+    '          "color1": "Red",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Dion",\n' +
+    '          "color1": "Orange",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Eloise",\n' +
+    '          "color1": "Yellow",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rosie",\n' +
+    '          "color1": "Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Joe",\n' +
+    '          "color1": "Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "James",\n' +
+    '          "color1": "Magenta",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Freya",\n' +
+    '          "color1": "Pink",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rowan",\n' +
+    '          "color1": "Purple",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Mara",\n' +
+    '          "color1": "Light Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Arnie",\n' +
+    '          "color1": "Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Brody",\n' +
+    '          "color1": "Silver",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Lottie",\n' +
+    '          "color1": "White",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned White based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Hunter",\n' +
+    '          "color1": "Peak Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Peak Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Primrose",\n' +
+    '          "color1": "Rose Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Rose Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Emily",\n' +
+    '          "color1": "Turquoise",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Turquoise based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Aurora",\n' +
+    '          "color1": "Orange",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Nova",\n' +
+    '          "color1": "Red",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Dexter",\n' +
+    '          "color1": "Yellow",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Rupert",\n' +
+    '          "color1": "Green",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Emilia",\n' +
+    '          "color1": "Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Elsie",\n' +
+    '          "color1": "Magenta",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Octavius",\n' +
+    '          "color1": "Pink",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Freddie",\n' +
+    '          "color1": "Purple",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Fraser",\n' +
+    '          "color1": "Light Blue",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Elliot",\n' +
+    '          "color1": "Gold",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        },\n' +
+    '        {\n' +
+    '          "customText": "Arkley",\n' +
+    '          "color1": "Silver",\n' +
+    '          "color2": null,\n' +
+    '          "quantity": 1,\n' +
+    '          "needsReview": true,\n' +
+    `          "reviewReason": "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",\n` +
+    '          "annotation": null\n' +
+    '        }\n' +
+    '      ],\n' +
+    '      "overallNeedsReview": true,\n' +
+    '      "overallRe'... 211 more characters,
+  parsedResponse: {
+    itemPersonalizations: {
+      '4588771605': {
+        personalizations: [
+          {
+            customText: 'Meya',
+            color1: 'Red',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Dion',
+            color1: 'Orange',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Eloise',
+            color1: 'Yellow',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rosie',
+            color1: 'Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Joe',
+            color1: 'Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'James',
+            color1: 'Magenta',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Freya',
+            color1: 'Pink',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rowan',
+            color1: 'Purple',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Mara',
+            color1: 'Light Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Arnie',
+            color1: 'Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Brody',
+            color1: 'Silver',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Lottie',
+            color1: 'White',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned White based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Hunter',
+            color1: 'Peak Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Peak Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Primrose',
+            color1: 'Rose Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Rose Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Emily',
+            color1: 'Turquoise',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Turquoise based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Aurora',
+            color1: 'Orange',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Orange based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Nova',
+            color1: 'Red',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Red based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Dexter',
+            color1: 'Yellow',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Yellow based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Rupert',
+            color1: 'Green',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Green based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Emilia',
+            color1: 'Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Elsie',
+            color1: 'Magenta',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Magenta based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Octavius',
+            color1: 'Pink',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Pink based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Freddie',
+            color1: 'Purple',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Purple based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Fraser',
+            color1: 'Light Blue',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Light Blue based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Elliot',
+            color1: 'Gold',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Gold based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          },
+          {
+            customText: 'Arkley',
+            color1: 'Silver',
+            color2: null,
+            quantity: 1,
+            needsReview: true,
+            reviewReason: "Assigned Silver based on 'Mixed variety of bright colours' preference from notes; Please verify. Duplicate name instance. Please verify color and details.",
+            annotation: null
+          }
+        ],
+        overallNeedsReview: true,
+        overallReviewReason: "QUANTITY_MISMATCH: OrderQty=1, ParsedTotalQty=26, NotesLines=26. Used notes structure.; Assigned colors based on 'Mixed variety of bright colours' preference from notes; Please verify."
+      }
+    }
+  },
+  processingError: null,
+  aiProvider: 'openai',
+  modelUsed: 'gpt-4.1',
+  items: [],
+  forceRecreate: false,
+  preserveText: false,
+  skipAi: false
+}
