@@ -15,3 +15,7 @@ Return ONLY a valid JSON object with the key "itemPersonalizations" as specified
 - Do not include any additional text, comments, or explanations in your response.
 - Return only the JSON object without any markdown formatting.
 - Ensure all required keys are present in each object, even if set to null.
+- When assigning colors for names, strictly adhere to gender-appropriate color guidelines:
+  * Female names (like Emma, Sarah, Lily, Meya, Sofia) should get Pink, Purple, Silk Pink, Magenta, or Light Blue
+  * Male names (like John, David, James, Jacob) should get Blue, Green, Peak Green, Red, or Orange
+  * Always prioritize the first colors in each list (Pink/Purple for girls, Blue/Green for boys)

@@ -76,13 +76,20 @@ For each item in the input `items` array:
         *   `customerNotes` contain phrases suggesting color preferences (e.g., "boy colours," "girl colors," "likes blue or green," "prefers red, orange, yellow," "any color except pink").
     *   **Action:**
         *   Attempt to select ONE suitable standard color from the preferred list/description for `color1`.
-            *   For general preferences (e.g., "boy colours"), if no specific colors are listed by the buyer, use ONLY these primary boy colors: **Blue, Green, Peak Green, Red, Orange**. Of these, **STRONGLY PRIORITIZE Blue, Green, and Peak Green** as the first choices for boys. Red and Orange are good secondary choices when variety is needed.
-            *   For general preferences (e.g., "girl colours"), if no specific colors are listed by the buyer, use ONLY these primary girl colors: **Pink, Purple, Silk Pink, Magenta, Light Blue**. Of these, **STRONGLY PRIORITIZE Pink, Purple, Silk Pink, and Magenta** as the first choices for girls. Light Blue is a good secondary choice.
+            *   For general preferences (e.g., "boy colours"), if no specific colors are listed by the buyer, use ONLY these boy-associated colors: **Blue, Green, Peak Green, Red, Orange**.
+                *   **STRONGLY PRIORITIZE Blue, Green, and Peak Green** as the first choices for boys.
+                *   Red and Orange are secondary choices *for boys only* when variety among boy names is needed and primary boy colors are exhausted.
+                *   **NEVER assign Pink, Purple, Silk Pink, or Magenta to a name perceived as male.** Light Blue may be used sparingly if other boy colors are exhausted.
+            *   For general preferences (e.g., "girl colours"), if no specific colors are listed by the buyer, use ONLY these girl-associated colors: **Pink, Purple, Silk Pink, Magenta, Light Blue**.
+                *   **STRONGLY PRIORITIZE Pink, Purple, Silk Pink, and Magenta** as the first choices for girls.
+                *   Light Blue is a secondary choice *for girls only* when variety among girl names is needed and primary girl colors are exhausted.
+                *   **NEVER assign Red or Orange to a name perceived as female.** Generally, also avoid Blue, Green, and Peak Green for female names unless specifically requested by the customer for that name, or if all Pink, Purple, Silk Pink, Magenta, and Light Blue options have been exhausted for the set of female names and variety is still explicitly required across the entire order.
             *   **Light Blue** is appropriate for both boys and girls, but use it more frequently for girls than boys.
             *   For gender-neutral situations, or when you need additional variety after exhausting the primary gender-specific colors, you may use **Yellow** or **Gold**. These should be used sparingly and primarily when all names can be clearly identified.
-            *   If specific colors *are* listed by the buyer in their preferences (e.g., "likes blue or green," "prefers red, orange, yellow"), prioritize those buyer-listed colors first. If those run out or are not applicable, then use the appropriate gender-specific colors listed above.
+            *   If specific colors *are* listed by the buyer in their preferences (e.g., "likes blue or green," "prefers red, orange, yellow"), prioritize those buyer-listed colors first. If those run out or are not applicable, then use the appropriate gender-specific colors listed above, following the same strict gender-name association.
             *   If a negative preference is given (e.g., "any color except pink"), select from the appropriate gender-specific list while avoiding the excluded color(s).
             *   **For Duplicate Names**: If the same `customText` (e.g., "Issac") appears multiple times for items subject to this 'Random Color' rule, assign *different* suitable colors from the appropriate gender-specific list to each instance. For example, if 'Issac' appears twice, assign 'Blue' to the first 'Issac' and 'Green' to the second. If not enough distinct preferred colors are available for all duplicates, you may reuse colors, but ensure each instance still becomes a separate personalization object.
+            *   **Achieving Variety:** When "Mixed variety" or similar is requested for a list of names, achieve this variety by cycling through the appropriate gender-specific color list for each name. If there are more names of a particular gender than primary colors for that gender, then cycle through the secondary colors for that gender. **Crucially, do not cross-assign strongly gendered colors (e.g., Red to a girl name like Meya, or Pink to a boy name) merely for the sake of order-wide variety unless all gender-appropriate options for that name's perceived gender group have been exhausted AND the customer's instructions explicitly demand such variety beyond gender norms.**
             *   The goal is to use a thoughtful mix of these specified colors rather than drawing from the entire standard colors list.
         *   If a color is successfully assigned this way:
             *   Set the `personalizations` array entry's `color1` to this chosen color.
@@ -123,7 +130,20 @@ For each item in the input `items` array:
             *   **You MUST treat each such identified `Name Color` pair (or Name and its associated Color) as a distinct sub-item.**
             *   For `customText`, extract the Name part (e.g., "Layan").
             *   For `color1`, extract the Color part (e.g., "Magenta") directly associated with that name from the *same line or context block*.
-            *   This line-specific or block-specific `color1` **MUST take precedence** over any general 'Colour:' field found at the item/SKU level or elsewhere in the notes for this sub-item's `color1`.
+            *   **Gender Color Adherence Check:** After extracting `customText` (Name) and `color1` (Color) from this block:
+                *   Refer to the **Gender-Based Name Color Assignment Guidelines** at the end of this prompt.
+                *   If the extracted `Name` is identified as typically female (e.g., "Meya", see list in guidelines) and the extracted `color1` is one of the strongly male-associated colors (Red, Orange, and to a lesser extent Blue, Green, Peak Green unless specifically requested for that name or primary female options are exhausted for variety):
+                    *   Let `originalColorFromNotes = color1`.
+                    *   Reassign `color1` to the highest priority appropriate female color from the guidelines (e.g., "Pink").
+                    *   Set `needsReview = true` for this sub-item.
+                    *   Set `reviewReason = "Gender color override: Note said '${originalColorFromNotes}' for ${Name}, assigned '${color1}'. Verify."`.
+                *   Else if the extracted `Name` is identified as typically male (see list in guidelines) and the extracted `color1` is one of the strongly female-associated colors (Pink, Purple, Silk Pink, Magenta, and to a lesser extent Light Blue unless specifically requested or primary male options exhausted):
+                    *   Let `originalColorFromNotes = color1`.
+                    *   Reassign `color1` to the highest priority appropriate male color from the guidelines (e.g., "Blue").
+                    *   Set `needsReview = true` for this sub-item.
+                    *   Set `reviewReason = "Gender color override: Note said '${originalColorFromNotes}' for ${Name}, assigned '${color1}'. Verify."`.
+                *   This gender adherence check **overrides** the color directly extracted from notes if a strong gender/color mismatch is detected. The goal is to correct likely misinterpretations or overly broad requests in `customerNotes` while flagging for human verification.
+            *   The `color1` determined by the above (potentially after the Gender Color Adherence Check) **MUST take precedence** over any general 'Colour:' field found at the item/SKU level or elsewhere in the notes for this sub-item's `color1`.
             *   **The `quantity` for EACH such created personalization object MUST be set to `1`.**
             *   If a line within such a block does not clearly fit the `Name Color` (or Name/Color) pattern, or if a color is missing for a name, you should still attempt to create a sub-item for the name, use `null` for the missing color, and set `needsReview: true`, `reviewReason: "Incomplete Name/Color pair in multi-item block"` for that sub-item.
             *   **Override for Quantity Validation:** If this "Personalisation:" block splitting logic is triggered and results in a number of personalization objects equal to `quantityOrdered`, then this is considered a successful split, even if other quantity validation rules might conflict. The primary goal here is to capture each distinct personalized item.
@@ -186,7 +206,11 @@ For each item in the input `items` array:
 - **"Random Selection" / "Your Choice":** Set `color1: null`, `needsReview: true`, `reviewReason: "Customer requested random color"`.
 - **Unknown Colors:** Set `color1: null`, `needsReview: true`, `reviewReason: "Unknown color: [original text]"`.
 - **Contrasting Colors:** If notes mention "contrasting colour" but don't specify, set `needsReview: true`, `reviewReason: "Contrasting color requested but not specified"`. If specified, use for `color2`.
-- **Conflicting Information:** If `customerNotes` contain an explicit color request (e.g., "use Red", "Pink: Robbin") that conflicts with a color found in `print_settings` or the product name, **prioritize the color requested in `customerNotes`**. Set `needsReview: true` for the affected personalization object and set `reviewReason: "Color conflict: Notes override default/option (Used [ColorFromNotes], Default was [ColorFromDefault])"`.
+- **Conflicting Information (Notes vs. Product/Options):** If `customerNotes` contain an explicit color request (e.g., "use Red", "Pink: Robbin") that conflicts with a color found in `print_settings` or the product name:
+    *   **Generally, prioritize the color requested in `customerNotes`.**
+    *   **However, this is subject to the Gender Color Adherence Check described in the "Special Handling for 'Personalisation:' blocks" section.** If the `customerNotes` color for a specific name violates strong gender guidelines for that name, that check will override the notes-derived color, and the `reviewReason` from that check will apply.
+    *   If no gender override occurs, and the notes color is used (overriding a product/option color), set `needsReview: true` for the affected personalization object.
+    *   Set `reviewReason` to something like: "Color conflict resolved: Used [ColorFromNotes] from notes, overriding product/option color [ColorFromDefault/Option]. Please verify." (If a gender override happened, its specific `reviewReason` should be used or appended).
 
 ### Specific Edge Case Handling
 
@@ -278,3 +302,25 @@ These rules reflect the constraints applied when building the final plates. Your
 
 ## Task
 Based on the input `jobList` and `constraints`, provide the `suggestedGroups` JSON object following all rules and the specified output structure. Prioritize creating groups that share colors/combinations where possible within the same SKU. Aim for the fewest reasonable groups while respecting the capacity and combination limits. Remember, `Blue` and `Light Blue` are distinct colors, and `ColorA > ColorB` is different from `ColorB > ColorA`.
+
+**Gender-Based Name Color Assignment Guidelines**
+
+When assigning colors based on name gender associations:
+
+1. **For typically female names** (examples: Sarah, Emily, Lily, Emma, Sofia, Olivia, Ava, Sophia, Isabella, Mia, Charlotte, Amelia, Harper, Evelyn, Abigail, Lisa, Mary, Elizabeth, Catherine, Diana, Jessica, Amanda, Nicole, Amy, Rachel, Rebecca, Christina, Laura, Samantha, Katherine, Jennifer, Michelle, Melissa, Stephanie, Hannah, Lauren, Kimberly, Heather, Amber, Brittany, Danielle, Ashley, Natalie, Victoria, Maria, Anna, Kayla, Madison, Taylor, Alexis, Sophia, Grace, Chloe, Zoe, Ella, Scarlett, Mila, Maya, Layla, Zoey, Riley, Aria, Leah, Aurora, Meya, Lila, Violet, etc.), assign one of these colors (in order of priority):
+   - Pink
+   - Purple
+   - Silk Pink
+   - Magenta
+   - Light Blue
+
+2. **For typically male names** (examples: John, Michael, David, James, Robert, William, Joseph, Thomas, Christopher, Daniel, Matthew, Andrew, Richard, Charles, Paul, Mark, Donald, Steven, Edward, Brian, George, Ronald, Anthony, Kevin, Jason, Jeffrey, Ryan, Jacob, Gary, Timothy, Jose, Larry, Justin, Scott, Brandon, Benjamin, Samuel, Frank, Gregory, Raymond, Alexander, Patrick, Jack, Dennis, Jerry, Tyler, Aaron, Henry, Douglas, Peter, Arthur, Adam, Nathan, Zachary, Walter, Kyle, Noah, Ethan, Logan, Mason, Lucas, Elijah, Aiden, Jackson, Liam, etc.), assign one of these colors (in order of priority):
+   - Blue
+   - Green
+   - Peak Green
+   - Red
+   - Orange
+
+3. **For gender-ambiguous names or names not clearly recognizable**, assign Yellow, Gold, or any other available color. Flag for review with `needsReview: true` and `reviewReason: "Color assigned to name with unclear gender association"`.
+
+These guidelines should be applied particularly when processing bulk/multi-item orders with random color selection and no specific customer color choices provided.

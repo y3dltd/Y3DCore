@@ -1,3 +1,4 @@
+"use strict";
 // Node built-in modules first
 import fsCallback from 'node:fs'; // For createWriteStream
 import fs from 'node:fs/promises';
@@ -28,6 +29,7 @@ import {
   PRISMA_TRANSACTION_TIMEOUT,
   SCRIPT_LOG_DIR
 } from '../lib/constants'; // Adjust path as necessary
+import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization'; // Added import
 
 // --- Constants --- (These are now imported)
 // const OPENAI_API_URL = ...;
@@ -230,6 +232,129 @@ function buildPersonalizedDetailsString(
   return combinedDetailsString;
 }
 
+// --- Replicated Helper Function ---
+// Define more specific types for print_settings
+interface PrintSettingOption {
+  name: string;
+  value: string;
+}
+
+type PrintSettings = PrintSettingOption | PrintSettingOption[] | Record<string, string> | null;
+
+// Function to extract the customization URL from item print_settings
+function extractCustomizationUrl(item: OrderWithItemsAndProducts['items'][number]): string | null {
+  const printSettings: PrintSettings = item.print_settings as PrintSettings;
+  if (!printSettings) return null;
+
+  // Helper to check for the URL setting, case-insensitive for the name
+  const isUrlSetting = (setting: unknown): setting is PrintSettingOption =>
+    setting !== null &&
+    typeof setting === 'object' &&
+    !Array.isArray(setting) &&
+    'name' in setting &&
+    typeof (setting as PrintSettingOption).name === 'string' &&
+    (setting as PrintSettingOption).name.toLowerCase() === 'customizedurl' && // Case-insensitive check
+    'value' in setting &&
+    typeof (setting as PrintSettingOption).value === 'string';
+
+  if (Array.isArray(printSettings)) {
+    const urlSetting = printSettings.find(isUrlSetting);
+    return urlSetting ? urlSetting.value : null;
+  } else if (typeof printSettings === 'object' && printSettings !== null) {
+    // Check direct object property case-insensitively
+    const record = printSettings as Record<string, unknown>; // Use unknown for initial dynamic access
+    const key = Object.keys(record).find(k => k.toLowerCase() === 'customizedurl'); // Find key case-insensitively
+    if (key && typeof record[key] === 'string') {
+      return record[key] as string;
+    }
+    // Fallback check using the isUrlSetting helper (for objects structured like { name: '...', value: '...' })
+    if (isUrlSetting(printSettings)) {
+      return printSettings.value;
+    }
+  }
+  return null;
+}
+
+// --- NEW HELPER FUNCTIONS (Amazon Specific Data Extraction) ---
+interface DirectExtractionResult {
+  customText: string | null;
+  color1: string | null;
+  color2: string | null;
+  dataSource: 'AmazonURL' | 'CustomerNotes' | null; // 'CustomerNotes' might be added later
+  annotation: string | null;
+  needsReview?: boolean;
+  reviewReason?: string | null;
+}
+
+async function extractDirectItemData(
+  order: OrderWithItemsAndProducts,
+  item: OrderWithItemsAndProducts['items'][number],
+  product: OrderWithItemsAndProducts['items'][number]['product']
+): Promise<DirectExtractionResult> {
+  // --- Amazon URL Extraction Logic ---
+  const isAmazon = order.marketplace?.toLowerCase().includes('amazon');
+  logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Marketplace='${order.marketplace}', IsAmazon=${isAmazon}`);
+
+  if (isAmazon) {
+    const amazonUrl = extractCustomizationUrl(item);
+    logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Extracted amazonUrl='${amazonUrl}'`);
+
+    if (amazonUrl) {
+      logger.info(`[DB][Order ${order.id}][Item ${item.id}] Found Amazon CustomizedURL. Attempting to fetch...`);
+      try {
+        const amazonData = await fetchAndProcessAmazonCustomization(amazonUrl);
+        logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] fetchAndProcessAmazonCustomization returned: ${JSON.stringify(amazonData)}`);
+
+        if (amazonData) {
+          logger.info(`[DB][Order ${order.id}][Item ${item.id}] Successfully processed Amazon URL.`);
+          let processedCustomText = amazonData.customText;
+          if (product?.sku?.toUpperCase().includes('REGKEY') && processedCustomText) {
+            processedCustomText = processedCustomText.toUpperCase();
+            logger.info(`[DB][Order ${order.id}][Item ${item.id}] REGKEY SKU detected, upper-casing custom text to '${processedCustomText}'.`);
+          }
+          return {
+            customText: processedCustomText,
+            color1: amazonData.color1,
+            color2: amazonData.color2,
+            dataSource: 'AmazonURL',
+            annotation: 'Data from Amazon CustomizedURL',
+          };
+        } else {
+          logger.warn(`[DB][Order ${order.id}][Item ${item.id}] Failed to process Amazon URL (fetch function returned null/undefined). Will fall back to AI.`);
+          // Fall through to AI fallback by returning dataSource: null
+        }
+      } catch (amazonError) {
+        const errorMsg = amazonError instanceof Error ? amazonError.message : String(amazonError);
+        logger.error({ err: amazonError, orderId: order.id, itemId: item.id }, `[DB][Order ${order.id}][Item ${item.id}] Error during fetchAndProcessAmazonCustomization: ${errorMsg}`);
+        return {
+          customText: null,
+          color1: null,
+          color2: null,
+          dataSource: null, // Indicates fallback to AI needed due to error
+          annotation: `Error processing Amazon URL: ${errorMsg}`.substring(0, 1000),
+          needsReview: true,
+          reviewReason: `Amazon URL Error: ${errorMsg}`.substring(0, 255),
+        };
+      }
+    } else {
+      logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Amazon order but CustomizedURL extraction returned null. Will fall back to AI.`);
+      // Fall through to AI fallback by returning dataSource: null
+    }
+  } else {
+    logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Not identified as Amazon marketplace. Will fall back to AI.`);
+    // Fall through to AI fallback by returning dataSource: null
+  }
+
+  // Default fallback: indicates that AI processing is needed
+  return {
+    customText: null,
+    color1: null,
+    color2: null,
+    dataSource: null,
+    annotation: 'Needs AI processing',
+  };
+}
+
 // --- AI Extraction Logic (Order Level) --- Replace Placeholder
 async function extractOrderPersonalization(
   order: OrderWithItemsAndProducts,
@@ -297,9 +422,9 @@ async function extractOrderPersonalization(
   if (options.forceRecreate) {
     let forceRecreateInstruction = `\n\nIMPORTANT: The user is manually forcing the recreation of these tasks (force-recreate flag is active).`;
     if (options.preserveText) {
-      forceRecreateInstruction += ` The 'customText' field will be preserved from existing data, so focus on accurately extracting other details like colors and quantities. Do not flag items for review based on customText ambiguity if it seems complex but present; assume it is correct.`;
+      forceRecreateInstruction += ` The 'customText' field will be preserved from existing data, so focus on accurately extracting other details like colors and quantities. Do not flag items for review based on customText ambiguity if it seems complex but present; assume it is correct. When re-evaluating, if customer notes provide a specific color for a name that strongly conflicts with the Gender-Based Name Color Assignment Guidelines (e.g., a typically female name with 'Red', or a typically male name with 'Pink'), you should DISREGARD the conflicting color from the customer notes for that specific name, even though text is preserved. Instead, assign a color strictly based on the Gender-Based Name Color Assignment Guidelines. Flag this action for review by setting 'needsReview: true' and 'reviewReason: "Force-recreate (preserve text): Disregarded conflicting customer note color \\'[OriginalColorFromNote]\\\' for name \\'[Name]\\\' and applied gender-guideline color \\'[NewGuidelineColor]\\'. Verify."'.`;
     } else {
-      forceRecreateInstruction += ` Do NOT flag items for review (set needsReview: false) unless there is critical missing information that completely prevents processing (e.g., no text provided for a personalized item). Assume the user is aware and intends to proceed with the data as provided or extracted.`;
+      forceRecreateInstruction += ` Re-evaluate all personalizations from scratch. When re-evaluating, if customer notes provide a specific color for a name that strongly conflicts with the Gender-Based Name Color Assignment Guidelines (e.g., a typically female name with 'Red', or a typically male name with 'Pink'), you should DISREGARD the conflicting color from the customer notes for that specific name. Instead, assign a color strictly based on the Gender-Based Name Color Assignment Guidelines. Flag this action for review by setting 'needsReview: true' and 'reviewReason: "Force-recreate: Disregarded conflicting customer note color \\'[OriginalColorFromNote]\\\' for name \\'[Name]\\\' and applied gender-guideline color \\'[NewGuidelineColor]\\'. Verify."'. Do NOT flag other items for review (set needsReview: false) unless there is critical missing information that completely prevents processing.`;
     }
     systemPromptContent += forceRecreateInstruction;
     logger.info(
@@ -669,7 +794,7 @@ async function createOrUpdateTasksInTransaction(
   logger.info(`[DB][Order ${order.id}] Upserting tasks in transaction...`);
   let tasksCreatedCount = 0;
   const tasksSkippedCount = 0;
-  let itemsNeedReviewCount = 0;
+  const itemsNeedReviewCount = 0;
 
   const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
   const patchReasons: string[] = [];
@@ -677,6 +802,7 @@ async function createOrUpdateTasksInTransaction(
   for (const item of orderInTx.items) {
     const orderItemId = item.id;
     const preservedTexts = new Map<number, string | null>();
+    const product = item.product; // Get product from the item
 
     // --- Preserve Text Logic (Placeholder for now) ---
     if (options.forceRecreate && !options.dryRun) {
@@ -691,10 +817,11 @@ async function createOrUpdateTasksInTransaction(
         logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Preserved text for ${existingTasks.length} tasks before deletion.`);
       }
 
+      logger.info(`[DB-DEBUG][Order ${order.id}][Item ${orderItemId}] PRE-DELETE: Attempting to delete tasks where orderItemId = ${orderItemId}.`);
       const { count } = await tx.printOrderTask.deleteMany({
         where: { orderItemId: orderItemId },
       });
-      logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Force Recreate: Deleted ${count} existing tasks.`);
+      logger.info(`[DB-DEBUG][Order ${order.id}][Item ${orderItemId}] POST-DELETE: Deleted ${count} tasks for orderItemId = ${orderItemId}.`);
     } else if (options.forceRecreate && options.dryRun) {
       logger.info(`[Dry Run][Order ${order.id}][Item ${orderItemId}] Would delete existing tasks due to forceRecreate.`);
       if (options.preserveText) {
@@ -712,178 +839,226 @@ async function createOrUpdateTasksInTransaction(
       itemDebugEntry.createdTaskIds = [];
     }
 
-    // Use the new simpler type for taskDetailsToCreate
     const taskDetailsToCreate: TaskPersonalizationData[] = [];
-    let finalDataSource: string | null = 'AI';
+    let finalDataSource: string | null = null; // Will be 'AmazonURL', 'AI_Direct', 'Placeholder', etc.
     const lineItemKey = item.shipstationLineItemKey;
-    const itemPzResult = lineItemKey ? aiData.itemPersonalizations[lineItemKey] : undefined;
 
-    if (itemPzResult && itemPzResult.personalizations && itemPzResult.personalizations.length > 0) {
-      itemPzResult.personalizations.forEach((p: z.infer<typeof PersonalizationDetailSchema>) => {
-        taskDetailsToCreate.push({
-          custom_text: p.customText,
-          color_1: p.color1,
-          color_2: p.color2,
-          quantity: p.quantity || 1,
-          needs_review: p.needsReview || itemPzResult.overallNeedsReview || false,
-          review_reason: p.reviewReason || itemPzResult.overallReviewReason,
-          status: PrintTaskStatus.pending,
-          annotation: p.annotation,
-        });
-      });
-      finalDataSource = 'AI_Direct';
-      if (itemDebugEntry) itemDebugEntry.status = 'AI Data Parsed';
-    } else {
-      logger.warn({ orderId: orderInTx.id, itemId: orderItemId, lineItemKey }, "No AI personalizations found for line item.");
-      if (options.createPlaceholder) {
-        logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Creating placeholder task as 'createPlaceholder' is true.");
-        if (options.skipAi) {
-          logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Placeholder reason: AI processing was skipped via --skip-ai flag.");
+    // --- Try Direct Extraction First (e.g., Amazon URL) ---
+    const directExtractionResult = await extractDirectItemData(orderInTx, item, product);
+    finalDataSource = directExtractionResult.dataSource;
+
+    if (directExtractionResult.dataSource === 'AmazonURL') {
+      logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] Using data from ${directExtractionResult.dataSource}. Annotation: ${directExtractionResult.annotation}`);
+      let customTextToUse = directExtractionResult.customText;
+      let annotationToUse = directExtractionResult.annotation;
+
+      // Preserve text if applicable (even for direct extraction)
+      if (options.forceRecreate && options.preserveText) {
+        // This logic for fetching existing tasks for preserveText during forceRecreate
+        // should have already run and populated preservedTexts map if --force-recreate was used
+        // For now, assume preservedTexts might be empty or we need to fetch if not already done.
+        // Simplified: if preservedTexts.get(0) exists for taskIndex 0.
+        const existingTextForTask0 = preservedTexts.get(0);
+        if (existingTextForTask0) {
+          customTextToUse = existingTextForTask0;
+          const preservedMsg = `Preserving existing text: "${customTextToUse}" (was: "${directExtractionResult.customText}")`;
+          logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] ${preservedMsg}`);
+          annotationToUse = `${annotationToUse || ''} (${preservedMsg})`.trim();
         }
-        taskDetailsToCreate.push({
-          custom_text: 'Placeholder - Check Order Details',
-          color_1: null,
-          color_2: null,
-          quantity: item.quantity || 1,
-          needs_review: true,
-          review_reason: `No AI personalizations for lineItemKey ${lineItemKey}. Check order notes/options. AI processing might have been skipped or failed.`,
-          status: PrintTaskStatus.pending,
-        });
-        finalDataSource = 'Placeholder';
-        if (itemDebugEntry) itemDebugEntry.status = 'Placeholder Creation';
+      }
+
+      taskDetailsToCreate.push({
+        custom_text: customTextToUse,
+        color_1: directExtractionResult.color1,
+        color_2: directExtractionResult.color2,
+        quantity: item.quantity || 1,
+        needs_review: directExtractionResult.needsReview || false,
+        review_reason: directExtractionResult.reviewReason || null,
+        status: PrintTaskStatus.pending,
+        annotation: annotationToUse,
+      });
+      if (itemDebugEntry) itemDebugEntry.status = `Success (${directExtractionResult.dataSource})`;
+
+      // ShipStation sync logic for AmazonURL data
+      if (lineItemKey && orderInTx.shipstation_order_id && (directExtractionResult.customText || directExtractionResult.color1 || directExtractionResult.color2)) {
+        const ssOptions = [];
+        if (directExtractionResult.customText) ssOptions.push({ name: 'Name or Text', value: directExtractionResult.customText });
+        if (directExtractionResult.color1) ssOptions.push({ name: 'Colour 1', value: directExtractionResult.color1 });
+        if (directExtractionResult.color2) ssOptions.push({ name: 'Colour 2', value: directExtractionResult.color2 });
+
+        if (ssOptions.length > 0) {
+          if (options.dryRun) {
+            logger.info(`[Dry Run][ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Would update SS item options from ${directExtractionResult.dataSource} with ${JSON.stringify(ssOptions)}`);
+          } else {
+            itemsToPatch[lineItemKey] = ssOptions;
+            patchReasons.push(`${lineItemKey}(${directExtractionResult.dataSource})`);
+            logger.info(`[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Prepared item options from ${directExtractionResult.dataSource} for SS patch.`);
+          }
+        }
+      }
+
+    } else {
+      // --- Fallback to AI or Placeholder Logic ---
+      logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] No direct data found or direct extraction failed (DataSource: ${directExtractionResult.dataSource}). Falling back to AI/Placeholder.`);
+      finalDataSource = 'AI'; // Default assumption if not AmazonURL
+      const itemPzResult = lineItemKey ? aiData.itemPersonalizations[lineItemKey] : undefined;
+
+      if (options.skipAi || (itemPzResult && itemPzResult.personalizations && itemPzResult.personalizations.length > 0)) {
+        if (options.skipAi) {
+          logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] AI processing skipped via --skip-ai. Will create placeholder if enabled.`);
+          finalDataSource = 'Skipped_AI';
+        } else if (itemPzResult) { // Ensure itemPzResult is not undefined
+          itemPzResult.personalizations.forEach((p: z.infer<typeof PersonalizationDetailSchema>, _taskIndex) => {
+            const taskDataForArray: TaskPersonalizationData = {
+              custom_text: p.customText,
+              color_1: p.color1,
+              color_2: p.color2,
+              quantity: p.quantity || 1,
+              needs_review: p.needsReview || itemPzResult.overallNeedsReview || false,
+              review_reason: p.reviewReason || itemPzResult.overallReviewReason,
+              status: PrintTaskStatus.pending,
+              annotation: p.annotation,
+            };
+            taskDetailsToCreate.push(taskDataForArray);
+          });
+          finalDataSource = 'AI_Direct';
+          if (itemDebugEntry) itemDebugEntry.status = 'AI Data Parsed';
+        }
       } else {
-        logger.warn(
-          `[DB][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations and 'createPlaceholder' is false. No task will be created for this item.`
-        );
-        finalDataSource = 'Skipped_No_AI_Data';
-        if (itemDebugEntry) itemDebugEntry.status = 'Skipped - No Placeholder';
+        logger.warn({ orderId: orderInTx.id, itemId: orderItemId, lineItemKey }, "No AI personalizations found for line item.");
+        if (options.createPlaceholder) {
+          logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Creating placeholder task as 'createPlaceholder' is true.");
+          let placeholderReason = `No AI personalizations for lineItemKey ${lineItemKey}. Check order notes/options.`;
+          if (directExtractionResult.dataSource === null && directExtractionResult.annotation && directExtractionResult.annotation !== 'Needs AI processing') {
+            placeholderReason = directExtractionResult.annotation; // Use error from direct extraction if available
+          }
+          taskDetailsToCreate.push({
+            custom_text: 'Placeholder - Check Order Details',
+            color_1: null,
+            color_2: null,
+            quantity: item.quantity || 1,
+            needs_review: true,
+            review_reason: placeholderReason.substring(0, 1000),
+            status: PrintTaskStatus.pending,
+          });
+          finalDataSource = 'Placeholder';
+          if (itemDebugEntry) itemDebugEntry.status = 'Placeholder Creation';
+        } else {
+          logger.warn(
+            `[DB][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations and 'createPlaceholder' is false. No task will be created for this item.`
+          );
+          finalDataSource = 'Skipped_No_Data';
+          if (itemDebugEntry) itemDebugEntry.status = 'Skipped - No Placeholder';
+        }
+      }
+
+      // ShipStation sync logic for AI data (Personalized Details)
+      if (lineItemKey && finalDataSource === 'AI_Direct' && aiData?.itemPersonalizations && orderInTx.shipstation_order_id) {
+        const personalizationsForThisKey = aiData.itemPersonalizations[lineItemKey]?.personalizations;
+        const detailsString = buildPersonalizedDetailsString(personalizationsForThisKey || [], lineItemKey, orderInTx.id);
+        if (personalizationsForThisKey && personalizationsForThisKey.length > 0) {
+          const ssOptions = [{ name: 'Personalized Details', value: detailsString }];
+          if (options.dryRun) {
+            logger.info(`[Dry Run][ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Would update SS item options from AI_Direct with ${JSON.stringify(ssOptions)}`);
+          } else {
+            itemsToPatch[lineItemKey] = ssOptions;
+            patchReasons.push(`${lineItemKey}(AI-PD)`);
+            logger.info(`[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Prepared item options from AI_Direct for SS patch.`);
+          }
+        }
       }
     }
 
-    // --- REPLACEMENT LOGIC for populating itemsToPatch with 'Personalized Details' ---
-    if (item.shipstationLineItemKey && aiData?.itemPersonalizations && orderInTx.shipstation_order_id) {
-      const lineItemKey = item.shipstationLineItemKey;
-      const personalizationsForThisKey = aiData.itemPersonalizations[lineItemKey]?.personalizations;
-      // Call without logger
-      const detailsString = buildPersonalizedDetailsString(personalizationsForThisKey || [], lineItemKey, orderInTx.id);
+    if (taskDetailsToCreate.length > 0) {
+      for (let taskIndex = 0; taskIndex < taskDetailsToCreate.length; taskIndex++) {
+        const detail = taskDetailsToCreate[taskIndex];
+        const textToUse = (options.forceRecreate && options.preserveText && preservedTexts.get(taskIndex)) || detail.custom_text;
 
-      if (personalizationsForThisKey && personalizationsForThisKey.length > 0) {
-        const ssOptions = [{ name: 'Personalized Details', value: detailsString }];
-        itemsToPatch[lineItemKey] = ssOptions;
-        patchReasons.push(`${lineItemKey}(AI-PD)`);
-        // Logging is now inside buildPersonalizedDetailsString
-      } else {
-        logger.info(
-          `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations found for line item key ${lineItemKey} to create 'Personalized Details'.`
-        );
+        // Data for the 'update' part of upsert - should only contain fields that can be updated
+        const updatePayload = {
+          custom_text: textToUse,
+          color_1: detail.color_1,
+          color_2: detail.color_2,
+          quantity: detail.quantity,
+          needs_review: detail.needs_review,
+          review_reason: detail.review_reason,
+          status: detail.status,
+          annotation: detail.annotation,
+          // Ensure all other updatable fields from PrintOrderTask are here
+          shorthandProductName: item.product?.name ? (item.product.name.length > 100 ? item.product.name.substring(0, 97) + '...' : item.product.name) : 'Unknown',
+          ship_by_date: orderInTx.ship_by_date,
+          marketplace_order_number: orderInTx.shipstation_order_number,
+        };
+
+        const whereClause = {
+          orderItemId_taskIndex: {
+            orderItemId: orderItemId,
+            taskIndex: taskIndex,
+          },
+        };
+
+        // Data for the 'create' part of upsert - contains all required fields for a new task
+        const createPayload = {
+          ...updatePayload, // Contains custom_text, color_1, color_2, quantity, needs_review, review_reason, status, annotation, shorthandProductName, ship_by_date, marketplace_order_number
+          orderItemId: orderItemId,
+          productId: item.productId,
+          // Fields below are specific to 'create' and not in 'updatePayload' or are essential FKs
+          taskIndex: taskIndex,
+          orderId: orderInTx.id,
+          // customerId is not directly in updatePayload, handle if needed for create:
+          // customerId: orderInTx.customerId, // Example: if you need to set it explicitly or connect
+        };
+
+        logger.info({
+          orderId: order.id,
+          itemId: orderItemId,
+          taskIndex,
+          finalDataSource,
+          where: whereClause,
+          updateData: updatePayload,
+          createData: createPayload
+        }, `[DB-DEBUG][Order ${order.id}][Item ${orderItemId}][TaskIdx ${taskIndex}] PRE-UPSERT: Details.`);
+
+        try {
+          const upsertedTask = await tx.printOrderTask.upsert({
+            where: whereClause,
+            update: updatePayload,
+            create: createPayload,
+          });
+          tasksCreatedCount++;
+          if (itemDebugEntry) itemDebugEntry.createdTaskIds.push(upsertedTask.id);
+          logger.info({
+            orderId: order.id,
+            itemId: orderItemId,
+            taskIndex,
+            upsertedTaskId: upsertedTask.id,
+            customText: upsertedTask.custom_text,
+            color1: upsertedTask.color_1,
+            status: finalDataSource
+          }, `[DB-DEBUG][Order ${order.id}][Item ${orderItemId}][TaskIdx ${taskIndex}] POST-UPSERT: Upserted task ID ${upsertedTask.id}. Status: Task ${tasksCreatedCount - 1} Upserted`);
+          if (itemDebugEntry) itemDebugEntry.status = 'Task ' + taskIndex + ' Upserted';
+
+        } catch (dbError) {
+          logger.error({
+            orderId: order.id,
+            itemId: orderItemId,
+            taskIndex,
+            error: dbError,
+            where: whereClause,
+            updateData: updatePayload,
+            createData: createPayload
+          }, `[DB-DEBUG][Order ${order.id}][Item ${orderItemId}][TaskIdx ${taskIndex}] UPSERT FAILED`);
+          if (itemDebugEntry) {
+            itemDebugEntry.status = 'Task ' + taskIndex + ' Upsert Failed';
+            itemDebugEntry.error = dbError instanceof Error ? dbError.message : String(dbError);
+          }
+        }
       }
-    } else if (item.shipstationLineItemKey && orderInTx.shipstation_order_id) {
+    } else {
       logger.info(
-        `[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] No AI data available for lineItemKey ${lineItemKey} to create 'Personalized Details'.`
+        `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed.Tasks: ${taskDetailsToCreate.length}.Status: ${itemDebugEntry.status} `
       );
     }
-    // --- END REPLACEMENT LOGIC ---
-
-    let currentTaskIndex = 0;
-    for (const taskDetail of taskDetailsToCreate) {
-      // Check for productId BEFORE attempting to create taskData that requires it
-      if (!item.productId) {
-        logger.error({ orderId: orderInTx.id, itemId: orderItemId, itemSKU: item.product?.sku }, "OrderItem is missing a productId. Skipping task creation for this item as product link is required.");
-        if (itemDebugEntry) itemDebugEntry.status = 'Skipped - Missing ProductID';
-        continue; // Skip this taskDetail, effectively skipping tasks for this item
-      }
-
-      const taskDataFields: Omit<Prisma.PrintOrderTaskCreateInput, 'product'> = {
-        order: { connect: { id: orderInTx.id } },
-        orderItem: { connect: { id: orderItemId } },
-        taskIndex: currentTaskIndex,
-        shorthandProductName: item.product?.name ? (item.product.name.length > 100 ? item.product.name.substring(0, 97) + '...' : item.product.name) : 'Unknown',
-        customer: orderInTx.customerId ? { connect: { id: orderInTx.customerId } } : undefined,
-        custom_text: taskDetail.custom_text,
-        color_1: taskDetail.color_1,
-        color_2: taskDetail.color_2,
-        quantity: taskDetail.quantity,
-        needs_review: taskDetail.needs_review ?? false,
-        review_reason: taskDetail.review_reason,
-        status: taskDetail.status,
-        annotation: taskDetail.annotation,
-        marketplace_order_number: orderInTx.shipstation_order_number,
-        ship_by_date: orderInTx.ship_by_date,
-      };
-
-      // ProductId is now guaranteed to exist due to the check above
-      const taskData: Prisma.PrintOrderTaskCreateInput = {
-        ...taskDataFields,
-        product: { connect: { id: item.productId } },
-      };
-
-      if (options.forceRecreate && options.preserveText && preservedTexts.has(currentTaskIndex)) {
-        const oldText = taskData.custom_text;
-        taskData.custom_text = preservedTexts.get(currentTaskIndex);
-        logger.info(`[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preserved text. Old: "${oldText}", New: "${taskData.custom_text}"`);
-      }
-
-      if (taskDetail.needs_review) itemsNeedReviewCount++;
-
-      if (options.dryRun) {
-        const upsertDataForLog = {
-          where: { orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex } },
-          update: { ...taskData, order: undefined, orderItem: undefined, product: undefined, customer: undefined }, // Exclude connect objects for cleaner log
-          create: taskData,
-        };
-        logger.info({ orderId: order.id, itemId: orderItemId, taskIndex: currentTaskIndex, dataSource: finalDataSource, dryRunTaskData: upsertDataForLog },
-          `[Dry Run] Would upsert task. Review: ${taskDetail.needs_review}`);
-        if (itemDebugEntry) itemDebugEntry.status = `Dry Run - Task ${currentTaskIndex} Would Upsert`;
-      } else {
-        try {
-          const upsertData = {
-            where: {
-              orderItemId_taskIndex: { orderItemId: orderItemId, taskIndex: currentTaskIndex }, // Use currentTaskIndex
-            },
-            update: {
-              shorthandProductName: taskData.shorthandProductName,
-              custom_text: taskData.custom_text,
-              color_1: taskData.color_1,
-              color_2: taskData.color_2,
-              quantity: taskData.quantity,
-              needs_review: taskData.needs_review,
-              review_reason: taskData.review_reason,
-              status: taskData.status,
-              ship_by_date: taskData.ship_by_date,
-              marketplace_order_number: taskData.marketplace_order_number,
-              annotation: taskData.annotation,
-            },
-            create: taskData,
-          };
-          logger.debug(
-            `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Preparing to UPSERT task from ${finalDataSource} with data:`,
-            upsertData
-          );
-          const task = await tx.printOrderTask.upsert(upsertData);
-          logger.info(
-            `[DB][Order ${order.id}][Item ${orderItemId}][Task ${currentTaskIndex}] Upserted task ${task.id} from ${finalDataSource}.`
-          );
-          tasksCreatedCount++; // Reinstate counter logic
-          itemDebugEntry.createdTaskIds.push(task.id);
-          if (itemDebugEntry) itemDebugEntry.status = `Task ${currentTaskIndex} Upserted`;
-        } catch (e) {
-          logger.error(
-            `[DB][Order ${orderInTx.id}][Item ${orderItemId}] FAILED upsert task ${currentTaskIndex} from ${finalDataSource}:`,
-            e
-          );
-          itemDebugEntry.status = 'Failed';
-          itemDebugEntry.error = e instanceof Error ? e.message : String(e);
-          throw e;
-        }
-      }
-      currentTaskIndex++;
-    }
-    if (itemDebugEntry && taskDetailsToCreate.length === 0 && finalDataSource !== 'Skipped_No_AI_Data') {
-      itemDebugEntry.status = 'No tasks to create for item';
-    }
-    logger.info(
-      `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed. Tasks: ${currentTaskIndex}. Status: ${itemDebugEntry.status}`
-    );
   }
 
   // Conditional ShipStation Sync Logic (Data Preparation part for dry run)
@@ -900,18 +1075,18 @@ async function createOrUpdateTasksInTransaction(
             for (const pers of itemPers.personalizations) {
               const text = pers.customText || 'N/A';
               const color1 = pers.color1 || '';
-              const color2 = pers.color2 ? ` / ${pers.color2}` : '';
+              const color2 = pers.color2 ? ` / ${pers.color2} ` : '';
               packingListLines_dryRun.push(`${taskCounter_dryRun++}. ${text} (${color1}${color2})`);
             }
           }
         }
       }
-      const packingListHeader_dryRun = `PACKING LIST (Order #${orderInTx.shipstation_order_number || 'N/A'}):`;
+      const packingListHeader_dryRun = `PACKING LIST(Order #${orderInTx.shipstation_order_number || 'N/A'}): `;
       const packingListString_dryRun = packingListLines_dryRun.length > 0 ? packingListLines_dryRun.join('\n') : "No specific personalizations found by AI for packing list.";
       const originalCustomerNotes_dryRun = orderInTx.customer_notes || 'No customer notes provided.';
-      const syncDetails_dryRun = `Automated Task Sync (Dry Run) ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
-      const auditNoteForInternalNotes_dryRun = `${packingListHeader_dryRun}\n${packingListString_dryRun}\n---\nOriginal Customer Notes:\n${originalCustomerNotes_dryRun}\n---
-${syncDetails_dryRun}`;
+      const syncDetails_dryRun = `Automated Task Sync(Dry Run) ${new Date().toISOString()} -> ${patchReasons.join(', ')} `;
+      const auditNoteForInternalNotes_dryRun = `${packingListHeader_dryRun} \n${packingListString_dryRun} \n-- -\nOriginal Customer Notes: \n${originalCustomerNotes_dryRun} \n-- -
+            ${syncDetails_dryRun} `;
 
       logger.info({ orderId: orderInTx.id, itemsToPatch, auditNote: auditNoteForInternalNotes_dryRun },
         "[Dry Run] Would update ShipStation with items and internalNotes.");
@@ -935,7 +1110,7 @@ ${syncDetails_dryRun}`;
               for (const pers of itemPers.personalizations) {
                 const text = pers.customText || 'N/A';
                 const color1 = pers.color1 || '';
-                const color2 = pers.color2 ? ` / ${pers.color2}` : '';
+                const color2 = pers.color2 ? ` / ${pers.color2} ` : '';
                 packingListLines.push(`${currentTaskNumberForPackingList}. ${text} (${color1}${color2})`);
                 currentTaskNumberForPackingList++;
               }
@@ -943,19 +1118,19 @@ ${syncDetails_dryRun}`;
           }
         }
 
-        const packingListHeader = `PACKING LIST (Order #${orderInTx.shipstation_order_number || 'N/A'}):`;
+        const packingListHeader = `PACKING LIST(Order #${orderInTx.shipstation_order_number || 'N/A'}): `;
         const packingListString = packingListLines.length > 0 ? packingListLines.join('\n') : "No specific personalizations found by AI.";
 
         const fetchedSsOrder = ssOrderResp.orders[0];
         const originalCustomerNotes = fetchedSsOrder.customerNotes || orderInTx.customer_notes || 'No customer notes provided.';
 
-        const syncDetails = `Automated Task Sync ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+        const syncDetails = `Automated Task Sync ${new Date().toISOString()} -> ${patchReasons.join(', ')} `;
 
-        const auditNoteForInternalNotes = `${packingListHeader}\n${packingListString}\n---\nOriginal Customer Notes:\n${originalCustomerNotes}\n---\n${syncDetails}`;
+        const auditNoteForInternalNotes = `${packingListHeader} \n${packingListString} \n-- -\nOriginal Customer Notes: \n${originalCustomerNotes} \n-- -\n${syncDetails} `;
         // --- END logic for Packing List in internalNotes ---
 
         await updateOrderItemsOptionsBatch(fetchedSsOrder, itemsToPatch, auditNoteForInternalNotes);
-        logger.info(`[ShipStation Batch][Order ${orderInTx.id}] Successfully updated items: ${patchReasons.join(', ')}`);
+        logger.info(`[ShipStation Batch][Order ${orderInTx.id}] Successfully updated items: ${patchReasons.join(', ')} `);
       } else {
         logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Failed to fetch SS order for batch update.`);
       }
@@ -963,11 +1138,12 @@ ${syncDetails_dryRun}`;
       logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Error during batch update`, batchErr);
     }
   } else if (options.syncToShipstation && Object.keys(itemsToPatch).length === 0 && orderInTx.shipstation_order_id) {
-    logger.info(`[ShipStation Update][Order ${orderInTx.id}] No item options were prepared for patching, though sync was enabled. Internal notes not updated.`);
+    logger.info(`[ShipStation Update][Order ${orderInTx.id}] No item options were prepared for patching, though sync was enabled.Internal notes not updated.`);
   } else if (options.syncToShipstation && !orderInTx.shipstation_order_id) {
-    logger.warn(`[ShipStation Update][Order ${orderInTx.id}] Sync to ShipStation was enabled, but the order is missing a ShipStation Order ID. Skipping sync.`);
+    logger.warn(`[ShipStation Update][Order ${orderInTx.id}] Sync to ShipStation was enabled, but the order is missing a ShipStation Order ID.Skipping sync.`);
   }
 
+  logger.info(`[DB-DEBUG][Order ${order.id}] END OF createOrUpdateTasksInTransaction: tasksCreatedCount=${tasksCreatedCount}, itemsNeedReviewCount=${itemsNeedReviewCount}`);
   return { tasksCreatedCount, tasksSkippedCount, itemsNeedReviewCount };
 }
 
@@ -1027,7 +1203,7 @@ async function syncExistingTasksToShipstation(
     }
 
     logger.info(
-      `[ShipStation Sync] Found order ${orderId} with ShipStation order ID ${orderDetails.shipstation_order_id} and order number ${orderDetails.shipstation_order_number}`
+      `[ShipStation Sync] Found order ${orderId} with ShipStation order ID ${orderDetails.shipstation_order_id} and order number ${orderDetails.shipstation_order_number} `
     );
 
     const ssOrderResponse = await getShipstationOrders({
@@ -1054,7 +1230,7 @@ async function syncExistingTasksToShipstation(
         `[ShipStation Sync] ⚠️ WARNING: Order ${orderId} (${orderDetails.shipstation_order_number}) is already marked as "${ssOrder.orderStatus}" in ShipStation.`
       );
       logger.warn(
-        `[ShipStation Sync] ShipStation usually prevents modifications to shipped orders. Updates may not take effect.`
+        `[ShipStation Sync] ShipStation usually prevents modifications to shipped orders.Updates may not take effect.`
       );
 
       if (!options.confirm && !options.dryRun) {
@@ -1078,7 +1254,7 @@ async function syncExistingTasksToShipstation(
     for (const item of orderDetails.items) {
       if (!item.shipstationLineItemKey) {
         logger.warn(
-          `[ShipStation Sync][Item ${item.id}] Missing ShipStation line item key. Skipping personalized details generation.`
+          `[ShipStation Sync][Item ${item.id}] Missing ShipStation line item key.Skipping personalized details generation.`
         );
         failedCount++; // Count as failed for personalized details part
         continue;
@@ -1086,7 +1262,7 @@ async function syncExistingTasksToShipstation(
 
       if (item.printTasks.length === 0) {
         logger.info(
-          `[ShipStation Sync][Item ${item.id}] No print tasks. Skipping personalized details generation for this item.`
+          `[ShipStation Sync][Item ${item.id}] No print tasks.Skipping personalized details generation for this item.`
         );
         // Not necessarily a failure of the whole sync, but no details to add for this item
         continue;
@@ -1098,7 +1274,7 @@ async function syncExistingTasksToShipstation(
         const color1 = task.color_1;
         const color2 = task.color_2 ? ` / ${task.color_2}` : '';
         const taskDetailString = `${detail} (${color1 || 'N/A'}${color2})`;
-        allOrderPackingListLines.push(`${index + 1}. ${taskDetailString}`);
+        allOrderPackingListLines.push(`${index + 1}. ${taskDetailString} `);
       });
 
       const taskPersonalizations: Array<z.infer<typeof PersonalizationDetailSchema>> = item.printTasks.map(task => ({
@@ -1117,7 +1293,7 @@ async function syncExistingTasksToShipstation(
       if (taskPersonalizations.length > 0) {
         const ssOption = { name: 'Personalized Details', value: detailsString };
         itemsToPatch[item.shipstationLineItemKey] = [ssOption];
-        patchReasons.push(`${item.shipstationLineItemKey}(PD-Sync)`);
+        patchReasons.push(`${item.shipstationLineItemKey} (PD - Sync)`);
         if (!options.dryRun) updatedCount++;
       } else {
         logger.info(
@@ -1126,26 +1302,26 @@ async function syncExistingTasksToShipstation(
       }
     }
 
-    const packingListHeader = `PACKING LIST (Order #${orderDetails.shipstation_order_number || 'N/A'}):`;
+    const packingListHeader = `PACKING LIST(Order #${orderDetails.shipstation_order_number || 'N/A'}): `;
     const packingListString = allOrderPackingListLines.length > 0
       ? allOrderPackingListLines.join('\n')
       : "No specific personalizations found in tasks.";
 
     const originalCustomerNotes = ssOrder.customerNotes || orderDetails.customer_notes || 'No customer notes provided.';
 
-    const syncDetails = `Automated Task Sync (Existing) ${new Date().toISOString()} -> ${patchReasons.join(', ')}`;
+    const syncDetails = `Automated Task Sync(Existing) ${new Date().toISOString()} -> ${patchReasons.join(', ')} `;
 
-    const finalAuditNoteForInternalNotes = `${packingListHeader}\n${packingListString}\n---\nOriginal Customer Notes:\n${originalCustomerNotes}\n---\n${syncDetails}`;
+    const finalAuditNoteForInternalNotes = `${packingListHeader} \n${packingListString} \n-- -\nOriginal Customer Notes: \n${originalCustomerNotes} \n-- -\n${syncDetails} `;
     // --- END: Logic for consolidated "Personalized Details" and Packing List for internalNotes ---
 
     if (options.dryRun) {
       if (Object.keys(itemsToPatch).length > 0) {
         logger.info(
           { orderId, itemsToPatch, internalNotesPreview: finalAuditNoteForInternalNotes }, // Use the actual finalAuditNoteForInternalNotes
-          `[Dry Run][ShipStation Sync-Only] Would update ShipStation order ${orderDetails?.shipstation_order_id} with items and internalNotes.`
+          `[Dry Run][ShipStation Sync - Only] Would update ShipStation order ${orderDetails?.shipstation_order_id} with items and internalNotes.`
         );
       } else {
-        logger.info({ orderId }, `[Dry Run][ShipStation Sync-Only] No items require updates for order ${orderId}.`);
+        logger.info({ orderId }, `[Dry Run][ShipStation Sync - Only] No items require updates for order ${orderId}.`);
       }
     } else if (Object.keys(itemsToPatch).length > 0 && ssOrder) { // Ensure ssOrder is defined for live update
       try {
@@ -1161,17 +1337,17 @@ async function syncExistingTasksToShipstation(
         if (updatedCount < 0) updatedCount = 0;
       }
     } else {
-      logger.info(`[ShipStation Sync] No item options to update in ShipStation for order ${orderId}. Internal notes were not updated as no item changes were pending.`);
+      logger.info(`[ShipStation Sync] No item options to update in ShipStation for order ${orderId}.Internal notes were not updated as no item changes were pending.`);
     }
 
     logger.info(
-      `[ShipStation Sync] Completed sync for order ${orderId}. Items prepared/updated: ${updatedCount}, Items failed: ${failedCount}`
+      `[ShipStation Sync] Completed sync for order ${orderId}.Items prepared / updated: ${updatedCount}, Items failed: ${failedCount} `
     );
     return { updatedCount, failedCount };
   } catch (error) {
     logger.error(
       { err: error, orderId },
-      `[ShipStation Sync] Failed to sync order ${orderId}: ${error instanceof Error ? error.message : String(error)}`
+      `[ShipStation Sync] Failed to sync order ${orderId}: ${error instanceof Error ? error.message : String(error)} `
     );
     failedCount = Math.max(failedCount, 1); // Ensure at least one failure if error occurs here
   }
@@ -1244,7 +1420,7 @@ async function main() {
       (logger || console).warn(`Received ${signal}. Shutting down gracefully...`);
       scriptRunSuccess = false; // Signal means not a full success
       // Pass a new error object for signals, as there isn't an existing error object
-      cleanupAndExit(new Error(`Received signal: ${signal}`), signal);
+      cleanupAndExit(new Error(`Received signal: ${signal} `), signal);
     })
   );
 
@@ -1281,10 +1457,10 @@ async function main() {
     if (cmdOptions.verbose) logger.level = 'debug';
     else if (cmdOptions.logLevel) logger.level = cmdOptions.logLevel;
 
-    logger.info(`--- Script Start: ${new Date().toISOString()} ---`);
-    logger.info(`Logging to file: ${logFilePath}`);
-    logger.info(`Effective logger level: ${logger.level}`);
-    logger.info(`Parsed CLI Options: ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })}`);
+    logger.info(`-- - Script Start: ${new Date().toISOString()} --- `);
+    logger.info(`Logging to file: ${logFilePath} `);
+    logger.info(`Effective logger level: ${logger.level} `);
+    logger.info(`Parsed CLI Options: ${JSON.stringify({ ...cmdOptions, openaiApiKey: '***' })} `);
 
     cmdOptions.systemPrompt = await loadPromptFile(cmdOptions.systemPromptFile || DEFAULT_SYSTEM_PROMPT_PATH);
     cmdOptions.userPromptTemplate = await loadPromptFile(cmdOptions.userPromptFile || DEFAULT_USER_PROMPT_PATH);
@@ -1305,18 +1481,18 @@ async function main() {
 
     for (const order of ordersToProcess) {
       totalOrdersProcessed++;
-      logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number }, `--- Processing Order ${order.id} ---`);
+      logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number }, `-- - Processing Order ${order.id} --- `);
 
       let orderProcessingSuccess = true; // Flag for this specific order
 
       if (cmdOptions.shipstationSyncOnly) {
-        logger.info({ orderId: order.id }, `ShipStation sync-only mode enabled. Skipping AI extraction and DB updates.`);
+        logger.info({ orderId: order.id }, `ShipStation sync - only mode enabled.Skipping AI extraction and DB updates.`);
         try {
           const { updatedCount, failedCount } = await syncExistingTasksToShipstation(order.id, cmdOptions);
           logger.info({ orderId: order.id, updatedCount, failedCount }, `ShipStation sync completed for order.`);
         } catch (syncErr: unknown) {
           const actualSyncError = syncErr instanceof Error ? syncErr : new Error(String(syncErr));
-          logger.error({ orderId: order.id, err: actualSyncError, stack: actualSyncError.stack }, `ShipStation sync-only failed for order.`);
+          logger.error({ orderId: order.id, err: actualSyncError, stack: actualSyncError.stack }, `ShipStation sync - only failed for order.`);
           totalOrdersFailed++;
           failedOrderIds.push(order.id);
           orderProcessingSuccess = false;
@@ -1418,7 +1594,7 @@ async function main() {
         }
       } finally {
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
-        logger.info({ orderId: order.id, finalItemStatus: orderDebugInfo.overallStatus }, `--- Finished Order ${order.id} ---`);
+        logger.info({ orderId: order.id, finalItemStatus: orderDebugInfo.overallStatus }, `-- - Finished Order ${order.id} --- `);
         if (!orderProcessingSuccess) {
           totalOrdersFailed++;
           failedOrderIds.push(order.id);
@@ -1426,19 +1602,19 @@ async function main() {
       }
     } // End of for...of loop for orders
 
-    finalMessage = `Processed ${totalOrdersProcessed} orders. Succeeded: ${totalOrdersProcessed - totalOrdersFailed}. Failed: ${totalOrdersFailed}. Tasks Upserted: ${totalTasksCreated}.`;
+    finalMessage = `Processed ${totalOrdersProcessed} orders.Succeeded: ${totalOrdersProcessed - totalOrdersFailed}.Failed: ${totalOrdersFailed}. Tasks Upserted: ${totalTasksCreated}.`;
     if (totalOrdersFailed > 0) finalMessage += ` Failed Order IDs: [${failedOrderIds.join(', ')}]`;
     scriptRunSuccess = totalOrdersFailed === 0;
     if (runLogId) await updateRunLog(runLogId, { status: scriptRunSuccess ? 'success' : 'partial_success' });
 
   } catch (error: unknown) {
     mainTryCatchError = error instanceof Error ? error : new Error(String(error));
-    (logger || console).error({ err: mainTryCatchError, stack: mainTryCatchError.stack }, `SCRIPT FAILED: ${mainTryCatchError.message}`);
+    (logger || console).error({ err: mainTryCatchError, stack: mainTryCatchError.stack }, `SCRIPT FAILED: ${mainTryCatchError.message} `);
     scriptRunSuccess = false;
-    finalMessage = `Script FAILED: ${mainTryCatchError.message}`;
+    finalMessage = `Script FAILED: ${mainTryCatchError.message} `;
     if (runLogId) try { await updateRunLog(runLogId, { status: 'failed', message: mainTryCatchError.message }); } catch (e) { (logger || console).error('Failed to update run log on error', e); }
   } finally {
-    (logger || console).info(`--- Script End ---`);
+    (logger || console).info(`-- - Script End-- - `);
     (logger || console).info(finalMessage);
     await cleanupAndExit(mainTryCatchError, mainTryCatchError ? 'errorInMainFinally' : 'normalCompletionFinally');
   }
