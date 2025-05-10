@@ -128,6 +128,12 @@ interface AiOrderItemData {
   options?: AiOrderItemOption[] | null;
   productName?: string | null; // Original product name
   productId?: number | null;
+  // Properties to hold directly extracted Amazon data
+  _amazonDataProcessed?: boolean;
+  _amazonCustomText?: string | null;
+  _amazonColor1?: string | null;
+  _amazonColor2?: string | null;
+  _amazonDataSource?: 'AmazonURL';
 }
 
 interface AiPromptShippingAddress {
@@ -162,6 +168,14 @@ interface TaskPersonalizationData {
   review_reason?: string | null;
   status: PrintTaskStatus;
   annotation?: string | null | undefined;
+}
+
+// --- Define local interface for Amazon Personalization Data ---
+interface AmazonPersonalization {
+  text: string | null;
+  color1: string | null;
+  color2: string | null;
+  // Add other fields if known, e.g., quantity, sku, etc.
 }
 
 // --- Helper Functions ---
@@ -362,57 +376,120 @@ async function extractOrderPersonalization(
     ProcessingOptions,
     'openaiApiKey' | 'openaiModel' | 'systemPrompt' | 'userPromptTemplate' | 'forceRecreate' | 'preserveText' | 'dryRun'
   >
-): Promise<{ success: boolean; data?: z.infer<typeof AiOrderResponseSchema>; error?: string; promptUsed: string | null; rawResponse: string | null; modelUsed: string | null }> {
+): Promise<{
+  success: boolean;
+  aiResponseData?: z.infer<typeof AiOrderResponseSchema>; // Renamed from data to aiResponseData
+  itemsSentToAi: AiOrderItemData[]; // Added this to return the itemsForPrompt array
+  error?: string;
+  promptUsed: string | null;
+  rawResponse: string | null;
+  modelUsed: string | null;
+}> {
   // type OrderItemWithProduct = Prisma.OrderItemGetPayload<{ include: { product: true } }>; // Removed unused type
 
-  const itemsForPrompt: AiOrderItemData[] = order.items
-    .filter((orderItem: OrderWithItemsAndProducts['items'][number]) => orderItem.shipstationLineItemKey != null)
-    .map((orderItem: OrderWithItemsAndProducts['items'][number]): AiOrderItemData => {
-      const simplifiedName = simplifyProductName(
-        orderItem.product?.name ?? '', // Correctly access product name, provide default
-        productNameMappings
-      );
+  const itemsForPrompt: AiOrderItemData[] = []; // Initialize array
 
-      let mappedOptions: Array<{ name: string; value: string }> = [];
-      if (orderItem.print_settings && Array.isArray(orderItem.print_settings)) {
-        try {
-          mappedOptions = (orderItem.print_settings as any[]).map(opt => ({
-            name: String(opt.name ?? ''),
-            value: String(opt.value ?? '')
-          })).filter(opt => opt.name && opt.value);
-        } catch (e) {
-          logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, 'Failed to parse print_settings as options array');
+  for (const orderItem of order.items) {
+    if (orderItem.shipstationLineItemKey == null) {
+      logger.warn({ orderId: order.id, itemId: orderItem.id }, 'Skipping item with null shipstationLineItemKey for AI prompt.');
+      continue;
+    }
+
+    const simplifiedName = simplifyProductName(
+      orderItem.product?.name ?? '',
+      productNameMappings
+    );
+
+    const currentItemData: AiOrderItemData = {
+      id: orderItem.shipstationLineItemKey,
+      sku: orderItem.product?.sku ?? '',
+      name: simplifiedName,
+      quantity: orderItem.quantity,
+      options: [], // Initialize options
+      productName: orderItem.product?.name,
+      productId: orderItem.product?.id,
+    };
+
+    // Amazon Customization URL Check
+    const customizedUrl = extractCustomizationUrl(orderItem);
+    if (customizedUrl && order.marketplace === 'Amazon') {
+      logger.info({ orderId: order.id, itemId: orderItem.id, url: customizedUrl }, `[AI Prep] Found Amazon customization URL for item ${orderItem.id}. Fetching...`);
+      try {
+        const amazonDataResult = await fetchAndProcessAmazonCustomization(customizedUrl);
+        // Cast to unknown first, then to the desired array type, as suggested by the linter
+        const amazonDataArray = amazonDataResult as unknown as AmazonPersonalization[] | undefined;
+
+        if (amazonDataArray && amazonDataArray.length > 0) {
+          const firstAmazonPersonalization = amazonDataArray[0];
+          currentItemData._amazonDataProcessed = true;
+          currentItemData._amazonCustomText = firstAmazonPersonalization.text;
+          currentItemData._amazonColor1 = firstAmazonPersonalization.color1;
+          currentItemData._amazonColor2 = firstAmazonPersonalization.color2;
+          currentItemData._amazonDataSource = 'AmazonURL';
+          logger.info({ orderId: order.id, itemId: orderItem.id, extracted: firstAmazonPersonalization }, `[AI Prep] Successfully extracted data directly from Amazon URL for item ${orderItem.id}. This data will be prioritized.`);
+
+          // Still populate currentItemData.options for the AI prompt as a fallback or for context,
+          // but the _amazon flags will ensure we use the direct data.
+          currentItemData.options = [
+            { name: 'Name or Text', value: firstAmazonPersonalization.text || '' },
+            { name: 'Colour 1', value: firstAmazonPersonalization.color1 || '' },
+          ];
+          if (firstAmazonPersonalization.color2) {
+            currentItemData.options.push({ name: 'Colour 2', value: firstAmazonPersonalization.color2 });
+          }
+        } else {
+          logger.warn({ orderId: order.id, itemId: orderItem.id }, `[AI Prep] Amazon customization URL for item ${orderItem.id} yielded no data.`);
         }
-      } else if (orderItem.print_settings && typeof orderItem.print_settings === 'object' && orderItem.print_settings !== null && 'options' in orderItem.print_settings && Array.isArray((orderItem.print_settings as { options: any[] }).options)) {
-        try {
-          mappedOptions = ((orderItem.print_settings as { options: any[] }).options).map(opt => ({
-            name: String(opt.name ?? ''),
-            value: String(opt.value ?? '')
-          })).filter(opt => opt.name && opt.value);
-        } catch (e) {
-          logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, 'Failed to parse print_settings.options as options array');
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error({ orderId: order.id, itemId: orderItem.id, err: errorMsg }, `[AI Prep] Error processing Amazon customization URL for item ${orderItem.id}: ${errorMsg}`);
+        // Do not set _amazonDataProcessed = true if fetching failed
+      }
+    } else {
+      // Populate options from print_settings if not an Amazon URL case or URL processing failed
+      let mappedOptions: Array<{ name: string; value: string }> = [];
+      if (orderItem.print_settings) {
+        if (Array.isArray(orderItem.print_settings)) {
+          try {
+            mappedOptions = (orderItem.print_settings as unknown as PrintSettingOption[])
+              .map(opt => ({
+                name: String(opt.name ?? ''),
+                value: String(opt.value ?? ''),
+              }))
+              .filter(opt => opt.name && opt.value);
+          } catch (e) {
+            logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, `[AI Prep] Could not parse array print_settings for item ${orderItem.id}`);
+          }
+        } else if (typeof orderItem.print_settings === 'object' && orderItem.print_settings !== null && 'options' in orderItem.print_settings && Array.isArray((orderItem.print_settings as { options: unknown[] }).options)) {
+          try {
+            mappedOptions = ((orderItem.print_settings as { options: unknown[] }).options as unknown as PrintSettingOption[])
+              .map(opt => ({
+                name: String(opt.name ?? ''),
+                value: String(opt.value ?? ''),
+              }))
+              .filter(opt => opt.name && opt.value);
+          } catch (e) {
+            logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, `[AI Prep] Could not parse object.options print_settings for item ${orderItem.id}`);
+          }
+        } else if (typeof orderItem.print_settings === 'object' && orderItem.print_settings !== null) {
+          // Handle case where print_settings is an object but not the expected array or {options: array}
+          logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings }, `[AI Prep] Unhandled print_settings object structure for item ${orderItem.id}`);
         }
       }
+      currentItemData.options = mappedOptions;
+    }
+    itemsForPrompt.push(currentItemData);
+  }
 
-      return {
-        id: orderItem.shipstationLineItemKey!, // lineItemKey is non-null due to filter
-        sku: orderItem.product?.sku ?? '', // Correctly access product SKU, provide default
-        name: simplifiedName,
-        quantity: orderItem.quantity,
-        options: mappedOptions, // Populate from orderItem.print_settings
-        productName: orderItem.product?.name,
-        productId: orderItem.product?.id,
-      };
-    });
 
-  if (itemsForPrompt.length === 0) {
+  if (itemsForPrompt.length === 0 && !order.customer_notes && !order.internal_notes) {
     logger.info(`[AI][Order ${order.id}] No items with lineItemKeys found to send to AI, or all items lack product info for prompt.`);
     return {
-      success: true,
-      data: { itemPersonalizations: {} },
+      success: true, // Or false, depending on desired behavior for no items
+      itemsSentToAi: itemsForPrompt, // Return empty or processed itemsForPrompt
       promptUsed: null,
-      rawResponse: null,
-      modelUsed: null
+      rawResponse: "No items sent to AI.",
+      modelUsed: null,
     };
   }
 
@@ -640,7 +717,8 @@ async function extractOrderPersonalization(
 
     return {
       success: true,
-      data: validationResult.data,
+      aiResponseData: validationResult.data,
+      itemsSentToAi: itemsForPrompt,
       promptUsed: fullPromptForDebug,
       rawResponse,
       modelUsed,
@@ -690,6 +768,7 @@ async function extractOrderPersonalization(
     return {
       success: false,
       error: errorMsg,
+      itemsSentToAi: itemsForPrompt,
       promptUsed: fullPromptForDebug,
       rawResponse,
       modelUsed,
@@ -701,115 +780,27 @@ async function extractOrderPersonalization(
 async function createOrUpdateTasksInTransaction(
   tx: Prisma.TransactionClient,
   order: OrderWithItemsAndProducts,
-  aiData: z.infer<typeof AiOrderResponseSchema>,
+  aiData: z.infer<typeof AiOrderResponseSchema> | undefined, // Now can be undefined if AI skipped
   options: ProcessingOptions,
-  orderDebugInfo: OrderDebugInfo
+  orderDebugInfo: OrderDebugInfo,
+  originalItemsForPrompt: AiOrderItemData[]
 ): Promise<{ tasksCreatedCount: number; tasksSkippedCount: number; itemsNeedReviewCount: number }> {
-  // Fetch the order again within the transaction
-  const orderInTx: OrderWithItemsAndProducts = await tx.order.findUniqueOrThrow({
-    where: { id: order.id },
-    select: { // Top-level select for Order fields
-      id: true,
-      shipstation_order_id: true,
-      shipstation_order_number: true,
-      customerId: true,
-      customer_name: true,
-      order_status: true,
-      order_key: true,
-      order_date: true,
-      payment_date: true,
-      ship_by_date: true,
-      shipping_price: true,
-      tax_amount: true,
-      discount_amount: true,
-      shipping_amount_paid: true,
-      shipping_tax: true,
-      total_price: true,
-      gift: true,
-      gift_message: true,
-      gift_email: true,
-      requested_shipping_service: true,
-      carrier_code: true,
-      service_code: true,
-      package_code: true,
-      confirmation: true,
-      tracking_number: true,
-      shipped_date: true,
-      warehouse_id: true,
-      customer_notes: true,
-      internal_notes: true,
-      last_sync_date: true,
-      notes: true,
-      created_at: true,
-      updated_at: true,
-      marketplace: true,
-      amount_paid: true,
-      order_weight_units: true,
-      order_weight_value: true,
-      payment_method: true,
-      shipstation_store_id: true,
-      tag_ids: true,
-      dimensions_height: true,
-      dimensions_length: true,
-      dimensions_units: true,
-      dimensions_width: true,
-      insurance_insure_shipment: true,
-      insurance_insured_value: true,
-      insurance_provider: true,
-      internal_status: true,
-      is_voided: true,
-      marketplace_notified: true,
-      void_date: true,
-      lastPackingSlipAt: true,
-      is_merged: true,
-      merged_to_order_id: true,
-      merged_from_order_ids: true,
-
-      customer: { // Select for customer relation is fine
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          address: true,
-          shipstation_customer_id: true,
-          company: true,
-          street1: true,
-          street2: true,
-          street3: true,
-          city: true,
-          state: true,
-          postal_code: true,
-          country: true, // Assuming this means country name from your schema
-          country_code: true,
-          customer_notes: true,
-          created_at: true,
-          updated_at: true,
-          address_verified_status: true,
-          is_residential: true,
-        },
-      },
-      items: { // For items, use EITHER select OR include. We need related product & printTasks.
-        // Remove the 'select' block for items if using 'include' for its relations.
-        // If OrderWithItemsAndProducts expects all OrderItem scalars, then simply including is best.
-        // Assuming OrderWithItemsAndProducts implies OrderItem scalars + included relations.
-        include: { // Use include to get full related objects
-          product: true,
-          printTasks: true
-        },
-      },
-    },
-  });
-
-  logger.info(`[DB][Order ${order.id}] Upserting tasks in transaction...`);
   let tasksCreatedCount = 0;
-  const tasksSkippedCount = 0;
-  const itemsNeedReviewCount = 0;
+  let tasksSkippedCount = 0;
+  let itemsNeedReviewCount = 0;
+
+  // Create a map for easy lookup of original item data including _amazon flags
+  const originalItemsMap = new Map<string, AiOrderItemData>();
+  originalItemsForPrompt.forEach(item => {
+    if (item.id) { // id is shipstationLineItemKey
+      originalItemsMap.set(item.id, item);
+    }
+  });
 
   const itemsToPatch: Record<string, Array<{ name: string; value: string | null }>> = {};
   const patchReasons: string[] = [];
 
-  for (const item of orderInTx.items) {
+  for (const item of order.items) {
     const orderItemId = item.id;
     const preservedTexts = new Map<number, string | null>();
     const product = item.product; // Get product from the item
@@ -854,11 +845,11 @@ async function createOrUpdateTasksInTransaction(
     const lineItemKey = item.shipstationLineItemKey;
 
     // --- Try Direct Extraction First (e.g., Amazon URL) ---
-    const directExtractionResult = await extractDirectItemData(orderInTx, item, product);
+    const directExtractionResult = await extractDirectItemData(order, item, product);
     finalDataSource = directExtractionResult.dataSource;
 
     if (directExtractionResult.dataSource === 'AmazonURL') {
-      logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] Using data from ${directExtractionResult.dataSource}. Annotation: ${directExtractionResult.annotation}`);
+      logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] Using data from ${directExtractionResult.dataSource}. Annotation: ${directExtractionResult.annotation}`);
       let customTextToUse = directExtractionResult.customText;
       let annotationToUse = directExtractionResult.annotation;
 
@@ -872,7 +863,7 @@ async function createOrUpdateTasksInTransaction(
         if (existingTextForTask0) {
           customTextToUse = existingTextForTask0;
           const preservedMsg = `Preserving existing text: "${customTextToUse}" (was: "${directExtractionResult.customText}")`;
-          logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] ${preservedMsg}`);
+          logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] ${preservedMsg}`);
           annotationToUse = `${annotationToUse || ''} (${preservedMsg})`.trim();
         }
       }
@@ -890,7 +881,7 @@ async function createOrUpdateTasksInTransaction(
       if (itemDebugEntry) itemDebugEntry.status = `Success (${directExtractionResult.dataSource})`;
 
       // ShipStation sync logic for AmazonURL data
-      if (lineItemKey && orderInTx.shipstation_order_id && (directExtractionResult.customText || directExtractionResult.color1 || directExtractionResult.color2)) {
+      if (lineItemKey && order.shipstation_order_id && (directExtractionResult.customText || directExtractionResult.color1 || directExtractionResult.color2)) {
         const ssOptions = [];
         if (directExtractionResult.customText) ssOptions.push({ name: 'Name or Text', value: directExtractionResult.customText });
         if (directExtractionResult.color1) ssOptions.push({ name: 'Colour 1', value: directExtractionResult.color1 });
@@ -898,24 +889,24 @@ async function createOrUpdateTasksInTransaction(
 
         if (ssOptions.length > 0) {
           if (options.dryRun) {
-            logger.info(`[Dry Run][ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Would update SS item options from ${directExtractionResult.dataSource} with ${JSON.stringify(ssOptions)}`);
+            logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${orderItemId}] Would update SS item options from ${directExtractionResult.dataSource} with ${JSON.stringify(ssOptions)}`);
           } else {
             itemsToPatch[lineItemKey] = ssOptions;
             patchReasons.push(`${lineItemKey}(${directExtractionResult.dataSource})`);
-            logger.info(`[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Prepared item options from ${directExtractionResult.dataSource} for SS patch.`);
+            logger.info(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Prepared item options from ${directExtractionResult.dataSource} for SS patch.`);
           }
         }
       }
 
     } else {
       // --- Fallback to AI or Placeholder Logic ---
-      logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] No direct data found or direct extraction failed (DataSource: ${directExtractionResult.dataSource}). Falling back to AI/Placeholder.`);
+      logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] No direct data found or direct extraction failed (DataSource: ${directExtractionResult.dataSource}). Falling back to AI/Placeholder.`);
       finalDataSource = 'AI'; // Default assumption if not AmazonURL
-      const itemPzResult = lineItemKey ? aiData.itemPersonalizations[lineItemKey] : undefined;
+      const itemPzResult = lineItemKey ? aiData?.itemPersonalizations[lineItemKey] : undefined;
 
       if (options.skipAi || (itemPzResult && itemPzResult.personalizations && itemPzResult.personalizations.length > 0)) {
         if (options.skipAi) {
-          logger.info(`[DB][Order ${orderInTx.id}][Item ${orderItemId}] AI processing skipped via --skip-ai. Will create placeholder if enabled.`);
+          logger.info(`[DB][Order ${order.id}][Item ${orderItemId}] AI processing skipped via --skip-ai. Will create placeholder if enabled.`);
           finalDataSource = 'Skipped_AI';
         } else if (itemPzResult) { // Ensure itemPzResult is not undefined
           itemPzResult.personalizations.forEach((p: z.infer<typeof PersonalizationDetailSchema>, _taskIndex) => {
@@ -935,9 +926,9 @@ async function createOrUpdateTasksInTransaction(
           if (itemDebugEntry) itemDebugEntry.status = 'AI Data Parsed';
         }
       } else {
-        logger.warn({ orderId: orderInTx.id, itemId: orderItemId, lineItemKey }, "No AI personalizations found for line item.");
+        logger.warn({ orderId: order.id, itemId: orderItemId, lineItemKey }, "No AI personalizations found for line item.");
         if (options.createPlaceholder) {
-          logger.info({ orderId: orderInTx.id, itemId: orderItemId }, "Creating placeholder task as 'createPlaceholder' is true.");
+          logger.info({ orderId: order.id, itemId: orderItemId }, "Creating placeholder task as 'createPlaceholder' is true.");
           let placeholderReason = `No AI personalizations for lineItemKey ${lineItemKey}. Check order notes/options.`;
           if (directExtractionResult.dataSource === null && directExtractionResult.annotation && directExtractionResult.annotation !== 'Needs AI processing') {
             placeholderReason = directExtractionResult.annotation; // Use error from direct extraction if available
@@ -955,7 +946,7 @@ async function createOrUpdateTasksInTransaction(
           if (itemDebugEntry) itemDebugEntry.status = 'Placeholder Creation';
         } else {
           logger.warn(
-            `[DB][Order ${orderInTx.id}][Item ${orderItemId}] No AI personalizations and 'createPlaceholder' is false. No task will be created for this item.`
+            `[DB][Order ${order.id}][Item ${orderItemId}] No AI personalizations and 'createPlaceholder' is false. No task will be created for this item.`
           );
           finalDataSource = 'Skipped_No_Data';
           if (itemDebugEntry) itemDebugEntry.status = 'Skipped - No Placeholder';
@@ -963,17 +954,17 @@ async function createOrUpdateTasksInTransaction(
       }
 
       // ShipStation sync logic for AI data (Personalized Details)
-      if (lineItemKey && finalDataSource === 'AI_Direct' && aiData?.itemPersonalizations && orderInTx.shipstation_order_id) {
+      if (lineItemKey && finalDataSource === 'AI_Direct' && aiData?.itemPersonalizations && order.shipstation_order_id) {
         const personalizationsForThisKey = aiData.itemPersonalizations[lineItemKey]?.personalizations;
-        const detailsString = buildPersonalizedDetailsString(personalizationsForThisKey || [], lineItemKey, orderInTx.id);
+        const detailsString = buildPersonalizedDetailsString(personalizationsForThisKey || [], lineItemKey, order.id);
         if (personalizationsForThisKey && personalizationsForThisKey.length > 0) {
           const ssOptions = [{ name: 'Personalized Details', value: detailsString }];
           if (options.dryRun) {
-            logger.info(`[Dry Run][ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Would update SS item options from AI_Direct with ${JSON.stringify(ssOptions)}`);
+            logger.info(`[Dry Run][ShipStation Update][Order ${order.id}][Item ${orderItemId}] Would update SS item options from AI_Direct with ${JSON.stringify(ssOptions)}`);
           } else {
             itemsToPatch[lineItemKey] = ssOptions;
             patchReasons.push(`${lineItemKey}(AI-PD)`);
-            logger.info(`[ShipStation Update][Order ${orderInTx.id}][Item ${orderItemId}] Prepared item options from AI_Direct for SS patch.`);
+            logger.info(`[ShipStation Update][Order ${order.id}][Item ${orderItemId}] Prepared item options from AI_Direct for SS patch.`);
           }
         }
       }
@@ -996,8 +987,8 @@ async function createOrUpdateTasksInTransaction(
           annotation: detail.annotation,
           // Ensure all other updatable fields from PrintOrderTask are here
           shorthandProductName: item.product?.name ? (item.product.name.length > 100 ? item.product.name.substring(0, 97) + '...' : item.product.name) : 'Unknown',
-          ship_by_date: orderInTx.ship_by_date,
-          marketplace_order_number: orderInTx.shipstation_order_number,
+          ship_by_date: order.ship_by_date,
+          marketplace_order_number: order.shipstation_order_number,
         };
 
         const whereClause = {
@@ -1014,9 +1005,9 @@ async function createOrUpdateTasksInTransaction(
           productId: item.productId,
           // Fields below are specific to 'create' and not in 'updatePayload' or are essential FKs
           taskIndex: taskIndex,
-          orderId: orderInTx.id,
+          orderId: order.id,
           // customerId is not directly in updatePayload, handle if needed for create:
-          // customerId: orderInTx.customerId, // Example: if you need to set it explicitly or connect
+          // customerId: order.customerId, // Example: if you need to set it explicitly or connect
         };
 
         logger.info({
@@ -1036,6 +1027,9 @@ async function createOrUpdateTasksInTransaction(
             create: createPayload,
           });
           tasksCreatedCount++;
+          if (detail.needs_review) { // Check the source detail that determined the task's review status
+            itemsNeedReviewCount++;
+          }
           if (itemDebugEntry) itemDebugEntry.createdTaskIds.push(upsertedTask.id);
           logger.info({
             orderId: order.id,
@@ -1065,15 +1059,21 @@ async function createOrUpdateTasksInTransaction(
         }
       }
     } else {
+      // This block executes if taskDetailsToCreate is empty for the current item.
+      // This means neither direct extraction nor AI/Placeholder logic resulted in tasks.
+      tasksSkippedCount++;
       logger.info(
-        `[DB][Order ${orderInTx.id}][Item ${orderItemId}] Processed.Tasks: ${taskDetailsToCreate.length}.Status: ${itemDebugEntry.status} `
+        `[DB][Order ${order.id}][Item ${orderItemId}] No tasks generated (direct, AI, or placeholder). Incrementing tasksSkippedCount.`
       );
+      if (itemDebugEntry) {
+        itemDebugEntry.status = 'Skipped - No Tasks Generated';
+      }
     }
   }
 
   // Conditional ShipStation Sync Logic (Data Preparation part for dry run)
-  if (options.syncToShipstation && options.dryRun && orderInTx.shipstation_order_id) {
-    logger.info({ orderId: orderInTx.id }, "[Dry Run] Preparing ShipStation sync data...");
+  if (options.syncToShipstation && options.dryRun && order.shipstation_order_id) {
+    logger.info({ orderId: order.id }, "[Dry Run] Preparing ShipStation sync data...");
     if (Object.keys(itemsToPatch).length > 0) {
       // Construct auditNoteForInternalNotes for dry run log
       const packingListLines_dryRun: string[] = [];
@@ -1091,24 +1091,24 @@ async function createOrUpdateTasksInTransaction(
           }
         }
       }
-      const packingListHeader_dryRun = `PACKING LIST(Order #${orderInTx.shipstation_order_number || 'N/A'}): `;
+      const packingListHeader_dryRun = `PACKING LIST(Order #${order.shipstation_order_number || 'N/A'}): `;
       const packingListString_dryRun = packingListLines_dryRun.length > 0 ? packingListLines_dryRun.join('\n') : "No specific personalizations found by AI for packing list.";
-      const originalCustomerNotes_dryRun = orderInTx.customer_notes || 'No customer notes provided.';
+      const originalCustomerNotes_dryRun = order.customer_notes || 'No customer notes provided.';
       const syncDetails_dryRun = `Automated Task Sync(Dry Run) ${new Date().toISOString()} -> ${patchReasons.join(', ')} `;
       const auditNoteForInternalNotes_dryRun = `${packingListHeader_dryRun} \n${packingListString_dryRun} \n-- -\nOriginal Customer Notes: \n${originalCustomerNotes_dryRun} \n-- -
             ${syncDetails_dryRun} `;
 
-      logger.info({ orderId: orderInTx.id, itemsToPatch, auditNote: auditNoteForInternalNotes_dryRun },
+      logger.info({ orderId: order.id, itemsToPatch, auditNote: auditNoteForInternalNotes_dryRun },
         "[Dry Run] Would update ShipStation with items and internalNotes.");
     } else {
-      logger.info({ orderId: orderInTx.id }, "[Dry Run] No item options prepared for ShipStation patching (itemsToPatch is empty).");
+      logger.info({ orderId: order.id }, "[Dry Run] No item options prepared for ShipStation patching (itemsToPatch is empty).");
     }
   }
 
   // Actual ShipStation Sync Logic (executes if NOT dryRun)
-  if (options.syncToShipstation && !options.dryRun && Object.keys(itemsToPatch).length > 0 && orderInTx.shipstation_order_id) {
+  if (options.syncToShipstation && !options.dryRun && Object.keys(itemsToPatch).length > 0 && order.shipstation_order_id) {
     try {
-      const ssOrderResp = await getShipstationOrders({ orderId: Number(orderInTx.shipstation_order_id) });
+      const ssOrderResp = await getShipstationOrders({ orderId: Number(order.shipstation_order_id) });
       if (ssOrderResp.orders && ssOrderResp.orders.length > 0) {
         // --- START logic for Packing List in internalNotes (from previous successful edit) ---
         const packingListLines: string[] = [];
@@ -1128,11 +1128,11 @@ async function createOrUpdateTasksInTransaction(
           }
         }
 
-        const packingListHeader = `PACKING LIST(Order #${orderInTx.shipstation_order_number || 'N/A'}): `;
+        const packingListHeader = `PACKING LIST(Order #${order.shipstation_order_number || 'N/A'}): `;
         const packingListString = packingListLines.length > 0 ? packingListLines.join('\n') : "No specific personalizations found by AI.";
 
         const fetchedSsOrder = ssOrderResp.orders[0];
-        const originalCustomerNotes = fetchedSsOrder.customerNotes || orderInTx.customer_notes || 'No customer notes provided.';
+        const originalCustomerNotes = fetchedSsOrder.customerNotes || order.customer_notes || 'No customer notes provided.';
 
         const syncDetails = `Automated Task Sync ${new Date().toISOString()} -> ${patchReasons.join(', ')} `;
 
@@ -1140,17 +1140,17 @@ async function createOrUpdateTasksInTransaction(
         // --- END logic for Packing List in internalNotes ---
 
         await updateOrderItemsOptionsBatch(fetchedSsOrder, itemsToPatch, auditNoteForInternalNotes);
-        logger.info(`[ShipStation Batch][Order ${orderInTx.id}] Successfully updated items: ${patchReasons.join(', ')} `);
+        logger.info(`[ShipStation Batch][Order ${order.id}] Successfully updated items: ${patchReasons.join(', ')} `);
       } else {
-        logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Failed to fetch SS order for batch update.`);
+        logger.error(`[ShipStation Batch][Order ${order.id}] Failed to fetch SS order for batch update.`);
       }
     } catch (batchErr) {
-      logger.error(`[ShipStation Batch][Order ${orderInTx.id}] Error during batch update`, batchErr);
+      logger.error(`[ShipStation Batch][Order ${order.id}] Error during batch update`, batchErr);
     }
-  } else if (options.syncToShipstation && Object.keys(itemsToPatch).length === 0 && orderInTx.shipstation_order_id) {
-    logger.info(`[ShipStation Update][Order ${orderInTx.id}] No item options were prepared for patching, though sync was enabled.Internal notes not updated.`);
-  } else if (options.syncToShipstation && !orderInTx.shipstation_order_id) {
-    logger.warn(`[ShipStation Update][Order ${orderInTx.id}] Sync to ShipStation was enabled, but the order is missing a ShipStation Order ID.Skipping sync.`);
+  } else if (options.syncToShipstation && Object.keys(itemsToPatch).length === 0 && order.shipstation_order_id) {
+    logger.info(`[ShipStation Update][Order ${order.id}] No item options were prepared for patching, though sync was enabled.Internal notes not updated.`);
+  } else if (options.syncToShipstation && !order.shipstation_order_id) {
+    logger.warn(`[ShipStation Update][Order ${order.id}] Sync to ShipStation was enabled, but the order is missing a ShipStation Order ID.Skipping sync.`);
   }
 
   logger.info(`[DB-DEBUG][Order ${order.id}] END OF createOrUpdateTasksInTransaction: tasksCreatedCount=${tasksCreatedCount}, itemsNeedReviewCount=${itemsNeedReviewCount}`);
@@ -1494,6 +1494,9 @@ async function main() {
       logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number }, `-- - Processing Order ${order.id} --- `);
 
       let orderProcessingSuccess = true; // Flag for this specific order
+      // Initialize variables that will hold results from AI extraction or defaults
+      let itemsSentToAiForTransaction: AiOrderItemData[] = [];
+      let aiDataForTransaction: z.infer<typeof AiOrderResponseSchema> = { itemPersonalizations: {} };
 
       if (cmdOptions.shipstationSyncOnly) {
         logger.info({ orderId: order.id }, `ShipStation sync - only mode enabled.Skipping AI extraction and DB updates.`);
@@ -1531,11 +1534,11 @@ async function main() {
         await appendToDebugLog(cmdOptions.debugFile, orderDebugInfo);
         orderDebugInfo.overallStatus = 'Extracting AI Data';
 
-        let aiDataForTransaction: z.infer<typeof AiOrderResponseSchema> = { itemPersonalizations: {} };
-
         if (cmdOptions.skipAi) {
           logger.info({ orderId: order.id }, 'Skipping AI extraction as per --skip-ai flag.');
           orderDebugInfo.overallStatus = 'AI Skipped';
+          // itemsSentToAiForTransaction remains []
+          // aiDataForTransaction remains { itemPersonalizations: {} }
         } else {
           const extractionResult = await extractOrderPersonalization(order, {
             openaiApiKey: cmdOptions.openaiApiKey,
@@ -1546,22 +1549,24 @@ async function main() {
             preserveText: cmdOptions.preserveText,
             dryRun: cmdOptions.dryRun
           });
+          itemsSentToAiForTransaction = extractionResult.itemsSentToAi; // Populate here
           orderDebugInfo.promptSent = extractionResult.promptUsed;
           orderDebugInfo.rawResponseReceived = extractionResult.rawResponse;
           orderDebugInfo.modelUsed = extractionResult.modelUsed ?? cmdOptions.openaiModel;
-          if (!extractionResult.success || !extractionResult.data) {
+
+          if (!extractionResult.success || !extractionResult.aiResponseData) {
             const aiErrorMsg = extractionResult.error || 'AI extraction returned no data';
             orderDebugInfo.processingError = aiErrorMsg;
             logger.error({ orderId: order.id, err: aiErrorMsg }, 'AI Extraction Failed');
             orderDebugInfo.overallStatus = 'AI Extraction Failed';
             if (cmdOptions.createPlaceholder) {
               logger.info({ orderId: order.id }, 'Proceeding with placeholder creation due to AI failure.');
-              // Placeholder logic will be handled in createOrUpdateTasksInTransaction based on empty aiDataForTransaction
+              // aiDataForTransaction remains { itemPersonalizations: {} }, placeholder logic is in createOrUpdateTasksInTransaction
             } else {
               throw new Error(aiErrorMsg); // This will be caught by the outer catch for this order
             }
           } else {
-            aiDataForTransaction = extractionResult.data;
+            aiDataForTransaction = extractionResult.aiResponseData; // Assign successful AI response
             orderDebugInfo.parsedResponse = aiDataForTransaction;
             orderDebugInfo.overallStatus = 'AI Data Extracted';
           }
@@ -1570,16 +1575,24 @@ async function main() {
 
         if (cmdOptions.dryRun) {
           logger.info({ orderId: order.id }, '[Dry Run] Simulating task creation/DB upserts...');
-          // Simulate call to createOrUpdateTasksInTransaction for logging task data details
-          // This part was more detailed before, for now, simple log:
-          logger.info({ orderId: order.id, aiData: aiDataForTransaction }, '[Dry Run] AI data that would be used for tasks.');
+          const itemsToLogForDryRun = itemsSentToAiForTransaction; // Use the correctly populated variable
+          const aiDataToLogForDryRun = aiDataForTransaction;    // Use the correctly populated variable
+          logger.info({ orderId: order.id, itemsCount: itemsToLogForDryRun.length, hasAiData: !!aiDataToLogForDryRun }, '[Dry Run] Data that would be used for tasks (summary).');
+          if (itemsToLogForDryRun.some((item: AiOrderItemData) => item._amazonDataProcessed)) {
+            logger.info({ orderId: order.id }, '[Dry Run] Contains items with directly extracted Amazon data.');
+          }
+          if (aiDataToLogForDryRun && Object.keys(aiDataToLogForDryRun.itemPersonalizations).length > 0) {
+            logger.info({ orderId: order.id, aiData: aiDataToLogForDryRun }, '[Dry Run] AI data that would be used for tasks (detail if present).');
+          }
           orderDebugInfo.overallStatus = 'Dry Run Complete';
         } else {
           orderDebugInfo.overallStatus = 'Starting DB Transaction';
+          // aiDataForTransaction is already populated from the block above
           const { tasksCreatedCount: currentTasks } = await prisma.$transaction(
             async (tx) => {
-              // createOrUpdateTasksInTransaction uses module-scoped logger
-              return createOrUpdateTasksInTransaction(tx, order, aiDataForTransaction, cmdOptions, orderDebugInfo);
+              const itemsToPassToTransaction = itemsSentToAiForTransaction;       // Use the correctly populated variable
+              // aiDataForTransaction holds AI response or default, so it's fine to pass directly
+              return createOrUpdateTasksInTransaction(tx, order, aiDataForTransaction, cmdOptions, orderDebugInfo, itemsToPassToTransaction);
             },
             {
               maxWait: PRISMA_TRANSACTION_MAX_WAIT,
