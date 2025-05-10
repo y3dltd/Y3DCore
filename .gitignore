@@ -164,3 +164,6 @@ y3dhub-app-573-creds.json
 openrouter-keys.json
 vertex-ai-keys.json
 vertex-ai-formatted-keys.json
+
+**/.claude/settings.local.json
+project_ssh_keys/
