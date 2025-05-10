@@ -239,4 +239,22 @@ This multi-faceted logging approach provides a balance between concise productio
 
 ## 7. Future Considerations & Potential Enhancements
 
-(This section can be populated with ideas for future development, if any)
+### 7.1. Recent Enhancements
+
+#### 7.1.1. Fix for Order Reprocessing with Invalid Line Items (2025-05-10)
+
+A fix was implemented to address a specific issue where orders with multiple items (some with null `shipstationLineItemKey` values) were being repeatedly processed by the crontab job. The issue was observed with Etsy order #3681245691.
+
+**Problem:**
+- The `getOrdersToProcess` function was selecting orders where at least one item had no print tasks
+- Items with null `shipstationLineItemKey` values were skipped during processing and had placeholder tasks created
+- However, these items were still considered in the filter for the next run, causing the same order to be picked up repeatedly
+
+**Solution:**
+- Modified the query filter in `getOrdersToProcess` to only consider items with:
+  1. Non-null `shipstationLineItemKey` values, AND
+  2. No existing print tasks
+- This ensures orders with only null `shipstationLineItemKey` items (that already have placeholder tasks) won't be reprocessed
+- Orders with a mix of valid and null line items will only be reprocessed if valid items still need tasks
+
+This change improves efficiency by preventing unnecessary reprocessing while maintaining the expected behavior for orders with processable items.

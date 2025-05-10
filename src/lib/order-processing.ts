@@ -259,9 +259,20 @@ export async function getOrdersToProcess(
       );
       where.items = {
         some: {
-          printTasks: {
-            none: {},
-          },
+          AND: [
+            // Only consider items that have a valid shipstationLineItemKey
+            {
+              shipstationLineItemKey: {
+                not: null
+              }
+            },
+            // And only if they have no print tasks
+            {
+              printTasks: {
+                none: {},
+              },
+            }
+          ]
         },
       };
     } else {
