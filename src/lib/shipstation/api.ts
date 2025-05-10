@@ -1,8 +1,10 @@
 import axios from 'axios';
+
 // Prisma not used in this file directly for this specific change, but keep if used elsewhere.
 // import { Prisma } from '@prisma/client'; 
-import { shipstationApi } from './client';
 import logger from '../logger';
+
+import { shipstationApi } from './client';
 import {
   ShipStationOrder,
   ShipStationOrdersResponse,

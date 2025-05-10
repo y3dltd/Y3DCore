@@ -12,13 +12,11 @@ import { Command } from 'commander';
 import { config } from 'dotenv';
 import fetch from 'node-fetch'; // Added node-fetch
 import pino from 'pino'; // Default import, assuming pino v7+ with own types
-import type { Response as FetchResponse } from 'node-fetch'; // Type for node-fetch response
 import { z } from 'zod';
 
 // Internal/local imports
-import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
-import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
 import { simplifyProductName, productNameMappings } from '@lib/product-mapping';
+
 import {
   OPENAI_API_URL,
   DEFAULT_OPENAI_MODEL,
@@ -29,7 +27,11 @@ import {
   PRISMA_TRANSACTION_TIMEOUT,
   SCRIPT_LOG_DIR
 } from '../lib/constants'; // Adjust path as necessary
+import { fixInvalidStlRenderStatus, getOrdersToProcess, OrderWithItemsAndProducts } from '../lib/order-processing';
 import { fetchAndProcessAmazonCustomization } from '../lib/orders/amazon/customization'; // Added import
+import { getShipstationOrders, updateOrderItemsOptionsBatch } from '../lib/shared/shipstation';
+
+import type { Response as FetchResponse } from 'node-fetch'; // Type for node-fetch response
 
 // --- Constants --- (These are now imported)
 // const OPENAI_API_URL = ...;
