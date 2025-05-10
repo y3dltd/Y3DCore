@@ -372,12 +372,34 @@ async function extractOrderPersonalization(
         orderItem.product?.name ?? '', // Correctly access product name, provide default
         productNameMappings
       );
+
+      let mappedOptions: Array<{ name: string; value: string }> = [];
+      if (orderItem.print_settings && Array.isArray(orderItem.print_settings)) {
+        try {
+          mappedOptions = (orderItem.print_settings as any[]).map(opt => ({
+            name: String(opt.name ?? ''),
+            value: String(opt.value ?? '')
+          })).filter(opt => opt.name && opt.value);
+        } catch (e) {
+          logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, 'Failed to parse print_settings as options array');
+        }
+      } else if (orderItem.print_settings && typeof orderItem.print_settings === 'object' && orderItem.print_settings !== null && 'options' in orderItem.print_settings && Array.isArray((orderItem.print_settings as { options: any[] }).options)) {
+        try {
+          mappedOptions = ((orderItem.print_settings as { options: any[] }).options).map(opt => ({
+            name: String(opt.name ?? ''),
+            value: String(opt.value ?? '')
+          })).filter(opt => opt.name && opt.value);
+        } catch (e) {
+          logger.warn({ orderId: order.id, itemId: orderItem.id, printSettings: orderItem.print_settings, error: e }, 'Failed to parse print_settings.options as options array');
+        }
+      }
+
       return {
         id: orderItem.shipstationLineItemKey!, // lineItemKey is non-null due to filter
         sku: orderItem.product?.sku ?? '', // Correctly access product SKU, provide default
         name: simplifiedName,
         quantity: orderItem.quantity,
-        options: [], // Changed from orderItem.options
+        options: mappedOptions, // Populate from orderItem.print_settings
         productName: orderItem.product?.name,
         productId: orderItem.product?.id,
       };
@@ -470,22 +492,6 @@ async function extractOrderPersonalization(
   const modelUsed = options.openaiModel;
   const apiKey = options.openaiApiKey;
   const startTime = Date.now();
-
-  // If dryRun is enabled, skip actual API call and return mock/success
-  if (options.dryRun) {
-    logger.info({ orderId: order.id }, `[AI][Dry Run] Skipping actual OpenAI API call for order ${order.id}.`);
-    // Optionally, return a more structured mock AI response if needed for downstream dry-run testing
-    const mockAiData: z.infer<typeof AiOrderResponseSchema> = {
-      itemPersonalizations: {} // Empty or minimal mock
-    };
-    return {
-      success: true,
-      data: mockAiData,
-      promptUsed: fullPromptForDebug, // Still useful to log the prompt that would have been sent
-      rawResponse: "--DRY RUN: No actual API call made--",
-      modelUsed: modelUsed,
-    };
-  }
 
   try {
     if (!apiKey) throw new Error('OpenAI API key missing');
@@ -588,46 +594,48 @@ async function extractOrderPersonalization(
 
     logger.info(`[AI][Order ${order.id}] AI response validated.`);
 
-    try {
-      const tasksGenerated = Object.values(validationResult.data.itemPersonalizations).reduce(
-        (sum, item) => sum + item.personalizations.length,
-        0
-      );
-      const needsReviewCount = Object.values(validationResult.data.itemPersonalizations).reduce(
-        (sum, item) => sum + (item.overallNeedsReview ? 1 : 0),
-        0
-      );
-      await prisma.aiCallLog.create({
-        data: {
-          scriptName: 'populate-print-queue',
-          orderId: order.id,
-          orderNumber: order.shipstation_order_number || null,
-          marketplace: order.marketplace || null,
-          aiProvider: 'openai',
-          modelUsed: modelUsed || 'unknown',
-          promptSent: fullPromptForDebug, // Consider truncating if too long
-          rawResponse: rawResponse, // Consider truncating if too long
-          processingTimeMs: Date.now() - startTime,
-          success: true,
-          tasksGenerated,
-          needsReviewCount,
-          // tokenUsagePrompt: result.usage?.prompt_tokens, // Example if DB field existed
-          // tokenUsageCompletion: result.usage?.completion_tokens, // Example if DB field existed
-          // tokenUsageTotal: result.usage?.total_tokens, // Example if DB field existed
-        },
-      });
-      logger.debug(
-        {
-          orderId: order.id,
-          forceRecreate: options.forceRecreate,
-          preserveText: options.preserveText
-        },
-        `[AI][Order ${order.id}] AI call logged to database with processing flags.`
-      );
-    } catch (logError) {
-      logger.error(
-        `[AI][Order ${order.id}] Failed to log AI call to database: ${logError instanceof Error ? logError.message : String(logError)}`
-      );
+    if (!options.dryRun) {
+      try {
+        const tasksGenerated = Object.values(validationResult.data.itemPersonalizations).reduce(
+          (sum, item) => sum + item.personalizations.length,
+          0
+        );
+        const needsReviewCount = Object.values(validationResult.data.itemPersonalizations).reduce(
+          (sum, item) => sum + (item.overallNeedsReview ? 1 : 0),
+          0
+        );
+        await prisma.aiCallLog.create({
+          data: {
+            scriptName: 'populate-print-queue',
+            orderId: order.id,
+            orderNumber: order.shipstation_order_number || null,
+            marketplace: order.marketplace || null,
+            aiProvider: 'openai',
+            modelUsed: modelUsed || 'unknown',
+            promptSent: fullPromptForDebug, // Consider truncating if too long
+            rawResponse: rawResponse, // Consider truncating if too long
+            processingTimeMs: Date.now() - startTime,
+            success: true,
+            tasksGenerated,
+            needsReviewCount,
+            // tokenUsagePrompt: result.usage?.prompt_tokens, // Example if DB field existed
+            // tokenUsageCompletion: result.usage?.completion_tokens, // Example if DB field existed
+            // tokenUsageTotal: result.usage?.total_tokens, // Example if DB field existed
+          },
+        });
+        logger.debug(
+          {
+            orderId: order.id,
+            forceRecreate: options.forceRecreate,
+            preserveText: options.preserveText
+          },
+          `[AI][Order ${order.id}] AI call logged to database with processing flags.`
+        );
+      } catch (logError) {
+        logger.error(
+          `[AI][Order ${order.id}] Failed to log AI call to database: ${logError instanceof Error ? logError.message : String(logError)}`
+        );
+      }
     }
 
     return {
@@ -641,40 +649,42 @@ async function extractOrderPersonalization(
     const errorMsg = error instanceof Error ? error.message : 'Unknown AI extraction error';
     logger.error(`[AI][Order ${order.id}] Extraction failed: ${errorMsg}`, error);
 
-    try {
-      await prisma.aiCallLog.create({
-        data: {
-          scriptName: 'populate-print-queue',
-          orderId: order.id,
-          orderNumber: order.shipstation_order_number || null,
-          marketplace: order.marketplace || null,
-          aiProvider: 'openai',
-          modelUsed: modelUsed || 'unknown',
-          promptSent: fullPromptForDebug, // Consider truncating
-          rawResponse: rawResponse || '', // Consider truncating
-          processingTimeMs: Date.now() - startTime,
-          success: false,
-          errorMessage: errorMsg,
-          tasksGenerated: 0,
-          needsReviewCount: 0,
-          // tokenUsagePrompt: result.usage?.prompt_tokens, // Example if DB field existed
-          // tokenUsageCompletion: result.usage?.completion_tokens, // Example if DB field existed
-          // tokenUsageTotal: result.usage?.total_tokens, // Example if DB field existed
-        },
-      });
-      logger.debug(
-        {
-          orderId: order.id,
-          forceRecreate: options.forceRecreate,
-          preserveText: options.preserveText,
-          error: errorMsg
-        },
-        `[AI][Order ${order.id}] Failed AI call logged to database with processing flags.`
-      );
-    } catch (logError) {
-      logger.error(
-        `[AI][Order ${order.id}] Failed to log AI error to database: ${logError instanceof Error ? logError.message : String(logError)}`
-      );
+    if (!options.dryRun) {
+      try {
+        await prisma.aiCallLog.create({
+          data: {
+            scriptName: 'populate-print-queue',
+            orderId: order.id,
+            orderNumber: order.shipstation_order_number || null,
+            marketplace: order.marketplace || null,
+            aiProvider: 'openai',
+            modelUsed: modelUsed || 'unknown',
+            promptSent: fullPromptForDebug, // Consider truncating
+            rawResponse: rawResponse || '', // Consider truncating
+            processingTimeMs: Date.now() - startTime,
+            success: false,
+            errorMessage: errorMsg,
+            tasksGenerated: 0,
+            needsReviewCount: 0,
+            // tokenUsagePrompt: result.usage?.prompt_tokens, // Example if DB field existed
+            // tokenUsageCompletion: result.usage?.completion_tokens, // Example if DB field existed
+            // tokenUsageTotal: result.usage?.total_tokens, // Example if DB field existed
+          },
+        });
+        logger.debug(
+          {
+            orderId: order.id,
+            forceRecreate: options.forceRecreate,
+            preserveText: options.preserveText,
+            error: errorMsg
+          },
+          `[AI][Order ${order.id}] Failed AI call logged to database with processing flags.`
+        );
+      } catch (logError) {
+        logger.error(
+          `[AI][Order ${order.id}] Failed to log AI error to database: ${logError instanceof Error ? logError.message : String(logError)}`
+        );
+      }
     }
 
     return {
