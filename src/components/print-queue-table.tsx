@@ -1,6 +1,10 @@
-'use client';
+"use client";
 
-import { PrintOrderTask, PrintTaskStatus, Product as PrismaProduct } from '@prisma/client';
+import {
+  PrintOrderTask,
+  PrintTaskStatus,
+  Product as PrismaProduct,
+} from "@prisma/client";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -14,8 +18,8 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table';
-import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
+} from "@tanstack/react-table";
+import { format, isToday, isTomorrow, isYesterday } from "date-fns";
 import {
   ArrowUpDown,
   Check,
@@ -25,16 +29,16 @@ import {
   MoreHorizontal,
   PlayCircle,
   Undo2,
-} from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import * as React from 'react';
-import { useState, useTransition } from 'react';
-import { toast } from 'sonner';
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +46,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -50,15 +54,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import { ClientPrintTaskData } from '@/types/print-tasks';
-import { usePrintQueueModal } from '@/contexts/PrintQueueModalContext';
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { ClientPrintTaskData } from "@/types/print-tasks";
+import { usePrintQueueModal } from "@/contexts/PrintQueueModalContext";
 
-import { PrintTaskDetailModal } from './print-task-detail-modal';
+import { PrintTaskDetailModal } from "./print-task-detail-modal";
 
-interface SerializableProduct extends Omit<PrismaProduct, 'weight' | 'item_weight_value'> {
+interface SerializableProduct
+  extends Omit<PrismaProduct, "weight" | "item_weight_value"> {
   weight: string | null;
   item_weight_value: string | null;
 }
@@ -78,18 +88,18 @@ async function updateTaskStatus(
   status: PrintTaskStatus
 ): Promise<{ message?: string; count?: number }> {
   const response = await fetch(`/api/print-tasks/${taskId}/status`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ status }),
-    credentials: 'include',
+    credentials: "include",
   });
 
   if (!response.ok) {
     const errorData = await response
       .json()
-      .catch(() => ({ error: 'Failed to parse error response' }));
+      .catch(() => ({ error: "Failed to parse error response" }));
     throw new Error(errorData.error || `Failed to update task ${taskId}`);
   }
 
@@ -101,19 +111,19 @@ async function bulkUpdateTaskStatus(
   status: PrintTaskStatus
 ): Promise<{ message?: string; count?: number }> {
   const response = await fetch(`/api/print-tasks/bulk-status`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ taskIds, status }),
-    credentials: 'include',
+    credentials: "include",
   });
 
   if (!response.ok) {
     const errorData = await response
       .json()
-      .catch(() => ({ error: 'Failed to parse error response' }));
-    throw new Error(errorData.error || 'Bulk status update failed');
+      .catch(() => ({ error: "Failed to parse error response" }));
+    throw new Error(errorData.error || "Bulk status update failed");
   }
 
   return response.json();
@@ -128,7 +138,7 @@ async function handleBulkStatusUpdateOutside(
   bulkUpdateHelper: typeof bulkUpdateTaskStatus
 ): Promise<void> {
   if (numSelected === 0) {
-    toast.warning('No tasks selected.');
+    toast.warning("No tasks selected.");
     return;
   }
   const idsToUpdate = selectedRowIds;
@@ -136,12 +146,16 @@ async function handleBulkStatusUpdateOutside(
   try {
     const result = await bulkUpdateHelper(idsToUpdate, newStatus);
     toast.success(
-      `${result.message || `Successfully marked ${result.count} tasks as ${newStatus}.`}`
+      `${
+        result.message ||
+        `Successfully marked ${result.count} tasks as ${newStatus}.`
+      }`
     );
     router.refresh();
   } catch (error: unknown) {
-    console.error('Bulk status update failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown bulk update error';
+    console.error("Bulk status update failed:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown bulk update error";
     toast.error(`Bulk update failed: ${errorMessage}`);
   } finally {
     setIsBulkUpdating(false);
@@ -149,93 +163,101 @@ async function handleBulkStatusUpdateOutside(
 }
 
 const colorMapInternal: { [key: string]: { bg: string; textColor: string } } = {
-  black: { bg: 'bg-black', textColor: 'text-white' },
-  grey: { bg: 'bg-gray-400', textColor: 'text-white' },
-  gray: { bg: 'bg-gray-400', textColor: 'text-white' },
-  'light blue': { bg: 'bg-blue-400', textColor: 'text-white' },
-  blue: { bg: 'bg-blue-500', textColor: 'text-white' },
-  'dark blue': { bg: 'bg-blue-900', textColor: 'text-white' },
-  brown: { bg: 'bg-yellow-800', textColor: 'text-white' },
-  orange: { bg: 'bg-orange-500', textColor: 'text-white' },
-  'matt orange': { bg: 'bg-orange-600', textColor: 'text-white' },
-  'silk orange': { bg: 'bg-orange-400', textColor: 'text-black' },
-  red: { bg: 'bg-red-600', textColor: 'text-white' },
-  'fire engine red': { bg: 'bg-red-700', textColor: 'text-white' },
-  'rose gold': { bg: 'bg-pink-300', textColor: 'text-black' },
-  magenta: { bg: 'bg-fuchsia-700', textColor: 'text-white' },
-  white: { bg: 'bg-white', textColor: 'text-black' },
-  'cold white': {
-    bg: 'bg-slate-50 border border-gray-300',
-    textColor: 'text-black',
+  black: { bg: "bg-black", textColor: "text-white" },
+  grey: { bg: "bg-gray-400", textColor: "text-white" },
+  gray: { bg: "bg-gray-400", textColor: "text-white" },
+  "light blue": { bg: "bg-blue-400", textColor: "text-white" },
+  blue: { bg: "bg-blue-500", textColor: "text-white" },
+  "dark blue": { bg: "bg-blue-900", textColor: "text-white" },
+  brown: { bg: "bg-yellow-800", textColor: "text-white" },
+  orange: { bg: "bg-orange-500", textColor: "text-white" },
+  "matt orange": { bg: "bg-orange-600", textColor: "text-white" },
+  "silk orange": { bg: "bg-orange-400", textColor: "text-black" },
+  red: { bg: "bg-red-600", textColor: "text-white" },
+  "fire engine red": { bg: "bg-red-700", textColor: "text-white" },
+  "rose gold": { bg: "bg-pink-300", textColor: "text-black" },
+  magenta: { bg: "bg-fuchsia-700", textColor: "text-white" },
+  white: { bg: "bg-white", textColor: "text-black" },
+  "cold white": {
+    bg: "bg-slate-50 border border-gray-300",
+    textColor: "text-black",
   },
-  yellow: { bg: 'bg-yellow-400', textColor: 'text-black' },
-  silver: { bg: 'bg-gray-300', textColor: 'text-black' },
-  'silk silver': { bg: 'bg-gray-200', textColor: 'text-black' },
-  purple: { bg: 'bg-purple-500', textColor: 'text-white' },
-  pink: { bg: 'bg-pink-400', textColor: 'text-white' },
-  'matt pink': { bg: 'bg-pink-500', textColor: 'text-white' },
-  'silk pink': { bg: 'bg-pink-300', textColor: 'text-black' },
-  gold: { bg: 'bg-yellow-500', textColor: 'text-black' },
-  skin: { bg: 'bg-orange-200', textColor: 'text-black' },
-  'peak green': { bg: 'bg-green-400', textColor: 'text-white' },
-  green: { bg: 'bg-green-500', textColor: 'text-white' },
-  'olive green': { bg: 'bg-green-700', textColor: 'text-white' },
-  'pine green': { bg: 'bg-green-800', textColor: 'text-white' },
-  'glow in the dark': { bg: 'bg-lime-300', textColor: 'text-black' },
-  bronze: { bg: 'bg-amber-700', textColor: 'text-white' },
-  beige: { bg: 'bg-amber-100', textColor: 'text-black' },
-  turquoise: { bg: 'bg-teal-400', textColor: 'text-black' },
+  yellow: { bg: "bg-yellow-400", textColor: "text-black" },
+  silver: { bg: "bg-gray-300", textColor: "text-black" },
+  "silk silver": { bg: "bg-gray-200", textColor: "text-black" },
+  purple: { bg: "bg-purple-500", textColor: "text-white" },
+  pink: { bg: "bg-pink-400", textColor: "text-white" },
+  "matt pink": { bg: "bg-pink-500", textColor: "text-white" },
+  "silk pink": { bg: "bg-pink-300", textColor: "text-black" },
+  gold: { bg: "bg-yellow-500", textColor: "text-black" },
+  skin: { bg: "bg-orange-200", textColor: "text-black" },
+  "peak green": { bg: "bg-green-400", textColor: "text-white" },
+  green: { bg: "bg-green-500", textColor: "text-white" },
+  "olive green": { bg: "bg-green-700", textColor: "text-white" },
+  "pine green": { bg: "bg-green-800", textColor: "text-white" },
+  "glow in the dark": { bg: "bg-lime-300", textColor: "text-black" },
+  bronze: { bg: "bg-amber-700", textColor: "text-white" },
+  beige: { bg: "bg-amber-100", textColor: "text-black" },
+  turquoise: { bg: "bg-teal-400", textColor: "text-black" },
 };
 
 const getColorInfo = (
   colorName: string | null | undefined
 ): { bgClass: string; textClass: string } => {
-  const defaultColor = { bgClass: 'bg-gray-200', textClass: 'text-black' };
-  if (!colorName) return { bgClass: 'bg-transparent', textClass: 'text-foreground' };
+  const defaultColor = { bgClass: "bg-gray-200", textClass: "text-black" };
+  if (!colorName)
+    return { bgClass: "bg-transparent", textClass: "text-foreground" };
 
   const lowerColorName = colorName.toLowerCase();
 
-  if (lowerColorName.includes('peak green'))
+  if (lowerColorName.includes("peak green"))
     return {
-      bgClass: colorMapInternal['peak green'].bg,
-      textClass: colorMapInternal['peak green'].textColor,
+      bgClass: colorMapInternal["peak green"].bg,
+      textClass: colorMapInternal["peak green"].textColor,
     };
-  if (lowerColorName.includes('light blue'))
+  if (lowerColorName.includes("light blue"))
     return {
-      bgClass: colorMapInternal['light blue'].bg,
-      textClass: colorMapInternal['light blue'].textColor,
+      bgClass: colorMapInternal["light blue"].bg,
+      textClass: colorMapInternal["light blue"].textColor,
     };
-  if (lowerColorName.includes('dark grey') || lowerColorName.includes('dark gray'))
-    return { bgClass: 'bg-gray-600', textClass: 'text-white' };
-  if (lowerColorName.includes('magenta'))
+  if (
+    lowerColorName.includes("dark grey") ||
+    lowerColorName.includes("dark gray")
+  )
+    return { bgClass: "bg-gray-600", textClass: "text-white" };
+  if (lowerColorName.includes("magenta"))
     return {
       bgClass: colorMapInternal.magenta.bg,
       textClass: colorMapInternal.magenta.textColor,
     };
-  if (lowerColorName.includes('white'))
+  if (lowerColorName.includes("white"))
     return {
       bgClass: colorMapInternal.white.bg,
       textClass: colorMapInternal.white.textColor,
     };
 
   const exactMatch = colorMapInternal[lowerColorName];
-  if (exactMatch) return { bgClass: exactMatch.bg, textClass: exactMatch.textColor };
+  if (exactMatch)
+    return { bgClass: exactMatch.bg, textClass: exactMatch.textColor };
 
-  const entries = Object.entries(colorMapInternal).sort((a, b) => b[0].length - a[0].length);
+  const entries = Object.entries(colorMapInternal).sort(
+    (a, b) => b[0].length - a[0].length
+  );
   for (const [key, value] of entries) {
-    if (lowerColorName.includes(key)) return { bgClass: value.bg, textClass: value.textColor };
+    if (lowerColorName.includes(key))
+      return { bgClass: value.bg, textClass: value.textColor };
   }
 
   return defaultColor;
 };
 
 const formatRelativeDate = (date: Date | string | null): string => {
-  if (!date) return 'N/A';
+  if (!date) return "N/A";
   const dateObj = date instanceof Date ? date : new Date(date);
-  if (isToday(dateObj)) return 'Today';
-  if (isTomorrow(dateObj)) return 'Tomorrow';
-  if (isYesterday(dateObj)) return 'Yesterday';
-  return format(dateObj, 'dd/MM/yyyy');
+  if (isToday(dateObj)) return "Today";
+  if (isTomorrow(dateObj)) return "Tomorrow";
+  if (isYesterday(dateObj)) return "Yesterday";
+  return format(dateObj, "dd/MM/yyyy");
 };
 
 interface TableMeta {
@@ -256,7 +278,7 @@ function ActionCellComponent({
   const openModal =
     meta?.openModal ||
     ((_task: ClientPrintTaskData) => {
-      console.warn('No openModal function provided');
+      console.warn("No openModal function provided");
     });
   const task = row.original;
   const router = useRouter();
@@ -269,8 +291,9 @@ function ActionCellComponent({
         toast.success(`Task marked as ${newStatus}`);
         router.refresh();
       } catch (error: unknown) {
-        console.error('Status update failed:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error("Status update failed:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         toast.error(`Failed to update task: ${errorMessage}`);
       }
     });
@@ -280,7 +303,7 @@ function ActionCellComponent({
     navigator.clipboard
       .writeText(task.id.toString())
       .then(() => toast.success(`Task ID ${task.id} copied!`))
-      .catch(() => toast.error('Failed to copy ID'));
+      .catch(() => toast.error("Failed to copy ID"));
   };
 
   const renderQuickActionButton = (): React.ReactNode => {
@@ -344,12 +367,14 @@ function ActionCellComponent({
               <Link href={task.orderLink}>View Order</Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={handleCopyId}>Copy Task ID</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleCopyId}>
+            Copy Task ID
+          </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={e => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (typeof openModal === 'function') {
+              if (typeof openModal === "function") {
                 openModal(task);
               }
             }}
@@ -411,13 +436,14 @@ function ActionCellComponent({
 
 export const columns: ColumnDef<ClientPrintTaskData>[] = [
   {
-    id: 'select',
+    id: "select",
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
         }
-        onCheckedChange={(value: boolean | 'indeterminate') =>
+        onCheckedChange={(value: boolean | "indeterminate") =>
           table.toggleAllPageRowsSelected(!!value)
         }
         aria-label="Select all"
@@ -427,7 +453,9 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
-        onCheckedChange={(value: boolean | 'indeterminate') => row.toggleSelected(!!value)}
+        onCheckedChange={(value: boolean | "indeterminate") =>
+          row.toggleSelected(!!value)
+        }
         aria-label="Select row"
         className="border-gray-400 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
       />
@@ -436,12 +464,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'product.sku',
+    accessorKey: "product.sku",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           SKU
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -449,18 +477,22 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       );
     },
     cell: ({ row }) => {
-      const sku = row.getValue('product_sku') as string;
+      const sku = row.getValue("product_sku") as string;
       const product = row.original.product;
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="truncate font-mono text-xs max-w-[80px] cursor-default">{sku}</div>
+              <div className="truncate font-mono text-xs max-w-[80px] cursor-default">
+                {sku}
+              </div>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start">
               <p className="text-sm font-semibold">{product.name}</p>
               <p className="text-xs text-muted-foreground">SKU: {sku}</p>
-              {product.weight && <p className="text-xs">Weight: {product.weight}g</p>}
+              {product.weight && (
+                <p className="text-xs">Weight: {product.weight}g</p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -469,12 +501,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'product.name',
+    accessorKey: "product.name",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Product Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -482,10 +514,13 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       );
     },
     cell: ({ row }) => {
-      const name = row.getValue('product_name') as string;
-      const productName = name || 'N/A';
+      const name = row.getValue("product_name") as string;
+      const productName = name || "N/A";
       return (
-        <div title={productName} className="truncate max-w-[200px] whitespace-normal text-sm">
+        <div
+          title={productName}
+          className="truncate max-w-[200px] whitespace-normal text-sm"
+        >
           {productName}
         </div>
       );
@@ -493,12 +528,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'quantity',
+    accessorKey: "quantity",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Qty
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -506,11 +541,14 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       );
     },
     cell: ({ row }) => {
-      const quantity = row.getValue('quantity') as number;
+      const quantity = row.getValue("quantity") as number;
       if (quantity > 1) {
         return (
           <div className="text-center">
-            <Badge variant="default" className="bg-blue-500 text-white px-2 py-0.5 text-xs">
+            <Badge
+              variant="default"
+              className="bg-blue-500 text-white px-2 py-0.5 text-xs"
+            >
               {quantity}
             </Badge>
           </div>
@@ -521,12 +559,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'color_1',
+    accessorKey: "color_1",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Color 1
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -552,12 +590,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'color_2',
+    accessorKey: "color_2",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Color 2
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -583,12 +621,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'custom_text',
+    accessorKey: "custom_text",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Personalisation
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -596,14 +634,15 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       );
     },
     cell: ({ row }) => {
-      const customText = row.getValue('custom_text') as string | null;
-      const fullText = customText || '';
-      const truncatedText = fullText.length > 50 ? `${fullText.substring(0, 50)}...` : fullText;
+      const customText = row.getValue("custom_text") as string | null;
+      const fullText = customText || "";
+      const truncatedText =
+        fullText.length > 50 ? `${fullText.substring(0, 50)}...` : fullText;
 
       const handleCopyCustomText = () => {
         if (fullText) {
           navigator.clipboard.writeText(fullText);
-          toast.success('Custom text copied!');
+          toast.success("Custom text copied!");
         }
       };
 
@@ -616,7 +655,9 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
                   {truncatedText}
                 </div>
               </TooltipTrigger>
-              {fullText.length > 50 && <TooltipContent>{fullText}</TooltipContent>}
+              {fullText.length > 50 && (
+                <TooltipContent>{fullText}</TooltipContent>
+              )}
             </Tooltip>
           </TooltipProvider>
           <Button
@@ -636,12 +677,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'status',
+    accessorKey: "status",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Status
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -685,7 +726,10 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
           break;
         case PrintTaskStatus.cancelled:
           indicator = (
-            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 font-medium">
+            <Badge
+              variant="outline"
+              className="bg-red-100 text-red-800 border-red-300 font-medium"
+            >
               Cancelled
             </Badge>
           );
@@ -703,12 +747,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'created_at',
+    accessorKey: "created_at",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Created
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -720,19 +764,21 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       return (
         <div className="text-center text-xs">
           <div>{formatRelativeDate(date)}</div>
-          <div className="text-gray-500">{date ? format(new Date(date), 'HH:mm') : 'N/A'}</div>
+          <div className="text-gray-500">
+            {date ? format(new Date(date), "HH:mm") : "N/A"}
+          </div>
         </div>
       );
     },
     enableSorting: true,
   },
   {
-    accessorKey: 'order.requested_shipping_service',
+    accessorKey: "order.requested_shipping_service",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Shipping
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -744,7 +790,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const shippingAlias = getShippingAlias(shippingService);
 
       let icon = null;
-      if (shippingAlias === 'Special Delivery') {
+      if (shippingAlias === "Special Delivery") {
         icon = (
           <TooltipProvider>
             <Tooltip>
@@ -757,7 +803,7 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
             </Tooltip>
           </TooltipProvider>
         );
-      } else if (shippingAlias === 'Tracked24') {
+      } else if (shippingAlias === "Tracked24") {
         icon = (
           <TooltipProvider>
             <Tooltip>
@@ -782,12 +828,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'order.marketplace',
+    accessorKey: "order.marketplace",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Marketplace
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -798,7 +844,8 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
       const marketplace = row.original.order?.marketplace;
       const marketplaceAlias = getMarketplaceAlias(marketplace);
 
-      const style = marketplaceStyles[marketplaceAlias] || marketplaceStyles['N/A'];
+      const style =
+        marketplaceStyles[marketplaceAlias] || marketplaceStyles["N/A"];
 
       return (
         <div className="flex justify-center">
@@ -811,12 +858,12 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'marketplace_order_number',
+    accessorKey: "marketplace_order_number",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Order ID
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -835,16 +882,16 @@ export const columns: ColumnDef<ClientPrintTaskData>[] = [
             rel="noopener noreferrer"
             className="text-blue-500 hover:text-blue-700 hover:underline text-xs"
           >
-            {orderNum || 'View Order'}
+            {orderNum || "View Order"}
           </Link>
         );
       }
-      return <div className="text-xs">{orderNum || 'N/A'}</div>;
+      return <div className="text-xs">{orderNum || "N/A"}</div>;
     },
     enableSorting: true,
   },
   {
-    id: 'actions',
+    id: "actions",
     cell: ActionCellComponent,
     enableSorting: false,
     enableHiding: false,
@@ -856,10 +903,15 @@ export interface PrintQueueTableProps {
   onSelectTask?: (task: ClientPrintTaskData) => void;
 }
 
-export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): JSX.Element {
+export function PrintQueueTable({
+  data,
+  onSelectTask,
+}: PrintQueueTableProps): JSX.Element {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -885,16 +937,16 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
       pagination: { pageSize: 100, pageIndex: 0 },
       columnFilters: [
         {
-          id: 'status',
+          id: "status",
           value: [PrintTaskStatus.pending, PrintTaskStatus.in_progress],
         },
       ],
-      sorting: [{ id: 'created_at', desc: true }],
+      sorting: [{ id: "created_at", desc: true }],
       columnVisibility: {
         custom_text: true,
         marketplace_order_number: true,
-        'product.sku': true,
-        'product.name': true,
+        "product.sku": true,
+        "product.name": true,
       },
     },
     onColumnVisibilityChange: setColumnVisibility,
@@ -905,8 +957,8 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
   });
 
   const selectedRowIds = Object.keys(rowSelection)
-    .map(index => table.getRowModel().rowsById[index]?.original?.id)
-    .filter((id): id is number => typeof id === 'number');
+    .map((index) => table.getRowModel().rowsById[index]?.original?.id)
+    .filter((id): id is number => typeof id === "number");
   const numSelected = selectedRowIds.length;
 
   return (
@@ -915,9 +967,11 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
         <div className="flex items-center space-x-4">
           <div className="flex-1 text-sm">
             <span className="text-muted-foreground">
-              {numSelected > 0 ? `${numSelected} task(s) selected. ` : ''}
+              {numSelected > 0 ? `${numSelected} task(s) selected. ` : ""}
             </span>
-            <span className="font-medium">{table.getFilteredRowModel().rows.length} tasks</span>
+            <span className="font-medium">
+              {table.getFilteredRowModel().rows.length} tasks
+            </span>
             <span className="text-muted-foreground"> displayed</span>
           </div>
         </div>
@@ -944,7 +998,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <PlayCircle className="mr-2 h-4 w-4" />
-                )}{' '}
+                )}{" "}
                 Mark Selected In Progress ({numSelected})
               </Button>
               <Button
@@ -967,7 +1021,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Check className="mr-2 h-4 w-4" />
-                )}{' '}
+                )}{" "}
                 Mark Selected Completed ({numSelected})
               </Button>
               <Button
@@ -989,7 +1043,7 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Undo2 className="mr-2 h-4 w-4" />
-                )}{' '}
+                )}{" "}
                 Mark Selected Pending ({numSelected})
               </Button>
             </>
@@ -997,8 +1051,11 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
         </div>
       </div>
       <div
-        className="rounded-md border overflow-x-auto w-full mx-auto relative"
-        style={{ minWidth: '100%', overflowX: 'auto' }}
+        className={cn(
+          "rounded-md border overflow-x-auto w-full mx-auto relative",
+          "print-queue-table" // Added class for CSS rules to apply
+        )}
+        style={{ minWidth: "100%", overflowX: "auto" }}
       >
         <style jsx global>{`
           .print-queue-table td {
@@ -1062,11 +1119,11 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           }
           .print-queue-table
             .in-progress-row
-            td:not(.status-cell):not(.actions-cell):not(.select-cell) {
-            text-decoration: line-through;
-            text-decoration-thickness: 1px;
-            color: #4b5563;
-            font-style: italic;
+            td:not(.status-cell):not(.actions-cell):not(.select-cell) * {
+            text-decoration: line-through !important;
+            text-decoration-thickness: 1.5px !important; /* Ensure visibility */
+            text-decoration-color: #4b5563 !important; /* Dim text color for in-progress items */
+            /* font-style: italic; */
           }
 
           /* Add a subtle left border to priority shipping rows */
@@ -1077,12 +1134,21 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
         `}</style>
         <Table className="min-w-full table-fixed">
           <TableHeader>
-            {table.getHeaderGroups().map(headerGroup => (
+            {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <TableHead key={header.id} colSpan={header.colSpan} className="px-3 py-2">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className="px-3 py-2"
+                  >
                     {header.isPlaceholder ? null : (
-                      <div>{flexRender(header.column.columnDef.header, header.getContext())}</div>
+                      <div>
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </div>
                     )}
                   </TableHead>
                 ))}
@@ -1091,52 +1157,61 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map(row => {
+              table.getRowModel().rows.map((row) => {
                 const task = row.original;
-                const isInProgress = task.status === PrintTaskStatus.in_progress;
+                const isInProgress =
+                  task.status === PrintTaskStatus.in_progress;
                 const shippingService = task.order?.requested_shipping_service;
                 const shippingAlias = getShippingAlias(shippingService);
 
-                const isSpecialDelivery = shippingAlias === 'Special Delivery';
-                const isTracked24 = shippingAlias === 'Tracked24';
+                const isSpecialDelivery = shippingAlias === "Special Delivery";
+                const isTracked24 = shippingAlias === "Tracked24";
                 const _isPriority = isSpecialDelivery || isTracked24;
 
                 const rowClassName = cn(
-                  isInProgress && 'in-progress-row bg-gray-800/10',
-                  isSpecialDelivery && 'font-medium priority-special-delivery bg-blue-50/30',
-                  isTracked24 && 'font-medium priority-tracked24 bg-red-50/30',
-                  ''
+                  task.status === PrintTaskStatus.in_progress &&
+                    "in-progress-row bg-gray-800/10",
+                  isSpecialDelivery &&
+                    "font-medium priority-special-delivery bg-blue-50/30",
+                  isTracked24 && "font-medium priority-tracked24 bg-red-50/30",
+                  ""
                 );
 
                 return (
                   <TableRow
                     key={row.id}
-                    data-state={row.getIsSelected() ? 'selected' : undefined}
+                    data-state={row.getIsSelected() ? "selected" : undefined}
+                    data-status={task.status}
                     className={rowClassName}
                   >
-                    {row.getVisibleCells().map(cell => (
+                    {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          'px-3 py-2',
-                          cell.column.id === 'status'
-                            ? 'status-cell sticky right-0 z-10 bg-background'
-                            : '',
-                          cell.column.id === 'actions'
-                            ? 'actions-cell sticky right-0 z-10 bg-background'
-                            : '',
-                          cell.column.id === 'select' ? 'select-cell' : '',
-                          cell.column.id === 'product.sku' ? 'sku-cell' : '',
-                          cell.column.id === 'product.name'
-                            ? 'product-name-cell whitespace-normal'
-                            : '',
-                          cell.column.id === 'marketplace_order_number'
-                            ? 'marketplace-id-cell'
-                            : '',
-                          cell.column.id === 'custom_text' ? 'custom-text-cell' : ''
+                          "px-3 py-2",
+                          cell.column.id === "status"
+                            ? "status-cell sticky right-0 z-10 bg-background"
+                            : "",
+                          cell.column.id === "actions"
+                            ? "actions-cell sticky right-0 z-10 bg-background"
+                            : "",
+                          cell.column.id === "select" ? "select-cell" : "",
+                          cell.column.id === "product.sku" ? "sku-cell" : "",
+                          cell.column.id === "product.name"
+                            ? "product-name-cell whitespace-normal"
+                            : "",
+                          cell.column.id === "marketplace_order_number"
+                            ? "marketplace-id-cell"
+                            : "",
+                          cell.column.id === "custom_text"
+                            ? "custom-text-cell"
+                            : ""
                         )}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -1144,7 +1219,10 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -1158,51 +1236,51 @@ export function PrintQueueTable({ data, onSelectTask }: PrintQueueTableProps): J
 }
 
 const shippingMapping: Record<string, string> = {
-  'NextDay UK Next': 'Special Delivery',
-  'Next Day': 'Special Delivery',
-  NextDay: 'Special Delivery',
-  'Next Day UK': 'Special Delivery',
+  "NextDay UK Next": "Special Delivery",
+  "Next Day": "Special Delivery",
+  NextDay: "Special Delivery",
+  "Next Day UK": "Special Delivery",
 
-  UK_RoyalMailAirmailInternational: 'International',
-  'International Tracked – 3-5 Working Days Delivery': 'International Tracked',
+  UK_RoyalMailAirmailInternational: "International",
+  "International Tracked – 3-5 Working Days Delivery": "International Tracked",
 
-  UK_RoyalMailSecondClassStandard: 'Standard',
-  UK_RoyalMail48: 'Standard',
-  'Standard Std UK Dom_1': 'Standard',
-  'Standard Std UK Dom_2': 'Standard',
-  'Standard Std UK Dom_3': 'Standard',
+  UK_RoyalMailSecondClassStandard: "Standard",
+  UK_RoyalMail48: "Standard",
+  "Standard Std UK Dom_1": "Standard",
+  "Standard Std UK Dom_2": "Standard",
+  "Standard Std UK Dom_3": "Standard",
 
-  'SecondDay UK Second': 'Tracked24',
-  '2-Day Shipping – 1-2 Working Days Delivery': 'Tracked24',
-  'Tracked 24': 'Tracked24',
-  UK_RoyalMail1stClassLetterLargeLetter: '1st Class',
+  "SecondDay UK Second": "Tracked24",
+  "2-Day Shipping – 1-2 Working Days Delivery": "Tracked24",
+  "Tracked 24": "Tracked24",
+  UK_RoyalMail1stClassLetterLargeLetter: "1st Class",
 };
 
 const marketplaceMapping: Record<string, string> = {
-  ebay_v2: 'eBay',
-  amazon: 'Amazon',
-  etsy: 'Etsy',
-  web: 'Shopify',
+  ebay_v2: "eBay",
+  amazon: "Amazon",
+  etsy: "Etsy",
+  web: "Shopify",
 };
 
 const marketplaceStyles: Record<string, { bg: string; text: string }> = {
-  Shopify: { bg: 'bg-green-600', text: 'text-white' },
-  Amazon: { bg: 'bg-yellow-600', text: 'text-white' },
-  eBay: { bg: 'bg-red-600', text: 'text-white' },
-  Etsy: { bg: 'bg-orange-600', text: 'text-white' },
-  'N/A': { bg: 'bg-gray-500', text: 'text-white' },
+  Shopify: { bg: "bg-green-600", text: "text-white" },
+  Amazon: { bg: "bg-yellow-600", text: "text-white" },
+  eBay: { bg: "bg-red-600", text: "text-white" },
+  Etsy: { bg: "bg-orange-600", text: "text-white" },
+  "N/A": { bg: "bg-gray-500", text: "text-white" },
 };
 
 function getShippingAlias(originalName?: string | null): string {
   if (!originalName) {
-    return 'N/A';
+    return "N/A";
   }
   return shippingMapping[originalName] || originalName;
 }
 
 function getMarketplaceAlias(originalName?: string | null): string {
   if (!originalName) {
-    return 'N/A';
+    return "N/A";
   }
   const lowerCaseName = originalName.toLowerCase().trim();
   return marketplaceMapping[lowerCaseName] || originalName;
