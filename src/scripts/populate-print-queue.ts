@@ -258,7 +258,18 @@ type PrintSettings = PrintSettingOption | PrintSettingOption[] | Record<string, 
 // Function to extract the customization URL from item print_settings
 function extractCustomizationUrl(item: OrderWithItemsAndProducts['items'][number]): string | null {
   const printSettings: PrintSettings = item.print_settings as PrintSettings;
-  if (!printSettings) return null;
+  // Log the print_settings being processed by this function at a debug level
+  logger.debug({
+    orderId: item.orderId, // Assuming OrderItem has orderId, if not, this needs context 
+    itemId: item.id,
+    shipstationLineItemKey: item.shipstationLineItemKey,
+    printSettings
+  }, `[extractCustomizationUrl] Processing item ${item.id} with print_settings.`);
+
+  if (!printSettings) {
+    logger.debug(`[extractCustomizationUrl][Item ${item.id}] No print_settings found.`);
+    return null;
+  }
 
   // Helper to check for the URL setting, case-insensitive for the name
   const isUrlSetting = (setting: unknown): setting is PrintSettingOption =>
@@ -286,6 +297,7 @@ function extractCustomizationUrl(item: OrderWithItemsAndProducts['items'][number
       return printSettings.value;
     }
   }
+  logger.debug(`[extractCustomizationUrl][Item ${item.id}] No CustomizedURL found in print_settings.`);
   return null;
 }
 
@@ -305,11 +317,21 @@ async function extractDirectItemData(
   item: OrderWithItemsAndProducts['items'][number],
   product: OrderWithItemsAndProducts['items'][number]['product']
 ): Promise<DirectExtractionResult> {
+  logger.info({ orderId: order.id, itemId: item.id, shipstationLineItemKey: item.shipstationLineItemKey }, `[DirectExtract] Entered for item.`);
   // --- Amazon URL Extraction Logic ---
   const isAmazon = order.marketplace?.toLowerCase().includes('amazon');
+  logger.info({ orderId: order.id, itemId: item.id, marketplace: order.marketplace, isAmazonResult: isAmazon }, `[DirectExtract] Checked isAmazon.`);
   logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Marketplace='${order.marketplace}', IsAmazon=${isAmazon}`);
 
   if (isAmazon) {
+    // Log the raw print_settings for the item when it's an Amazon order
+    logger.info({
+      orderId: order.id,
+      itemId: item.id,
+      shipstationLineItemKey: item.shipstationLineItemKey,
+      printSettingsFromItem: item.print_settings
+    }, `[DirectExtract][Order ${order.id}][Item ${item.id}] Amazon item. Raw print_settings before calling extractCustomizationUrl.`);
+
     const amazonUrl = extractCustomizationUrl(item);
     logger.debug(`[DirectExtract][Order ${order.id}][Item ${item.id}] Extracted amazonUrl='${amazonUrl}'`);
 
@@ -412,7 +434,7 @@ async function extractOrderPersonalization(
 
     // Amazon Customization URL Check
     const customizedUrl = extractCustomizationUrl(orderItem);
-    if (customizedUrl && order.marketplace === 'Amazon') {
+    if (customizedUrl && order.marketplace?.toLowerCase() === 'amazon') { // Made marketplace check case-insensitive
       logger.info({ orderId: order.id, itemId: orderItem.id, url: customizedUrl }, `[AI Prep] Found Amazon customization URL for item ${orderItem.id}. Fetching...`);
       try {
         const amazonDataResult = await fetchAndProcessAmazonCustomization(customizedUrl);
@@ -802,6 +824,7 @@ async function createOrUpdateTasksInTransaction(
 
   for (const item of order.items) {
     const orderItemId = item.id;
+    logger.info({ orderId: order.id, itemId: orderItemId, shipstationLineItemKey: item.shipstationLineItemKey }, `[createOrUpdateTasksInTransaction] Processing item in loop.`);
     const preservedTexts = new Map<number, string | null>();
     const product = item.product; // Get product from the item
 
@@ -1491,7 +1514,7 @@ async function main() {
 
     for (const order of ordersToProcess) {
       totalOrdersProcessed++;
-      logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number }, `-- - Processing Order ${order.id} --- `);
+      logger.info({ orderId: order.id, orderNumber: order.shipstation_order_number, marketplace: order.marketplace }, `-- - Processing Order ${order.id} (Marketplace: ${order.marketplace}) --- `);
 
       let orderProcessingSuccess = true; // Flag for this specific order
       // Initialize variables that will hold results from AI extraction or defaults
