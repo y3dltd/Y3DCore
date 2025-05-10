@@ -1,16 +1,49 @@
 import axios from 'axios';
-
+// Prisma not used in this file directly for this specific change, but keep if used elsewhere.
+// import { Prisma } from '@prisma/client'; 
 import { shipstationApi } from './client';
-import { upsertOrderWithItems } from './db-sync';
-
-import type {
-  ShipStationApiParams,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Type is used implicitly in loop
+import logger from '../logger';
+import {
   ShipStationOrder,
   ShipStationOrdersResponse,
   ShipStationTag,
+  ShipStationApiParams,
   SyncSummary,
+  ShipStationOrderItem,
+  ShipStationItemOption
 } from './types';
+
+// // CONSTANTS for internal notes truncation (Global versions commented out as they were only used by the global sanitize function)
+// const SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH = 10000;
+// const SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX = '... (truncated)';
+
+// CONSTANTS for dimension conversion
+const INCH_TO_CM_FACTOR = 2.54;
+const DIMENSION_PRECISION = 2;
+
+// // HELPER FUNCTION to sanitize and truncate internal notes
+// function sanitizeAndTruncateShipstationInternalNotes(notes: string): string {
+//   // Strip non-printable ASCII characters except for common whitespace (newline, tab, carriage return)
+//   // Keeps characters from space (32) to tilde (126), plus tab (9), newline (10), carriage return (13).
+//   let sanitizedNotes = notes.replace(/[^\x20-\x7E\x09\x0A\x0D]/g, '');
+
+//   if (sanitizedNotes.length > SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH) {
+//     const maxLengthWithoutSuffix = SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH - SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX.length;
+//     if (maxLengthWithoutSuffix < 0) { // Should not happen if suffix is shorter than max length
+//       sanitizedNotes = sanitizedNotes.substring(0, SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH);
+//     } else {
+//       sanitizedNotes = sanitizedNotes.substring(0, maxLengthWithoutSuffix) + SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX;
+//     }
+//     // Conditional logging to avoid logger dependency if this util is moved to a logger-less context
+//     // (assuming logger might not always be available where this function could be used)
+//     if (typeof logger !== 'undefined' && logger?.warn) {
+//       logger.warn(`[ShipStation API] Internal notes truncated to ${SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH} characters.`);
+//     }
+//   }
+//   return sanitizedNotes;
+// }
+
+import { upsertOrderWithItems } from './db-sync';
 
 const MAX_RETRIES = 3;
 
@@ -338,9 +371,46 @@ export async function updateOrderItemOptions(
     items: updatedOrderItems, // Override with the modified items array
   };
 
-  // Only override units from inches to centimeters; numeric values remain unchanged
-  if (payload.dimensions?.units === 'inches') {
-    payload.dimensions.units = 'centimeters'
+  // Convert dimensions if they exist and are in inches
+  if (
+    payload.dimensions &&
+    payload.dimensions.units &&
+    payload.dimensions.units.toLowerCase() === 'inches' &&
+    typeof payload.dimensions.length === 'number' &&
+    typeof payload.dimensions.width === 'number' &&
+    typeof payload.dimensions.height === 'number'
+  ) {
+    logger.info(
+      `[ShipStation API][Order ${payload.orderId}] Converting dimensions from inches to cm and scaling values for batch update.`
+    );
+    payload.dimensions = {
+      units: 'cm',
+      length: parseFloat(
+        (payload.dimensions.length * INCH_TO_CM_FACTOR).toFixed(
+          DIMENSION_PRECISION
+        )
+      ),
+      width: parseFloat(
+        (payload.dimensions.width * INCH_TO_CM_FACTOR).toFixed(
+          DIMENSION_PRECISION
+        )
+      ),
+      height: parseFloat(
+        (payload.dimensions.height * INCH_TO_CM_FACTOR).toFixed(
+          DIMENSION_PRECISION
+        )
+      ),
+    };
+  } else if (
+    payload.dimensions &&
+    payload.dimensions.units &&
+    payload.dimensions.units.toLowerCase() === 'inches'
+  ) {
+    // If conversion can't happen due to missing numeric properties but units are inches, set to null to avoid sending invalid partial data
+    logger.warn(
+      `[ShipStation API][Order ${payload.orderId}] Original dimensions in inches but one or more numeric dimension properties (length, width, height) are missing or not numbers. Setting dimensions to null for the API call.`
+    );
+    payload.dimensions = null;
   }
 
   // Ensure orderId is a number if it exists (it should)
@@ -394,109 +464,210 @@ export async function updateOrderItemOptions(
 // ... existing code ...
 
 export async function updateOrderItemsOptionsBatch(
+  // `fetchedOrder` is the order data as it was known by the calling function.
+  // It might be slightly stale, which is why we fetch a fresh copy.
   fetchedOrder: ShipStationOrder,
   itemsToPatch: Record<string, Array<{ name: string; value: string | null }>>,
-  auditNote: string | null = null
+  auditNote: string | null = null,
+  dimensionsInput: { units: string; length: number; width: number; height: number } | null = null,
+  customerNotes?: string | null
 ): Promise<boolean> {
-  const endpoint = '/orders/createorder'
+  const endpoint = '/orders/createorder';
 
-  // Build updated items list, only patch targeted items
-  const updatedItems = fetchedOrder.items.map(item => {
-    const key = item.lineItemKey;
-    // Only attempt patch if lineItemKey exists (is not null/undefined)
-    // and is actually a key present in itemsToPatch
-    if (key != null && Object.prototype.hasOwnProperty.call(itemsToPatch, key)) {
-      // Ensure itemsToPatch[key] is an array before calling filter
-      const optionsToPatch = Array.isArray(itemsToPatch[key]) ? itemsToPatch[key] : [];
+  // Define constants and helper function locally within this function scope
+  const SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH = 10000;
+  const SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX = '... (truncated)';
 
-      // Filter out null values using a type predicate to satisfy ShipStationItemOption type
-      const validatedOptions = optionsToPatch.filter(
-        (o): o is { name: string; value: string } => o.value !== null
+  function sanitizeAndTruncateShipstationInternalNotes(notes: string): string {
+    // Strip non-printable ASCII
+    let sanitizedNotes = notes.replace(/[^\x20-\x7E\x09\x0A\x0D]/g, '');
+    if (sanitizedNotes.length > SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH) {
+      const maxLengthWithoutSuffix = SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH - SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX.length;
+      if (maxLengthWithoutSuffix < 0) {
+        sanitizedNotes = sanitizedNotes.substring(0, SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH);
+      } else {
+        sanitizedNotes = sanitizedNotes.substring(0, maxLengthWithoutSuffix) + SHIPSTATION_INTERNAL_NOTES_TRUNCATION_SUFFIX;
+      }
+      logger.warn(
+        `[ShipStation API][Order ${fetchedOrder.orderId}] Internal notes truncated to ${SHIPSTATION_INTERNAL_NOTES_MAX_LENGTH} characters.`
       );
-
-      return {
-        ...item,
-        options: validatedOptions, // Assign the correctly typed array
-      };
     }
-    // Otherwise, return the original item unchanged
+    return sanitizedNotes;
+  }
+
+  let freshlyFetchedOrder: ShipStationOrder;
+  try {
+    logger.info(`[ShipStation API] Fetching latest order data for orderId ${fetchedOrder.orderId} before batch update.`);
+    const response = await getShipstationOrders({ orderId: fetchedOrder.orderId });
+    if (!response.orders || response.orders.length === 0) {
+      logger.error(`[ShipStation API] Failed to fetch fresh order data for orderId ${fetchedOrder.orderId}. Aborting update.`);
+      return false;
+    }
+    freshlyFetchedOrder = response.orders[0];
+    logger.info(
+      `[ShipStation API - DEBUG] Original FRESHLY fetched order data for orderId ${freshlyFetchedOrder.orderId} BEFORE any modification:\n ${JSON.stringify(freshlyFetchedOrder, null, 2)}`
+    );
+  } catch (fetchError) {
+    logger.error(`[ShipStation API] Error fetching fresh order data for orderId ${fetchedOrder.orderId}: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}. Aborting update.`);
+    return false;
+  }
+
+
+  // Map itemsToPatch to the structure ShipStation expects, using freshlyFetchedOrder's items as a base
+  const updatedOrderItems = freshlyFetchedOrder.items.map(item => {
+    const patchOptions = itemsToPatch[item.lineItemKey || ''];
+    if (patchOptions) {
+      // If new options are provided for this lineItemKey, process them to ensure compatibility
+      const SSpatchOptions: ShipStationItemOption[] = patchOptions
+        .map(opt => ({
+          name: opt.name,
+          value: opt.value === null ? "" : opt.value, // Convert null to empty string
+        }))
+      // .filter(opt => typeof opt.value === 'string'); // Ensure value is string (already handled by above)
+      return { ...item, options: SSpatchOptions };
+    }
+    // Otherwise, keep the item as it is from the fresh fetch
     return item;
   });
 
-  // Build human‑friendly summaries for Internal Notes / Custom Field 1
-  const summaryLines = Object.values(itemsToPatch).map((opts) => {
-    const text = opts.find(o => o.name === 'Name or Text')?.value ?? '-'
-    const colour1 = opts.find(o => o.name === 'Colour 1')?.value ?? null
-    const colour2 = opts.find(o => o.name === 'Colour 2')?.value ?? null
-    const colourPart = colour1 ? ` (${colour1}${colour2 ? ` / ${colour2}` : ''})` : ''
-    return `${text}${colourPart}`
-  })
-  const summaryBlock = summaryLines.join('\n')
+  // Sanitize internal notes before sending
+  const sanitizedAuditNote = auditNote ? sanitizeAndTruncateShipstationInternalNotes(auditNote) : null;
 
-  const vibeLine = `🤖 AI personalised ${summaryLines.length} item${summaryLines.length === 1 ? '' : 's'}`
+  // Construct payload by spreading the FRESHLY fetched order and overriding specific fields
+  const payload: ShipStationOrder = { // Using ShipStationOrder type
+    ...freshlyFetchedOrder,
+    items: updatedOrderItems,
+    internalNotes: sanitizedAuditNote, // Use sanitized notes
+    // customerNotes will be added below
+    customerNotes: null, // Initialize customerNotes, will be set below
+  };
 
-  const sparkleLine = `🌟 Y3D AI – Happy ${new Date().toLocaleDateString('en', { weekday: 'long' })}!`
-
-  let finalInternalNotes: string;
-  if (auditNote) {
-    // If auditNote is provided (e.g., our detailed packing list from populate-print-queue),
-    // use it directly. This will overwrite previous internalNotes.
-    finalInternalNotes = auditNote.trim();
+  // Handle customerNotes: if provided and not empty, add to payload; otherwise, send null to potentially clear it.
+  if (customerNotes && customerNotes.trim() !== "") {
+    payload.customerNotes = customerNotes;
   } else {
-    // Fallback to constructing a default note if auditNote is not provided
-    const defaultNoteLines = [
-      sparkleLine,
-      vibeLine,
-      summaryBlock,
-    ]
-      .filter(Boolean)
-      .map(l => l.trim());
-    finalInternalNotes = defaultNoteLines.join('\n');
+    payload.customerNotes = null; // Send null to clear or if no customer notes are intended
   }
 
-  const payload: ShipStationOrder = {
-    ...fetchedOrder,
-    items: updatedItems,
-    internalNotes: finalInternalNotes, // Use the determined finalInternalNotes
-  }
+  // Dimension handling (using dimensionsInput, which is the 'dimensions' from the calling function)
+  // This logic assumes 'dimensionsInput' is what the CALLER wants to set.
+  // It might override freshlyFetchedOrder.dimensions or convert them.
 
-  // Inject Custom Field 1 when only one summary line
-  if (summaryLines.length === 1) {
-    const cf1 = summaryLines[0].slice(0, 100)
-    payload.advancedOptions = {
-      ...(fetchedOrder.advancedOptions ?? {}),
-      customField1: cf1,
-    } as ShipStationOrder['advancedOptions']
-  }
+  if (dimensionsInput !== undefined) { // Check if dimensionsInput was explicitly passed
+    payload.dimensions = dimensionsInput; // Directly use the input from the function call
 
-  // Convert units flag only
-  if (payload.dimensions?.units === 'inches') payload.dimensions.units = 'centimeters'
+    // Apply conversion if units are in inches and numeric properties are valid on dimensionsInput
+    if (
+      payload.dimensions && // Ensure dimensions is not null from the assignment above
+      payload.dimensions.units &&
+      payload.dimensions.units.toLowerCase() === 'inches' &&
+      typeof payload.dimensions.length === 'number' &&
+      typeof payload.dimensions.width === 'number' &&
+      typeof payload.dimensions.height === 'number'
+    ) {
+      const scaledLength = payload.dimensions.length * INCH_TO_CM_FACTOR;
+      const scaledWidth = payload.dimensions.width * INCH_TO_CM_FACTOR;
+      const scaledHeight = payload.dimensions.height * INCH_TO_CM_FACTOR;
 
-  // Ensure numeric orderId
-  if (payload.orderId) payload.orderId = Number(payload.orderId)
-
-  console.log(
-    `[ShipStation API] Batch‑updating ${Object.keys(itemsToPatch).length} items in order ${fetchedOrder.orderId} …`
-  )
-  try {
-    console.log('[ShipStation API] Sending payload:', JSON.stringify(payload, null, 2))
-    const response = await shipstationApi.post(endpoint, payload)
-    if (response.status === 200 || response.status === 201) {
-      console.log(
-        `[ShipStation API] Batch update success for order ${fetchedOrder.orderId}.`
-      )
-      return true
+      // Check if any converted dimension becomes effectively zero after precision
+      if (
+        parseFloat(scaledLength.toFixed(DIMENSION_PRECISION)) === 0.00 ||
+        parseFloat(scaledWidth.toFixed(DIMENSION_PRECISION)) === 0.00 ||
+        parseFloat(scaledHeight.toFixed(DIMENSION_PRECISION)) === 0.00
+      ) {
+        logger.warn(
+          `[ShipStation API][Order ${payload.orderId}] Original Inch Dimensions: L ${payload.dimensions.length}, W ${payload.dimensions.width}, H ${payload.dimensions.height}. At least one converted dimension is zero after precision, sending null for dimensions.`
+        );
+        payload.dimensions = null; // Send null if any dimension effectively becomes zero
+      } else {
+        logger.info(
+          `[ShipStation API][Order ${payload.orderId}] Converting dimensions from inches to cm and scaling values for batch update.`
+        );
+        payload.dimensions = {
+          units: 'cm',
+          length: parseFloat(scaledLength.toFixed(DIMENSION_PRECISION)),
+          width: parseFloat(scaledWidth.toFixed(DIMENSION_PRECISION)),
+          height: parseFloat(scaledHeight.toFixed(DIMENSION_PRECISION)),
+        };
+        logger.info(
+          `[ShipStation API][Order ${payload.orderId}] Sending cm: L ${payload.dimensions.length}, W ${payload.dimensions.width}, H ${payload.dimensions.height}`
+        );
+      }
     }
+  } else {
+    // If dimensionsInput was not provided, retain dimensions from freshlyFetchedOrder (already in payload via spread)
+    // No conversion or nullification needed here as we respect the fetched state.
+    logger.info(`[ShipStation API][Order ${payload.orderId}] No dimensionsInput provided, retaining dimensions from fresh fetch.`);
+  }
+
+
+  try {
+    logger.info(
+      `[ShipStation API] Attempting batch update for order ${freshlyFetchedOrder.orderNumber} (ID: ${freshlyFetchedOrder.orderId}). Payload includes updates for ${updatedOrderItems.length} item(s), internal notes, customer notes, and possibly dimensions.`
+    );
+    // Log the payload before sending, ensure sensitive data is masked if necessary
+    // For debugging, let's see the notes and dimension parts:
+    logger.debug(`[ShipStation API] Sending PAYLOAD to /orders/createorder: ${JSON.stringify({
+      orderId: payload.orderId,
+      items: payload.items.map((i: ShipStationOrderItem) => ({ // Typed item as ShipStationOrderItem
+        lineItemKey: i.lineItemKey,
+        options: i.options
+      })),
+      internalNotes: payload.internalNotes,
+      customerNotes: payload.customerNotes,
+      dimensions: payload.dimensions
+    }, null, 2)}`);
+
+
+    const response = await shipstationApi.post(endpoint, payload);
+
+    console.log(`[ShipStation API Response Details][Order ${payload.orderId}] Status: ${response.status} ${response.statusText}`);
+    // Log only a subset of headers if too verbose, or stringify carefully
+    // console.log(`[ShipStation API Response Details][Order ${payload.orderId}] Headers:`, JSON.stringify(response.headers, null, 2));
+    console.log(`[ShipStation API Response Details][Order ${payload.orderId}] Data:`, JSON.stringify(response.data, null, 2));
+
+    if (response.status === 200 || response.status === 201) {
+      console.log(`[ShipStation API] Batch update SUCCESS for order ${payload.orderId}.`);
+      // Verify if the response data actually reflects the changes
+      const responseOrder = response.data as ShipStationOrder;
+      if (JSON.stringify(responseOrder.internalNotes) !== JSON.stringify(payload.internalNotes)) {
+        console.warn(`[ShipStation API] WARNING: internalNotes in response does not match sent payload for order ${payload.orderId}.`);
+      }
+      if (JSON.stringify(responseOrder.dimensions) !== JSON.stringify(payload.dimensions)) {
+        console.warn(`[ShipStation API] WARNING: dimensions in response does not match sent payload for order ${payload.orderId}.`);
+      }
+      // Add similar check for item options if feasible (more complex due to array and object comparison)
+
+      return true;
+    }
+
     console.warn(
-      `[ShipStation API] Batch update unexpected status ${response.status} for order ${fetchedOrder.orderId}.`
-    )
-    return false
-  } catch (error) {
-    let msg = `[ShipStation API] Batch update error for order ${fetchedOrder.orderId}`
+      `[ShipStation API] Batch update UNEXPECTED STATUS ${response.status} for order ${payload.orderId}. Full response details logged above.`
+    );
+    return false;
+
+  } catch (error: unknown) {
+    let msg = `[ShipStation API] FATAL ERROR during batch update POST for order ${payload.orderId}`;
     if (axios.isAxiosError(error)) {
-      msg += `. Status: ${error.response?.status ?? 'N/A'}`
-    } else if (error instanceof Error) msg += `: ${error.message}`
-    console.error(msg, error)
-    return false
+      msg += `. Status: ${error.response?.status ?? 'N/A'}`;
+      console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Full Axios Error:`, error);
+      if (error.response) {
+        msg += ` Response: ${JSON.stringify(error.response.data)}`;
+        console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Response Status: ${error.response.status} ${error.response.statusText}`);
+        console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Response Headers:`, JSON.stringify(error.response.headers, null, 2));
+        console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Response Data:`, JSON.stringify(error.response.data, null, 2));
+      } else if (error.request) {
+        console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Request made but no response received:`, error.request);
+      } else {
+        console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Error setting up request: ${error.message}`);
+      }
+    } else if (error instanceof Error) {
+      msg += `: ${error.message}`;
+      console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Non-Axios Error:`, error);
+    } else {
+      console.error(`[ShipStation API Error Details][Order ${payload.orderId}] Unknown error object:`, error);
+    }
+    console.error(msg);
+    return false;
   }
 }
